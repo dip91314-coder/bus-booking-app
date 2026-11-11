@@ -1,34 +1,58 @@
-import type { Config } from 'tailwindcss';
+﻿import type { Config } from 'tailwindcss';
 
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+        primary: {
+          DEFAULT: '#1746C8',
+          dark: '#0C247A',
+          navy: '#071A4D',
+          light: '#EEF4FF',
+          50: '#F0F5FF',
+          100: '#E0EBFF',
+          200: '#C2D7FF',
+          300: '#99BEFF',
+          400: '#5F99FF',
+          500: '#1746C8',
+          600: '#113BB3',
+          700: '#0C247A',
+          800: '#0A1C5A',
+          900: '#071A4D',
+        },
+        accent: {
+          DEFAULT: '#FF8A32',
+          hover: '#FF7510',
+          dark: '#E06400',
+          light: '#FFF2E6',
+        },
+        text: {
+          dark: '#17233D',
+          muted: '#718096',
+          light: '#A0AEC0',
         },
         seat: {
-          available: '#ffffff',
-          selected: '#10b981', // Emerald green
-          booked: '#94a3b8',   // Slate gray
+          available: '#FFFFFF',
+          selected: '#10B981', // vibrant green
+          booked: '#94A3B8',   // slate gray
+          ladies: '#EC4899',   // pink
+          driver: '#475569',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'Manrope', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        elevated: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04)',
+        card: '0 4px 20px -2px rgba(7, 26, 77, 0.08)',
+        hover: '0 12px 30px -4px rgba(7, 26, 77, 0.14)',
+        elevated: '0 20px 40px -8px rgba(7, 26, 77, 0.2)',
+        glow: '0 0 25px rgba(255, 138, 50, 0.35)',
+      },
+      backgroundImage: {
+        'hero-gradient': 'linear-gradient(135deg, #071A4D 0%, #0C247A 50%, #1746C8 100%)',
+        'card-gradient': 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+        'badge-gradient': 'linear-gradient(90deg, #FF8A32 0%, #FFA860 100%)',
       }
     },
   },

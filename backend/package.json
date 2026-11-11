@@ -1,14 +1,14 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Production-ready Bus Booking App API",
-  "main": "dist/server.js",
+  "description": "Pan-India Bus Booking Platform API",
+  "main": "src/server.js",
+  "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/scripts/seed.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -28,20 +28,9 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/compression": "^1.7.5",
-    "@types/cookie-parser": "^1.4.8",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/hpp": "^0.2.6",
-    "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^22.13.9",
-    "@types/supertest": "^6.0.2",
     "mongodb-memory-server": "^10.1.4",
     "pino-pretty": "^13.0.0",
     "supertest": "^7.0.0",
-    "tsx": "^4.19.3",
-    "typescript": "^5.8.2",
     "vitest": "^3.0.8"
   }
 }
