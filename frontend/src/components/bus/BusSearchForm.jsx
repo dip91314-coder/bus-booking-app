@@ -93,42 +93,68 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
   return (
     <form
       onSubmit={handleSearch}
-      className={`bg-white rounded-2xl shadow-elevated border border-blue-100 ${
-        compact ? 'p-4' : 'p-4 sm:p-6 lg:p-8'
+      className={`bg-white rounded-2xl shadow-xl shadow-purple-900/5 border border-purple-100 ${
+        compact ? 'p-4' : 'p-4 sm:p-6'
       }`}
     >
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 lg:gap-4 items-center">
+      {/* Journey Type Selector */}
+      <div className="flex items-center gap-6 mb-4 text-xs font-semibold text-slate-700">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            name="tripType"
+            checked={!showReturn}
+            onChange={() => setShowReturn(false)}
+            className="w-4 h-4 text-[#3B0764] focus:ring-[#7E22CE] accent-[#3B0764]"
+          />
+          <span className={!showReturn ? 'text-[#3B0764] font-bold' : ''}>Onward Journey</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            name="tripType"
+            checked={showReturn}
+            onChange={() => {
+              setShowReturn(true);
+              if (!returnDate) setReturnDate(journeyDate);
+            }}
+            className="w-4 h-4 text-[#3B0764] focus:ring-[#7E22CE] accent-[#3B0764]"
+          />
+          <span className={showReturn ? 'text-[#3B0764] font-bold' : ''}>Return Journey</span>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 lg:gap-3 items-center">
         {/* Origin City */}
-        <div className="md:col-span-5 relative" ref={fromRef}>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            From (Origin)
+        <div className="md:col-span-3 relative" ref={fromRef}>
+          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            From City
           </label>
           <div
             onClick={() => setFromOpen(true)}
-            className="flex items-center justify-between px-3.5 py-3 rounded-xl border border-gray-200 hover:border-primary/60 cursor-pointer bg-gray-50/50 hover:bg-white transition"
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-[#7E22CE] cursor-pointer bg-slate-50/50 hover:bg-white transition"
           >
             <div className="truncate">
-              <span className="font-bold text-gray-900 text-base">{fromCity}</span>
-              <span className="text-xs text-gray-400 block truncate">
-                {POPULAR_CITIES.find((c) => c.name === fromCity)?.state || 'India'}
+              <span className="font-bold text-slate-800 text-sm block truncate">{fromCity}</span>
+              <span className="text-[11px] text-slate-400 block truncate">
+                {POPULAR_CITIES.find((c) => c.name === fromCity)?.state || 'Station'}
               </span>
             </div>
-            <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           </div>
 
           {/* From Dropdown */}
           {fromOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-xl shadow-2xl border border-gray-100 p-2 z-50 animate__animated animate__fadeIn">
+            <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-xl shadow-2xl border border-purple-100 p-2 z-50">
               <input
                 type="text"
-                placeholder="Search city or state..."
+                placeholder="Search city..."
                 value={fromFilter}
                 onChange={(e) => setFromFilter(e.target.value)}
                 autoFocus
-                className="w-full px-3 py-2 text-sm border rounded-lg mb-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full px-3 py-1.5 text-xs border border-purple-100 rounded-lg mb-2 focus:outline-none focus:ring-1 focus:ring-[#7E22CE]"
               />
-              <div className="max-h-56 overflow-y-auto space-y-1">
+              <div className="max-h-52 overflow-y-auto space-y-1">
                 {filteredFromCities.map((city) => (
                   <button
                     key={city.name}
@@ -138,15 +164,15 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
                       setFromOpen(false);
                       setFromFilter('');
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between hover:bg-blue-50 transition ${
-                      fromCity === city.name ? 'bg-blue-50/80 font-bold text-primary' : 'text-gray-700'
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-purple-50 transition ${
+                      fromCity === city.name ? 'bg-purple-50 font-bold text-[#7E22CE]' : 'text-slate-700'
                     }`}
                   >
                     <div>
                       <span className="block font-medium">{city.name}</span>
-                      <span className="text-[11px] text-gray-400">{city.state}</span>
+                      <span className="text-[10px] text-slate-400">{city.state}</span>
                     </div>
-                    {fromCity === city.name && <Check className="w-4 h-4 text-primary" />}
+                    {fromCity === city.name && <Check className="w-3.5 h-3.5 text-[#7E22CE]" />}
                   </button>
                 ))}
               </div>
@@ -160,43 +186,42 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
             type="button"
             onClick={handleSwap}
             title="Swap Origin and Destination"
-            className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 text-primary hover:bg-accent hover:text-white hover:border-accent transition-all duration-300 flex items-center justify-center shadow-sm hover:rotate-180 transform"
+            className="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 text-[#7E22CE] hover:bg-[#3B0764] hover:text-white transition-all duration-300 flex items-center justify-center shadow-sm"
           >
-            <ArrowLeftRight className="w-4 h-4" />
+            <ArrowLeftRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Destination City */}
-        <div className="md:col-span-6 lg:col-span-6 relative" ref={toRef}>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-accent" />
-            To (Destination)
+        <div className="md:col-span-3 relative" ref={toRef}>
+          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            To City
           </label>
           <div
             onClick={() => setToOpen(true)}
-            className="flex items-center justify-between px-3.5 py-3 rounded-xl border border-gray-200 hover:border-accent/60 cursor-pointer bg-gray-50/50 hover:bg-white transition"
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-[#7E22CE] cursor-pointer bg-slate-50/50 hover:bg-white transition"
           >
             <div className="truncate">
-              <span className="font-bold text-gray-900 text-base">{toCity}</span>
-              <span className="text-xs text-gray-400 block truncate">
-                {POPULAR_CITIES.find((c) => c.name === toCity)?.state || 'India'}
+              <span className="font-bold text-slate-800 text-sm block truncate">{toCity}</span>
+              <span className="text-[11px] text-slate-400 block truncate">
+                {POPULAR_CITIES.find((c) => c.name === toCity)?.state || 'Station'}
               </span>
             </div>
-            <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           </div>
 
           {/* To Dropdown */}
           {toOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-xl shadow-2xl border border-gray-100 p-2 z-50 animate__animated animate__fadeIn">
+            <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-xl shadow-2xl border border-purple-100 p-2 z-50">
               <input
                 type="text"
-                placeholder="Search city or state..."
+                placeholder="Search city..."
                 value={toFilter}
                 onChange={(e) => setToFilter(e.target.value)}
                 autoFocus
-                className="w-full px-3 py-2 text-sm border rounded-lg mb-2 focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-1.5 text-xs border border-purple-100 rounded-lg mb-2 focus:outline-none focus:ring-1 focus:ring-[#7E22CE]"
               />
-              <div className="max-h-56 overflow-y-auto space-y-1">
+              <div className="max-h-52 overflow-y-auto space-y-1">
                 {filteredToCities.map((city) => (
                   <button
                     key={city.name}
@@ -206,29 +231,25 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
                       setToOpen(false);
                       setToFilter('');
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between hover:bg-orange-50 transition ${
-                      toCity === city.name ? 'bg-orange-50/80 font-bold text-accent' : 'text-gray-700'
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-purple-50 transition ${
+                      toCity === city.name ? 'bg-purple-50 font-bold text-[#7E22CE]' : 'text-slate-700'
                     }`}
                   >
                     <div>
                       <span className="block font-medium">{city.name}</span>
-                      <span className="text-[11px] text-gray-400">{city.state}</span>
+                      <span className="text-[10px] text-slate-400">{city.state}</span>
                     </div>
-                    {toCity === city.name && <Check className="w-4 h-4 text-accent" />}
+                    {toCity === city.name && <Check className="w-3.5 h-3.5 text-[#7E22CE]" />}
                   </button>
                 ))}
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Row 2: Dates and Submit */}
-      <div className="mt-3 lg:mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 lg:gap-4 items-end">
         {/* Journey Date */}
-        <div className="md:col-span-4">
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-primary" />
+        <div className={showReturn ? 'md:col-span-2' : 'md:col-span-3'}>
+          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
             Journey Date
           </label>
           <input
@@ -236,71 +257,50 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
             min={todayStr}
             value={journeyDate}
             onChange={(e) => setJourneyDate(e.target.value)}
-            className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary bg-gray-50/50 hover:bg-white"
+            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#7E22CE] bg-slate-50/50"
           />
         </div>
 
-        {/* Return Date Optional Toggle */}
-        <div className="md:col-span-4">
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              Return Date (Optional)
+        {/* Return Date (if selected) */}
+        {showReturn && (
+          <div className="md:col-span-1">
+            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1 truncate">
+              Return
             </label>
-            <button
-              type="button"
-              onClick={() => {
-                setShowReturn(!showReturn);
-                if (!showReturn && !returnDate) setReturnDate(journeyDate);
-              }}
-              className="text-[11px] text-primary hover:underline font-semibold"
-            >
-              {showReturn ? 'Remove Return' : '+ Add Return'}
-            </button>
-          </div>
-
-          {showReturn ? (
             <input
               type="date"
               min={journeyDate || todayStr}
               value={returnDate}
               onChange={(e) => setReturnDate(e.target.value)}
-              className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-gray-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary bg-gray-50/50"
+              className="w-full px-2 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#7E22CE] bg-slate-50/50"
             />
-          ) : (
-            <div
-              onClick={() => {
-                setShowReturn(true);
-                setReturnDate(journeyDate);
-              }}
-              className="px-3.5 py-3 rounded-xl border border-dashed border-gray-300 text-gray-400 text-sm cursor-pointer hover:border-primary/50 hover:text-primary transition text-center"
-            >
-              Click to select return date
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Search Buses Button */}
-        <div className="sm:col-span-2 md:col-span-4">
+        <div className="md:col-span-2">
+          <label className="hidden md:block text-[11px] font-semibold text-transparent mb-1">
+            Search
+          </label>
           <button
             type="submit"
-            className="w-full bg-accent hover:bg-accent-hover active:scale-[0.99] text-white font-extrabold text-base py-3.5 px-6 rounded-xl shadow-lg shadow-orange-500/25 transition flex items-center justify-center gap-2 group"
+            className="w-full bg-[#3B0764] hover:bg-[#4C1D95] text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-purple-950/20 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
-            <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <Search className="w-3.5 h-3.5" />
             <span>Search Buses</span>
           </button>
         </div>
       </div>
 
       {/* Popular Route Shortcuts */}
-      <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-gray-400 font-medium">Quick Pick Routes:</span>
+      <div className="mt-3 pt-3 border-t border-purple-50 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-slate-400 font-medium text-[11px]">Popular Searches:</span>
         {[
-          { from: 'Kolkata', to: 'Siliguri' },
-          { from: 'Delhi', to: 'Jaipur' },
+          { from: 'Indore', to: 'Pune' },
+          { from: 'Ayodhya', to: 'Nagpur' },
           { from: 'Mumbai', to: 'Pune' },
-          { from: 'Bengaluru', to: 'Chennai' },
-          { from: 'Delhi', to: 'Manali' }
+          { from: 'Kolkata', to: 'Siliguri' },
+          { from: 'Delhi', to: 'Jaipur' }
         ].map((route, i) => (
           <button
             key={i}
@@ -309,7 +309,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
               setFromCity(route.from);
               setToCity(route.to);
             }}
-            className="px-2.5 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-primary font-medium transition text-[11px]"
+            className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#4C1D95] font-medium transition text-[11px]"
           >
             {route.from} ➔ {route.to}
           </button>

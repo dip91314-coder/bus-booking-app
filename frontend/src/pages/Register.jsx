@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bus, Mail, Lock, User, Phone, UserPlus, Loader2 } from 'lucide-react';
+import { Bus, Mail, Lock, User, Phone, UserPlus, Loader2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Register = () => {
@@ -58,6 +58,7 @@ const Register = () => {
         phone: formData.phone.trim(),
         password: formData.password,
       });
+      toast.success('Registration successful! Welcome bonus ₹100 credited.');
       navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Registration failed.';
@@ -69,146 +70,166 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-[85vh] bg-slate-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+    <div className="min-h-[85vh] bg-[#FAF8FD] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl shadow-purple-900/5 border border-purple-100">
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center mx-auto mb-3 shadow-sm">
-            <Bus className="w-6 h-6 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Create your account</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Book seats on trusted interstate buses across India.
+          <Link to="/" className="inline-flex items-center gap-2 mb-3 group">
+            <img
+              src="/logo.png"
+              alt="YatraBus Logo"
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <span className="text-2xl font-black text-[#3B0764] tracking-tight">
+              Yatra<span className="text-[#7E22CE]">Bus</span>
+            </span>
+          </Link>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Create your account</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Book seats on verified buses and get <strong>₹100 Purple Wallet</strong> credit instantly.
           </p>
         </div>
 
+        {/* Promo tag */}
+        <div className="mb-5 bg-gradient-to-r from-purple-50 via-amber-50 to-purple-50 p-3 rounded-2xl border border-purple-200/60 flex items-center gap-2 text-xs text-[#3B0764]">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          <span><strong>New Member Benefit:</strong> Instant 100RS cashback applied automatically on your first journey!</span>
+        </div>
+
         {errors.server && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 font-medium">
+          <div className="mb-5 p-3.5 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200 font-medium">
             {errors.server}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Full Name
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <User className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 name="name"
                 required
-                placeholder="Rahul Sen"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                placeholder="e.g. Rahul Sharma"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
               />
             </div>
-            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+            {errors.name && <p className="text-[10px] text-rose-500 mt-1">{errors.name}</p>}
           </div>
 
+          {/* Email */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Mail className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="email"
                 name="email"
                 required
-                placeholder="name@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                placeholder="name@example.com"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
               />
             </div>
-            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+            {errors.email && <p className="text-[10px] text-rose-500 mt-1">{errors.email}</p>}
           </div>
 
+          {/* Phone */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Mobile Number
             </label>
             <div className="relative">
-              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Phone className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="tel"
                 name="phone"
                 required
                 maxLength={10}
-                placeholder="9876543210"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                placeholder="10-digit mobile number"
+                className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
               />
             </div>
-            {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
+            {errors.phone && <p className="text-[10px] text-rose-500 mt-1">{errors.phone}</p>}
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="password"
-                name="password"
-                required
-                placeholder="At least 6 characters"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
-              />
+          {/* Password */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Min 6 chars"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
+                />
+              </div>
+              {errors.password && <p className="text-[10px] text-rose-500 mt-1">{errors.password}</p>}
             </div>
-            {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
-          </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="password"
-                name="confirmPassword"
-                required
-                placeholder="Confirm password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
-              />
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                Confirm
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Re-enter"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
+                />
+              </div>
+              {errors.confirmPassword && <p className="text-[10px] text-rose-500 mt-1">{errors.confirmPassword}</p>}
             </div>
-            {errors.confirmPassword && (
-              <p className="text-xs text-red-600 mt-1">{errors.confirmPassword}</p>
-            )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm hover:shadow transition flex items-center justify-center gap-2 text-sm disabled:opacity-60"
+            className="w-full mt-3 bg-[#3B0764] hover:bg-[#4C1D95] text-white font-extrabold py-3 px-4 rounded-xl shadow-md shadow-purple-950/20 transition flex items-center justify-center gap-2 text-xs disabled:opacity-60 active:scale-[0.99]"
           >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Creating account...</span>
+                <span>Creating Account...</span>
               </>
             ) : (
               <>
-                <UserPlus className="w-4 h-4" />
-                <span>Create Account</span>
+                <UserPlus className="w-4 h-4 text-amber-300" />
+                <span>Create Account & Claim ₹100</span>
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-slate-100 text-center text-sm text-slate-500">
-          Already registered?{' '}
-          <Link to="/login" className="font-semibold text-blue-600 hover:text-blue-800 hover:underline">
-            Sign In
+        <div className="mt-6 pt-5 border-t border-purple-50 text-center text-xs text-slate-500">
+          Already have an account?{' '}
+          <Link to="/login" className="font-bold text-[#7E22CE] hover:underline">
+            Sign In here
           </Link>
         </div>
       </div>

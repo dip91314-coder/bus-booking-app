@@ -89,12 +89,12 @@ const AdminDashboard = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] pb-24">
+    <div className="min-h-screen bg-[#FAF8FD] pb-24 font-sans text-slate-800">
       {/* Admin Top Banner */}
-      <div className="bg-[#071A4D] text-white py-6 px-4 sm:px-6 lg:px-8 border-b border-blue-900/60 shadow-md">
+      <div className="bg-[#3B0764] text-white py-6 px-4 sm:px-6 lg:px-8 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-accent border border-accent/30 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 text-amber-300 border border-white/20 flex items-center justify-center">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
@@ -102,18 +102,18 @@ const AdminDashboard = () => {
                 <h1 className="text-xl sm:text-2xl font-black text-white">
                   Fleet & Operations Control Portal
                 </h1>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-400/30">
+                <span className="text-[10px] bg-emerald-400/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-400/30">
                   Role: Super Admin
                 </span>
               </div>
-              <p className="text-xs text-blue-200 mt-0.5">
+              <p className="text-xs text-purple-200 mt-0.5">
                 Centralized management for routes, schedules, fares, and real-time passenger manifests.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-blue-300">Logged in as:</span>
+            <span className="text-purple-200">Logged in as:</span>
             <strong className="text-white font-bold">{user?.email || 'admin@bharatbus.com'}</strong>
           </div>
         </div>
@@ -121,7 +121,7 @@ const AdminDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-2 pb-6 border-b border-gray-200 mb-8">
+        <div className="flex flex-wrap items-center gap-2 pb-6 border-b border-purple-100 mb-8">
           {[
             { id: 'overview', label: 'Dashboard Overview', icon: <BarChart3 className="w-4 h-4" /> },
             { id: 'buses', label: 'Manage Bus Fleet', count: buses.length, icon: <Bus className="w-4 h-4" /> },
@@ -138,8 +138,8 @@ const AdminDashboard = () => {
               }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition ${
                 activeSection === tab.id
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                  ? 'bg-[#3B0764] text-white shadow-md'
+                  : 'bg-white text-slate-700 hover:bg-purple-50/60 border border-purple-100'
               }`}
             >
               {tab.icon}
@@ -147,7 +147,7 @@ const AdminDashboard = () => {
               {tab.count !== undefined && (
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full ${
-                    activeSection === tab.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                    activeSection === tab.id ? 'bg-white/20 text-white' : 'bg-purple-50 text-[#7E22CE]'
                   }`}
                 >
                   {tab.count}

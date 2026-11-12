@@ -112,12 +112,12 @@ const SearchResults = () => {
   }, [buses, originQuery, destQuery, filters, sortBy]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] pb-24">
+    <div className="min-h-screen bg-[#FAF8FD] pb-24 font-sans text-slate-800">
       {/* Top Route Ribbon */}
-      <div className="bg-[#071A4D] text-white py-6 px-4 sm:px-6 lg:px-8 border-b border-blue-900/60 shadow-md">
+      <div className="bg-[#3B0764] text-white py-6 px-4 sm:px-6 lg:px-8 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-xs text-blue-300 mb-1">
+            <div className="flex items-center gap-2 text-xs text-purple-200 mb-1">
               <span>Home</span>
               <ChevronRight className="w-3.5 h-3.5" />
               <span>Bus Search</span>
@@ -128,10 +128,10 @@ const SearchResults = () => {
             <div className="flex items-center gap-3">
               <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
                 <span>{originQuery}</span>
-                <span className="text-accent">➔</span>
+                <span className="text-amber-400">➔</span>
                 <span>{destQuery}</span>
               </h1>
-              <span className="text-xs bg-blue-800 text-blue-200 px-3 py-1 rounded-full font-semibold border border-blue-700">
+              <span className="text-xs bg-white/10 text-purple-100 px-3 py-1 rounded-full font-semibold border border-white/20">
                 {dateQuery}
               </span>
             </div>
@@ -141,7 +141,7 @@ const SearchResults = () => {
             <button
               type="button"
               onClick={() => setShowModifySearch(!showModifySearch)}
-              className="bg-accent hover:bg-accent-hover text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow flex items-center gap-1.5"
+              className="bg-[#7E22CE] hover:bg-[#6B21A8] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow flex items-center gap-1.5"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>{showModifySearch ? 'Close Search' : 'Modify Search'}</span>
@@ -149,9 +149,9 @@ const SearchResults = () => {
             <button
               type="button"
               onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-              className="lg:hidden bg-blue-800 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5"
+              className="lg:hidden bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-accent" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-300" />
               <span>Filters</span>
             </button>
           </div>
@@ -159,7 +159,7 @@ const SearchResults = () => {
 
         {/* Collapsible Modify Search Drawer */}
         {showModifySearch && (
-          <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-blue-800/60 animate__animated animate__fadeIn">
+          <div className="max-w-7xl mx-auto mt-6 pt-6 border-t border-purple-400/30">
             <BusSearchForm compact onSearchComplete={() => setShowModifySearch(false)} />
           </div>
         )}
