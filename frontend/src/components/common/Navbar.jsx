@@ -9,9 +9,7 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown,
-  HelpCircle,
-  PhoneCall
+  ChevronDown
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -30,107 +28,91 @@ const Navbar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0B1B3D] text-white border-b border-slate-800 shadow-sm">
-      {/* Utility Bar */}
-      <div className="bg-[#07132B] px-4 py-1.5 text-xs text-slate-300 hidden md:block border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="text-slate-300">
-              Pan-India Intercity Bus Booking Platform
-            </span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-300">
-              Customer Support:{' '}
-              <a href="tel:18001028787" className="text-white font-medium hover:underline">
-                1800-102-8787
-              </a>
-            </span>
-          </div>
-          <div className="flex items-center gap-5">
-            <Link to="/help" className="hover:text-white transition flex items-center gap-1.5 text-slate-300">
-              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span>Help & FAQ</span>
-            </Link>
-            <span className="text-slate-600">|</span>
-            <Link to="/contact" className="hover:text-white transition flex items-center gap-1.5 text-slate-300">
-              <PhoneCall className="w-3.5 h-3.5 text-slate-400" />
-              <span>Contact Us</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-purple-100 shadow-sm transition">
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18">
+        <div className="flex items-center justify-between h-20">
           {/* Logo & Brand */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
-              <Bus className="w-6 h-6 text-white" />
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <img
+              src="/logo.png"
+              alt="YatraBus Logo"
+              className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            <div className="hidden w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3B0764] to-[#7E22CE] items-center justify-center text-white shadow-md">
+              <Bus className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                Yatra<span className="text-amber-500">Bus</span>
+            <div className="flex items-baseline">
+              <span className="text-2xl font-extrabold tracking-tight text-[#3B0764] font-sans">
+                Yatra<span className="text-[#7E22CE]">Bus</span>
               </span>
-              <p className="text-[10px] text-slate-400 tracking-wider uppercase font-medium -mt-1 hidden sm:block">
-                Intercity Bus Travel
-              </p>
             </div>
           </Link>
 
           {/* Nav links */}
-          <nav className="hidden lg:flex items-center gap-1">
-            <Link
-              to="/"
-              className={`px-3.5 py-2 rounded-md text-sm font-medium transition ${
-                isActive('/') ? 'text-white bg-slate-800' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              Home
-            </Link>
+          <nav className="hidden lg:flex items-center gap-7">
             <Link
               to="/buses"
-              className={`px-3.5 py-2 rounded-md text-sm font-medium transition ${
-                isActive('/buses') ? 'text-white bg-slate-800' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              className={`text-sm font-semibold transition hover:text-[#7E22CE] ${
+                isActive('/buses') ? 'text-[#7E22CE]' : 'text-slate-600'
               }`}
             >
-              Search Buses
+              Bus Ticket
             </Link>
             <Link
               to="/routes"
-              className={`px-3.5 py-2 rounded-md text-sm font-medium transition ${
-                isActive('/routes') ? 'text-white bg-slate-800' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              className={`text-sm font-semibold transition hover:text-[#7E22CE] ${
+                isActive('/routes') ? 'text-[#7E22CE]' : 'text-slate-600'
               }`}
             >
-              Routes
+              Popular Trip
             </Link>
             <Link
               to="/destinations"
-              className={`px-3.5 py-2 rounded-md text-sm font-medium transition ${
-                isActive('/destinations') ? 'text-white bg-slate-800' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              className={`text-sm font-semibold transition hover:text-[#7E22CE] ${
+                isActive('/destinations') ? 'text-[#7E22CE]' : 'text-slate-600'
               }`}
             >
-              Destinations
+              Short Trip
             </Link>
             <Link
-              to="/about"
-              className={`px-3.5 py-2 rounded-md text-sm font-medium transition ${
-                isActive('/about') ? 'text-white bg-slate-800' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              to="/help"
+              className={`text-sm font-semibold transition hover:text-[#7E22CE] ${
+                isActive('/help') ? 'text-[#7E22CE]' : 'text-slate-600'
               }`}
             >
-              About
+              Bus Format
+            </Link>
+            <Link
+              to="/contact"
+              className={`text-sm font-semibold transition hover:text-[#7E22CE] ${
+                isActive('/contact') ? 'text-[#7E22CE]' : 'text-slate-600'
+              }`}
+            >
+              Contact Us
             </Link>
           </nav>
 
           {/* Action buttons */}
           <div className="hidden md:flex items-center gap-3">
+            <Link
+              to="/login"
+              className="text-xs font-semibold text-slate-700 hover:text-[#7E22CE] px-3 py-2 rounded-lg transition"
+            >
+              Agent Login
+            </Link>
+
             {isAdmin && (
               <Link
                 to="/admin"
-                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 flex items-center gap-1.5 transition font-medium"
+                className="text-xs bg-purple-50 hover:bg-purple-100 text-[#4C1D95] px-3.5 py-2 rounded-xl border border-purple-200 flex items-center gap-1.5 transition font-bold"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                <span>Admin Panel</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-[#7E22CE]" />
+                <span>Admin</span>
               </Link>
             )}
 
@@ -139,82 +121,50 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 px-3 py-1.5 rounded-lg transition"
+                  className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100/80 border border-purple-100 px-3 py-2 rounded-xl transition"
                 >
-                  <div className="w-7 h-7 rounded-full bg-blue-700 flex items-center justify-center text-xs font-bold text-white">
+                  <div className="w-7 h-7 rounded-full bg-[#3B0764] flex items-center justify-center text-xs font-bold text-white">
                     {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <div className="text-left text-xs">
-                    <p className="font-medium text-white leading-tight truncate max-w-[120px]">{user.name}</p>
-                    <p className="text-[10px] text-slate-400 capitalize">{user.role || 'Passenger'}</p>
+                    <p className="font-bold text-slate-800 leading-tight truncate max-w-[100px]">{user.name}</p>
                   </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
                 </button>
 
                 {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-52 rounded-lg bg-white text-slate-800 shadow-xl border border-slate-200 py-1.5 z-50">
-                    <div className="px-3.5 py-2 border-b border-slate-100">
+                  <div className="absolute right-0 mt-2 w-52 rounded-xl bg-white text-slate-800 shadow-2xl border border-purple-100 py-2 z-50">
+                    <div className="px-4 py-2 border-b border-purple-50">
                       <p className="text-xs text-slate-400">Signed in as</p>
-                      <p className="text-xs font-semibold text-slate-900 truncate">{user.email}</p>
+                      <p className="text-xs font-bold text-slate-900 truncate">{user.email}</p>
                     </div>
-
                     <Link
                       to="/dashboard"
                       onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs hover:bg-slate-50 text-slate-700 transition font-medium"
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-[#7E22CE] transition"
                     >
-                      <User className="w-3.5 h-3.5 text-slate-500" />
-                      Passenger Profile
+                      <Ticket className="w-4 h-4 text-[#7E22CE]" />
+                      <span>My Bookings</span>
                     </Link>
-
-                    <Link
-                      to="/dashboard"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs hover:bg-slate-50 text-slate-700 transition font-medium"
-                    >
-                      <Ticket className="w-3.5 h-3.5 text-slate-500" />
-                      My Bookings
-                    </Link>
-
-                    {isAdmin && (
-                      <Link
-                        to="/admin"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3.5 py-2 text-xs hover:bg-slate-50 text-slate-700 transition font-medium"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                        Admin Dashboard
-                      </Link>
-                    )}
-
-                    <div className="border-t border-slate-100 my-1"></div>
-
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 transition font-medium text-left"
+                      className="w-full text-left flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition border-t border-purple-50 mt-1"
                     >
-                      <LogOut className="w-3.5 h-3.5 text-red-500" />
-                      Sign Out
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  to="/login"
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white transition"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-md shadow-sm transition"
-                >
-                  Register
-                </Link>
-              </div>
+              <Link
+                to="/login"
+                className="text-xs font-bold bg-[#3B0764] hover:bg-[#4C1D95] text-white px-5 py-2.5 rounded-xl shadow-md shadow-purple-900/20 transition flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </Link>
             )}
           </div>
 
@@ -223,9 +173,9 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800"
+              className="p-2 rounded-lg text-slate-700 hover:bg-purple-50"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-6 h-6 text-[#3B0764]" /> : <Menu className="w-6 h-6 text-[#3B0764]" />}
             </button>
           </div>
         </div>
@@ -233,43 +183,50 @@ const Navbar = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#07132B] border-t border-slate-800 px-4 pt-3 pb-5 space-y-1">
-          <Link
-            to="/"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-200 hover:bg-slate-800"
-          >
-            Home
-          </Link>
+        <div className="md:hidden bg-white border-t border-purple-100 px-4 pt-3 pb-5 space-y-1">
           <Link
             to="/buses"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-200 hover:bg-slate-800"
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#7E22CE]"
           >
-            Search Buses
+            Bus Ticket
           </Link>
           <Link
             to="/routes"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-200 hover:bg-slate-800"
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#7E22CE]"
           >
-            Routes
+            Popular Trip
           </Link>
           <Link
             to="/destinations"
             onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-md text-sm font-medium text-slate-200 hover:bg-slate-800"
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#7E22CE]"
           >
-            Destinations
+            Short Trip
+          </Link>
+          <Link
+            to="/help"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#7E22CE]"
+          >
+            Bus Format
+          </Link>
+          <Link
+            to="/contact"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#7E22CE]"
+          >
+            Contact Us
           </Link>
 
-          <div className="border-t border-slate-800 my-2 pt-2">
+          <div className="border-t border-purple-100 my-2 pt-2">
             {isAuthenticated ? (
               <>
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-md text-sm font-medium text-slate-200 hover:bg-slate-800"
+                  className="block px-3 py-2 rounded-lg text-sm font-bold text-slate-800"
                 >
                   My Dashboard ({user.name})
                 </Link>
@@ -277,7 +234,7 @@ const Navbar = () => {
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded-md text-sm font-medium text-amber-400 hover:bg-slate-800"
+                    className="block px-3 py-2 rounded-lg text-sm font-bold text-[#7E22CE]"
                   >
                     Admin Operations
                   </Link>
@@ -285,7 +242,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-400 hover:bg-slate-800"
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-rose-600 hover:bg-rose-50"
                 >
                   Sign Out
                 </button>
@@ -295,14 +252,14 @@ const Navbar = () => {
                 <Link
                   to="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-center py-2 text-xs font-semibold text-white bg-slate-800 rounded-md"
+                  className="text-center py-2.5 text-xs font-bold text-[#3B0764] bg-purple-50 rounded-xl"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-center py-2 text-xs font-bold text-slate-950 bg-amber-500 rounded-md"
+                  className="text-center py-2.5 text-xs font-bold text-white bg-[#3B0764] rounded-xl"
                 >
                   Register
                 </Link>

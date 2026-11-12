@@ -6,22 +6,23 @@
 
 @layer base {
   :root {
-    --primary: #1746C8;
-    --primary-dark: #0C247A;
-    --navy-dark: #071A4D;
-    --accent-orange: #FF8A32;
-    --light-blue: #EEF4FF;
-    --text-dark: #17233D;
-    --text-muted: #718096;
+    --primary: #4C1D95;
+    --primary-dark: #31124B;
+    --navy-dark: #240838;
+    --accent-purple: #7E22CE;
+    --accent-amber: #F59E0B;
+    --light-purple: #FAF5FF;
+    --text-dark: #1E1B4B;
+    --text-muted: #6B7280;
   }
 
   html {
     scroll-behavior: smooth;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
-    background-color: #F8FAFD;
+    background-color: #FAF8FD;
     color: var(--text-dark);
     margin: 0;
     padding: 0;
