@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAdmin } from '../context/AdminContext';
+import { adminApi } from '../../services/api';
 import StatCard from '../components/StatCard';
 import {
   BarChart3,
@@ -33,12 +34,11 @@ import {
 } from 'recharts';
 import {
   REVENUE_MONTHLY_DATA,
-  HIGHWAY_CORRIDOR_METRICS,
   BUS_TYPE_STATS
 } from '../data/mockAdminData';
 import toast from 'react-hot-toast';
 
-const CANCELLATION_REASONS = [
+const FALLBACK_CANCELLATION_REASONS = [
   { reason: 'Customer Schedule Reschedule', count: 48, percentage: 42, color: '#3B82F6' },
   { reason: 'Found Alternate Transport', count: 32, percentage: 28, color: '#F59E0B' },
   { reason: 'Inclement Weather / Fog Delays', count: 18, percentage: 16, color: '#EF4444' },
@@ -57,6 +57,49 @@ const PASSENGER_GROWTH_DATA = [
 const ReportAnalyticsPage = () => {
   const { buses, metrics } = useAdmin();
   const [timeframe, setTimeframe] = useState('30D');
+  const [reportData, setReportData] = useState(null);
+  const isAdminSession = (() => {
+    try {
+      return Boolean(
+        localStorage.getItem('yatrabus_token') &&
+        JSON.parse(localStorage.getItem('yatra_user') || 'null')?.role === 'admin'
+      );
+    } catch {
+      return false;
+    }
+  })();
+
+  useEffect(() => {
+    if (!isAdminSession) return undefined;
+    let active = true;
+    adminApi.getReports({ timeframe })
+      .then((data) => {
+        if (active) setReportData(data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setReportData({});
+        toast.error(error.response?.data?.error?.message || error.message || 'Unable to load analytics.');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isAdminSession, timeframe]);
+
+  const revenueMonthlyData = isAdminSession
+    ? reportData?.revenueMonthly || []
+    : REVENUE_MONTHLY_DATA;
+  const busTypeStats = isAdminSession ? reportData?.busTypeStats || [] : BUS_TYPE_STATS;
+  const passengerGrowthData = isAdminSession
+    ? reportData?.passengerGrowth || []
+    : PASSENGER_GROWTH_DATA;
+  const cancellationReasons = isAdminSession
+    ? (reportData?.cancellationReasons || []).map((reason, index) => ({
+        ...reason,
+        color: ['#3B82F6', '#F59E0B', '#EF4444', '#10B981'][index % 4],
+      }))
+    : FALLBACK_CANCELLATION_REASONS;
 
   const handleExportFullReport = () => {
     toast.success('Analytics executive report exported as CSV & PDF.');
@@ -114,7 +157,7 @@ const ReportAnalyticsPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Gross Revenue Volume"
-          value={`₹${(metrics.totalRevenue / 100000).toFixed(2)} Lakhs`}
+          value={`₹${((reportData?.summary?.totalRevenue ?? metrics.totalRevenue) / 100000).toFixed(2)} Lakhs`}
           trend="+18.4%"
           trendType="up"
           subtitle="Annualized gross run-rate"
@@ -123,8 +166,8 @@ const ReportAnalyticsPage = () => {
         />
         <StatCard
           title="Passenger Growth Rate"
-          value="+24.6%"
-          trend="+4.2%"
+          value={reportData?.summary?.passengerGrowthRate || (isAdminSession ? '0%' : '+24.6%')}
+          trend={reportData?.summary?.passengerGrowthRate || (isAdminSession ? '0%' : '+4.2%')}
           trendType="up"
           subtitle="Month-on-month increase"
           icon={Users}
@@ -132,7 +175,7 @@ const ReportAnalyticsPage = () => {
         />
         <StatCard
           title="Fleet Utilization"
-          value="88.5%"
+          value={metrics.occupancyRate}
           trend="+2.1%"
           trendType="up"
           subtitle="Peak weekend capacity"
@@ -141,7 +184,7 @@ const ReportAnalyticsPage = () => {
         />
         <StatCard
           title="Cancellation Ratio"
-          value="2.8%"
+          value={reportData?.summary?.cancellationRate || '0%'}
           trend="-0.5%"
           trendType="up"
           subtitle="Within industry safety tolerance"
@@ -174,7 +217,7 @@ const ReportAnalyticsPage = () => {
 
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={REVENUE_MONTHLY_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={revenueMonthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="areaRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
@@ -222,7 +265,7 @@ const ReportAnalyticsPage = () => {
             <p className="text-xs text-slate-400">Class composition across fleet coaches</p>
 
             <div className="space-y-4 pt-6">
-              {BUS_TYPE_STATS.map((item, idx) => (
+              {busTypeStats.map((item, idx) => (
                 <div key={idx} className="space-y-1.5">
                   <div className="flex justify-between text-xs font-bold text-slate-800">
                     <span>{item.type}</span>
@@ -252,13 +295,15 @@ const ReportAnalyticsPage = () => {
               <p className="text-xs text-slate-400">Total active travellers vs new monthly signups</p>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700">
-              +18.2% Growth
+              {isAdminSession
+                ? `${reportData?.summary?.passengerGrowthRate || '0%'} Growth`
+                : '+18.2% Growth'}
             </span>
           </div>
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={PASSENGER_GROWTH_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={passengerGrowthData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
@@ -301,7 +346,7 @@ const ReportAnalyticsPage = () => {
           </div>
 
           <div className="space-y-4">
-            {CANCELLATION_REASONS.map((reason, idx) => (
+            {cancellationReasons.map((reason, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-bold text-slate-800">
                   <span>{reason.reason}</span>

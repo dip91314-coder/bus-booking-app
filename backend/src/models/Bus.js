@@ -30,6 +30,10 @@ const BusSchema = new mongoose.Schema(
       required: true,
       default: 'AC Sleeper (2+1)',
     },
+    isAc: {
+      type: Boolean,
+      default: true,
+    },
     origin: {
       type: String,
       required: true,
@@ -64,6 +68,21 @@ const BusSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 36,
+    },
+    operationalStatus: {
+      type: String,
+      enum: ['Active', 'Maintenance', 'Inactive'],
+      default: 'Active',
+      index: true,
+    },
+    assignedDriver: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    lastServiceDate: {
+      type: String,
+      default: '',
     },
     availableSeatsCount: {
       type: Number,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAdmin } from '../context/AdminContext';
 import {
   Settings,
@@ -42,7 +42,7 @@ const AdminSettingsPage = () => {
   const [generalForm, setGeneralForm] = useState({
     platformTitle: settings.platformTitle || 'BharatBus Logistics & Fleet Operations',
     currency: settings.currency || 'INR (₹)',
-    taxGstRate: settings.taxGstRate || 5,
+    taxGstRate: settings.taxGstRate ?? 5,
     supportEmail: settings.supportEmail || 'support@bharatbus.com',
     supportHelpline: settings.supportHelpline || '1800-200-9988',
     maintenanceMode: settings.maintenanceMode || false
@@ -56,6 +56,29 @@ const AdminSettingsPage = () => {
     soundAlerts: settings.soundAlerts !== undefined ? settings.soundAlerts : false
   });
 
+  useEffect(() => {
+    setProfileForm({
+      adminName: settings.adminName || 'Vikram Das',
+      adminEmail: settings.adminEmail || 'admin@bharatbus.com',
+      adminPhone: settings.adminPhone || '+91 9811223344',
+      adminRole: settings.adminRole || 'Super Admin'
+    });
+    setGeneralForm({
+      platformTitle: settings.platformTitle || 'BharatBus Logistics & Fleet Operations',
+      currency: settings.currency || 'INR (₹)',
+      taxGstRate: settings.taxGstRate ?? 5,
+      supportEmail: settings.supportEmail || 'support@bharatbus.com',
+      supportHelpline: settings.supportHelpline || '1800-200-9988',
+      maintenanceMode: settings.maintenanceMode || false
+    });
+    setNotifPreferences({
+      emailNotifications: settings.emailNotifications !== undefined ? settings.emailNotifications : true,
+      smsNotifications: settings.smsNotifications !== undefined ? settings.smsNotifications : true,
+      dailyDigest: settings.dailyDigest !== undefined ? settings.dailyDigest : true,
+      soundAlerts: settings.soundAlerts !== undefined ? settings.soundAlerts : false
+    });
+  }, [settings]);
+
   const handleProfileSubmit = (e) => {
     e.preventDefault();
     if (!profileForm.adminName.trim() || !profileForm.adminEmail.trim()) {
@@ -65,13 +88,13 @@ const AdminSettingsPage = () => {
     updateSettings(profileForm);
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error('New passwords do not match.');
       return;
     }
-    const success = changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+    const success = await changePassword(passwordForm.currentPassword, passwordForm.newPassword);
     if (success) {
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     }
