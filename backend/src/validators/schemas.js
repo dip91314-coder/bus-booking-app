@@ -5,7 +5,7 @@ export const registerSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().regex(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
-  role: z.enum(['user', 'admin']).optional(),
+  role: z.literal('user').optional(),
 });
 
 export const loginSchema = z.object({

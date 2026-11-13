@@ -35,6 +35,12 @@ const ReviewSchema = new mongoose.Schema(
       required: true,
       default: 'Verified Passenger',
     },
+    status: {
+      type: String,
+      enum: ['Published', 'Under Review', 'Flagged'],
+      default: 'Published',
+      index: true,
+    },
   },
   {
     timestamps: true,

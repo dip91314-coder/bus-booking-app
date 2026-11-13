@@ -36,9 +36,14 @@ const PaymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['success', 'failed', 'refunded'],
+      enum: ['success', 'pending', 'failed', 'refunded'],
       default: 'success',
       index: true,
+    },
+    refundStatus: {
+      type: String,
+      enum: ['None', 'Requested', 'Processed'],
+      default: 'None',
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,

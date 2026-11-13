@@ -31,6 +31,16 @@ const RouteSchema = new mongoose.Schema(
       type: String,
       default: 'NH-National Corridor',
     },
+    baseFare: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    activeBusesCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
     isActive: {
       type: Boolean,
       default: true,
