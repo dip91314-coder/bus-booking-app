@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
 import { POPULAR_CITIES } from '../../data/mockData';
-import { ArrowLeftRight, Calendar, MapPin, Search, ChevronDown, Check } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { ArrowLeftRight, Calendar, Search, Loader2 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BusSearchForm = ({ compact = false, onSearchComplete }) => {
   const navigate = useNavigate();
@@ -11,11 +12,14 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
 
   const [fromCity, setFromCity] = useState(searchParams.origin || 'Kolkata');
   const [toCity, setToCity] = useState(searchParams.destination || 'Siliguri');
-  const [journeyDate, setJourneyDate] = useState(
-    searchParams.journeyDate || new Date().toISOString().split('T')[0]
-  );
+  const todayISO = new Date().toISOString().split('T')[0];
+  const [journeyDate, setJourneyDate] = useState(searchParams.journeyDate || todayISO);
   const [returnDate, setReturnDate] = useState(searchParams.returnDate || '');
-  const [showReturn, setShowReturn] = useState(false);
+  const [tripType, setTripType] = useState('onward'); // 'onward' | 'return'
+  const [inlineError, setInlineError] = useState('');
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [pulseRoute, setPulseRoute] = useState(false);
 
   // Dropdown states
   const [fromOpen, setFromOpen] = useState(false);
@@ -26,9 +30,6 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
   const fromRef = useRef(null);
   const toRef = useRef(null);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (fromRef.current && !fromRef.current.contains(e.target)) {
@@ -43,279 +44,362 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
   }, []);
 
   const handleSwap = () => {
+    setInlineError('');
+    setIsSwapping(true);
     const temp = fromCity;
     setFromCity(toCity);
     setToCity(temp);
+    setTimeout(() => setIsSwapping(false), 300);
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
+    setInlineError('');
+
     if (!fromCity) {
-      toast.error('Please specify an origin city.');
+      setInlineError('Please select an origin city.');
       return;
     }
     if (!toCity) {
-      toast.error('Please specify a destination city.');
+      setInlineError('Please select a destination city.');
       return;
     }
-    if (fromCity.toLowerCase() === toCity.toLowerCase()) {
-      toast.error('Origin and destination cannot be the same city.');
+    if (fromCity.toLowerCase().trim() === toCity.toLowerCase().trim()) {
+      setInlineError('Origin and destination cities cannot be the same.');
       return;
     }
     if (!journeyDate) {
-      toast.error('Please select a journey date.');
+      setInlineError('Please choose a valid journey date.');
       return;
     }
+
+    setIsSearching(true);
 
     const newParams = {
       origin: fromCity,
       destination: toCity,
       journeyDate,
-      returnDate: showReturn ? returnDate : ''
+      returnDate: tripType === 'return' ? returnDate : ''
     };
 
     setSearchParams(newParams);
     if (onSearchComplete) onSearchComplete(newParams);
 
-    navigate(`/buses?origin=${encodeURIComponent(fromCity)}&destination=${encodeURIComponent(toCity)}&date=${journeyDate}`);
+    setTimeout(() => {
+      setIsSearching(false);
+      navigate(`/buses?origin=${encodeURIComponent(fromCity)}&destination=${encodeURIComponent(toCity)}&date=${journeyDate}`);
+    }, 350);
   };
 
-  const filteredFromCities = POPULAR_CITIES.filter((c) =>
-    c.name.toLowerCase().includes(fromFilter.toLowerCase()) ||
-    c.state.toLowerCase().includes(fromFilter.toLowerCase())
+  const setPopularRoute = (origin, destination) => {
+    setInlineError('');
+    setFromCity(origin);
+    setToCity(destination);
+    setPulseRoute(true);
+    setTimeout(() => setPulseRoute(false), 300);
+  };
+
+  const filteredFromCities = POPULAR_CITIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(fromFilter.toLowerCase()) ||
+      c.state.toLowerCase().includes(fromFilter.toLowerCase())
   );
 
-  const filteredToCities = POPULAR_CITIES.filter((c) =>
-    c.name.toLowerCase().includes(toFilter.toLowerCase()) ||
-    c.state.toLowerCase().includes(toFilter.toLowerCase())
+  const filteredToCities = POPULAR_CITIES.filter(
+    (c) =>
+      c.name.toLowerCase().includes(toFilter.toLowerCase()) ||
+      c.state.toLowerCase().includes(toFilter.toLowerCase())
   );
+
+  const formatDisplayDate = (isoStr) => {
+    if (!isoStr) return '';
+    try {
+      return format(parseISO(isoStr), 'dd MMM yyyy');
+    } catch {
+      return isoStr;
+    }
+  };
+
+  const popularChips = [
+    { from: 'Kolkata', to: 'Siliguri' },
+    { from: 'Delhi', to: 'Jaipur' },
+    { from: 'Mumbai', to: 'Pune' },
+    { from: 'Bengaluru', to: 'Chennai' },
+    { from: 'Delhi', to: 'Manali' }
+  ];
 
   return (
-    <form
-      onSubmit={handleSearch}
-      className={`bg-white rounded-2xl shadow-xl shadow-purple-900/5 border border-purple-100 ${
-        compact ? 'p-4' : 'p-4 sm:p-6'
-      }`}
-    >
-      {/* Journey Type Selector */}
-      <div className="flex items-center gap-6 mb-4 text-xs font-semibold text-slate-700">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="tripType"
-            checked={!showReturn}
-            onChange={() => setShowReturn(false)}
-            className="w-4 h-4 text-[#3B0764] focus:ring-[#7E22CE] accent-[#3B0764]"
-          />
-          <span className={!showReturn ? 'text-[#3B0764] font-bold' : ''}>Onward Journey</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="tripType"
-            checked={showReturn}
-            onChange={() => {
-              setShowReturn(true);
-              if (!returnDate) setReturnDate(journeyDate);
-            }}
-            className="w-4 h-4 text-[#3B0764] focus:ring-[#7E22CE] accent-[#3B0764]"
-          />
-          <span className={showReturn ? 'text-[#3B0764] font-bold' : ''}>Return Journey</span>
-        </label>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 lg:gap-3 items-center">
-        {/* Origin City */}
-        <div className="md:col-span-3 relative" ref={fromRef}>
-          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-            From City
-          </label>
+    <div className="bg-white rounded-lg shadow-floating-search border border-[#E5E7EB] p-6 text-[#0F172A] relative">
+      {/* Segmented Journey Toggle with sliding indicator */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="relative inline-flex p-1 bg-[#F1F5F9] rounded-full border border-[#E5E7EB]" role="tablist">
+          {/* Animated sliding purple indicator pill */}
           <div
-            onClick={() => setFromOpen(true)}
-            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-[#7E22CE] cursor-pointer bg-slate-50/50 hover:bg-white transition"
-          >
-            <div className="truncate">
-              <span className="font-bold text-slate-800 text-sm block truncate">{fromCity}</span>
-              <span className="text-[11px] text-slate-400 block truncate">
-                {POPULAR_CITIES.find((c) => c.name === fromCity)?.state || 'Station'}
-              </span>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          </div>
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#5B21B6] rounded-full shadow-sm transition-all duration-300 ease-out ${
+              tripType === 'onward' ? 'left-1' : 'left-[calc(50%+2px)]'
+            }`}
+          />
 
-          {/* From Dropdown */}
-          {fromOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-xl shadow-2xl border border-purple-100 p-2 z-50">
-              <input
-                type="text"
-                placeholder="Search city..."
-                value={fromFilter}
-                onChange={(e) => setFromFilter(e.target.value)}
-                autoFocus
-                className="w-full px-3 py-1.5 text-xs border border-purple-100 rounded-lg mb-2 focus:outline-none focus:ring-1 focus:ring-[#7E22CE]"
-              />
-              <div className="max-h-52 overflow-y-auto space-y-1">
-                {filteredFromCities.map((city) => (
-                  <button
-                    key={city.name}
-                    type="button"
-                    onClick={() => {
-                      setFromCity(city.name);
-                      setFromOpen(false);
-                      setFromFilter('');
-                    }}
-                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-purple-50 transition ${
-                      fromCity === city.name ? 'bg-purple-50 font-bold text-[#7E22CE]' : 'text-slate-700'
-                    }`}
-                  >
-                    <div>
-                      <span className="block font-medium">{city.name}</span>
-                      <span className="text-[10px] text-slate-400">{city.state}</span>
-                    </div>
-                    {fromCity === city.name && <Check className="w-3.5 h-3.5 text-[#7E22CE]" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Swap Button */}
-        <div className="md:col-span-1 flex justify-center -my-2 md:my-0">
           <button
             type="button"
-            onClick={handleSwap}
-            title="Swap Origin and Destination"
-            className="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 text-[#7E22CE] hover:bg-[#3B0764] hover:text-white transition-all duration-300 flex items-center justify-center shadow-sm"
+            role="tab"
+            aria-selected={tripType === 'onward'}
+            onClick={() => setTripType('onward')}
+            className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-full transition-colors duration-200 select-none ${
+              tripType === 'onward' ? 'text-white' : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
           >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
+            One Way
           </button>
-        </div>
-
-        {/* Destination City */}
-        <div className="md:col-span-3 relative" ref={toRef}>
-          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-            To City
-          </label>
-          <div
-            onClick={() => setToOpen(true)}
-            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-[#7E22CE] cursor-pointer bg-slate-50/50 hover:bg-white transition"
-          >
-            <div className="truncate">
-              <span className="font-bold text-slate-800 text-sm block truncate">{toCity}</span>
-              <span className="text-[11px] text-slate-400 block truncate">
-                {POPULAR_CITIES.find((c) => c.name === toCity)?.state || 'Station'}
-              </span>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          </div>
-
-          {/* To Dropdown */}
-          {toOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-full bg-white rounded-xl shadow-2xl border border-purple-100 p-2 z-50">
-              <input
-                type="text"
-                placeholder="Search city..."
-                value={toFilter}
-                onChange={(e) => setToFilter(e.target.value)}
-                autoFocus
-                className="w-full px-3 py-1.5 text-xs border border-purple-100 rounded-lg mb-2 focus:outline-none focus:ring-1 focus:ring-[#7E22CE]"
-              />
-              <div className="max-h-52 overflow-y-auto space-y-1">
-                {filteredToCities.map((city) => (
-                  <button
-                    key={city.name}
-                    type="button"
-                    onClick={() => {
-                      setToCity(city.name);
-                      setToOpen(false);
-                      setToFilter('');
-                    }}
-                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between hover:bg-purple-50 transition ${
-                      toCity === city.name ? 'bg-purple-50 font-bold text-[#7E22CE]' : 'text-slate-700'
-                    }`}
-                  >
-                    <div>
-                      <span className="block font-medium">{city.name}</span>
-                      <span className="text-[10px] text-slate-400">{city.state}</span>
-                    </div>
-                    {toCity === city.name && <Check className="w-3.5 h-3.5 text-[#7E22CE]" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Journey Date */}
-        <div className={showReturn ? 'md:col-span-2' : 'md:col-span-3'}>
-          <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-            Journey Date
-          </label>
-          <input
-            type="date"
-            min={todayStr}
-            value={journeyDate}
-            onChange={(e) => setJourneyDate(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#7E22CE] bg-slate-50/50"
-          />
-        </div>
-
-        {/* Return Date (if selected) */}
-        {showReturn && (
-          <div className="md:col-span-1">
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1 truncate">
-              Return
-            </label>
-            <input
-              type="date"
-              min={journeyDate || todayStr}
-              value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
-              className="w-full px-2 py-2.5 rounded-xl border border-slate-200 text-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#7E22CE] bg-slate-50/50"
-            />
-          </div>
-        )}
-
-        {/* Search Buses Button */}
-        <div className="md:col-span-2">
-          <label className="hidden md:block text-[11px] font-semibold text-transparent mb-1">
-            Search
-          </label>
           <button
-            type="submit"
-            className="w-full bg-[#3B0764] hover:bg-[#4C1D95] text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md shadow-purple-950/20 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
+            type="button"
+            role="tab"
+            aria-selected={tripType === 'return'}
+            onClick={() => {
+              setTripType('return');
+              if (!returnDate) setReturnDate(journeyDate);
+            }}
+            className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-full transition-colors duration-200 select-none ${
+              tripType === 'return' ? 'text-white' : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
           >
-            <Search className="w-3.5 h-3.5" />
-            <span>Search Buses</span>
+            Round Trip
           </button>
         </div>
+
+        <span className="text-xs text-[#64748B] hidden sm:inline font-medium">
+          Verified operators & live seat booking
+        </span>
       </div>
 
-      {/* Popular Route Shortcuts */}
-      <div className="mt-3 pt-3 border-t border-purple-50 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-slate-400 font-medium text-[11px]">Popular Searches:</span>
-        {[
-          { from: 'Indore', to: 'Pune' },
-          { from: 'Ayodhya', to: 'Nagpur' },
-          { from: 'Mumbai', to: 'Pune' },
-          { from: 'Kolkata', to: 'Siliguri' },
-          { from: 'Delhi', to: 'Jaipur' }
-        ].map((route, i) => (
+      {/* Main Search Row Form */}
+      <form onSubmit={handleSearch}>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          {/* From City */}
+          <div className="md:col-span-3 relative" ref={fromRef}>
+            <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
+              From
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setFromOpen(!fromOpen);
+                setToOpen(false);
+              }}
+              className={`w-full text-left px-3.5 py-2.5 rounded-[12px] border border-[#E5E7EB] bg-[#F8F7FC] hover:bg-white focus:outline-none focus:border-[#5B21B6] focus:ring-[3px] focus:ring-[#5B21B6]/20 transition-all duration-200 ${
+                pulseRoute ? 'ring-2 ring-[#5B21B6] bg-purple-50/50' : ''
+              }`}
+            >
+              <div
+                className={`transition-transform duration-300 ease-out ${
+                  isSwapping ? 'translate-x-3 opacity-50' : 'translate-x-0 opacity-100'
+                }`}
+              >
+                <span className="block text-base font-semibold text-[#0F172A] truncate leading-tight">
+                  {fromCity || 'Select Origin'}
+                </span>
+                <span className="block text-xs text-[#64748B] truncate mt-0.5">
+                  {POPULAR_CITIES.find((c) => c.name === fromCity)?.state || 'India'}
+                </span>
+              </div>
+            </button>
+
+            {/* From Dropdown */}
+            {fromOpen && (
+              <div className="absolute left-0 mt-1.5 w-72 bg-white rounded-md shadow-soft border border-[#E5E7EB] p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <input
+                  type="text"
+                  placeholder="Type city name..."
+                  value={fromFilter}
+                  onChange={(e) => setFromFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-sm focus:outline-none focus:border-[#5B21B6] focus:ring-2 focus:ring-[#5B21B6]/20 mb-2"
+                  autoFocus
+                />
+                <div className="max-h-48 overflow-y-auto space-y-0.5">
+                  {filteredFromCities.map((city) => (
+                    <button
+                      key={city.name}
+                      type="button"
+                      onClick={() => {
+                        setFromCity(city.name);
+                        setFromOpen(false);
+                        setInlineError('');
+                      }}
+                      className="w-full text-left px-3 py-1.5 rounded-sm text-xs text-[#0F172A] hover:bg-[#F5F3FF] hover:text-[#5B21B6] flex items-center justify-between transition-colors"
+                    >
+                      <span className="font-semibold">{city.name}</span>
+                      <span className="text-[11px] text-[#64748B]">{city.state}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Swap Button (Perfect Circle, rotates 180deg) */}
+          <div className="md:col-span-1 flex justify-center pt-5 md:pt-0">
+            <button
+              type="button"
+              onClick={handleSwap}
+              aria-label="Swap origin and destination"
+              className="w-10 h-10 rounded-full border border-[#E5E7EB] hover:border-[#5B21B6] bg-white flex items-center justify-center text-[#475569] hover:text-[#5B21B6] transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#5B21B6] active:scale-90"
+            >
+              <ArrowLeftRight
+                className={`w-4 h-4 transition-transform duration-300 ease-out ${
+                  isSwapping ? 'rotate-180 scale-110 text-[#5B21B6]' : 'rotate-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* To City */}
+          <div className="md:col-span-3 relative" ref={toRef}>
+            <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
+              To
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setToOpen(!toOpen);
+                setFromOpen(false);
+              }}
+              className={`w-full text-left px-3.5 py-2.5 rounded-[12px] border border-[#E5E7EB] bg-[#F8F7FC] hover:bg-white focus:outline-none focus:border-[#5B21B6] focus:ring-[3px] focus:ring-[#5B21B6]/20 transition-all duration-200 ${
+                pulseRoute ? 'ring-2 ring-[#5B21B6] bg-purple-50/50' : ''
+              }`}
+            >
+              <div
+                className={`transition-transform duration-300 ease-out ${
+                  isSwapping ? '-translate-x-3 opacity-50' : 'translate-x-0 opacity-100'
+                }`}
+              >
+                <span className="block text-base font-semibold text-[#0F172A] truncate leading-tight">
+                  {toCity || 'Select Destination'}
+                </span>
+                <span className="block text-xs text-[#64748B] truncate mt-0.5">
+                  {POPULAR_CITIES.find((c) => c.name === toCity)?.state || 'India'}
+                </span>
+              </div>
+            </button>
+
+            {/* To Dropdown */}
+            {toOpen && (
+              <div className="absolute left-0 mt-1.5 w-72 bg-white rounded-md shadow-soft border border-[#E5E7EB] p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <input
+                  type="text"
+                  placeholder="Type city name..."
+                  value={toFilter}
+                  onChange={(e) => setToFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-[#E5E7EB] rounded-sm focus:outline-none focus:border-[#5B21B6] focus:ring-2 focus:ring-[#5B21B6]/20 mb-2"
+                  autoFocus
+                />
+                <div className="max-h-48 overflow-y-auto space-y-0.5">
+                  {filteredToCities.map((city) => (
+                    <button
+                      key={city.name}
+                      type="button"
+                      onClick={() => {
+                        setToCity(city.name);
+                        setToOpen(false);
+                        setInlineError('');
+                      }}
+                      className="w-full text-left px-3 py-1.5 rounded-sm text-xs text-[#0F172A] hover:bg-[#F5F3FF] hover:text-[#5B21B6] flex items-center justify-between transition-colors"
+                    >
+                      <span className="font-semibold">{city.name}</span>
+                      <span className="text-[11px] text-[#64748B]">{city.state}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Date Field(s) */}
+          <div className={tripType === 'return' ? 'md:col-span-3 grid grid-cols-2 gap-2' : 'md:col-span-3'}>
+            <div>
+              <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
+                Date
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  min={todayISO}
+                  value={journeyDate}
+                  onChange={(e) => setJourneyDate(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-[12px] border border-[#E5E7EB] text-sm font-semibold text-[#0F172A] bg-[#F8F7FC] hover:bg-white focus:outline-none focus:border-[#5B21B6] focus:ring-[3px] focus:ring-[#5B21B6]/20 transition-all duration-200"
+                />
+                <span className="text-[11px] text-[#64748B] block mt-0.5 font-medium">
+                  {formatDisplayDate(journeyDate)}
+                </span>
+              </div>
+            </div>
+
+            {tripType === 'return' && (
+              <div>
+                <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
+                  Return
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    min={journeyDate || todayISO}
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-[12px] border border-[#E5E7EB] text-sm font-semibold text-[#0F172A] bg-[#F8F7FC] hover:bg-white focus:outline-none focus:border-[#5B21B6] focus:ring-[3px] focus:ring-[#5B21B6]/20 transition-all duration-200"
+                  />
+                  <span className="text-[11px] text-[#64748B] block mt-0.5 font-medium">
+                    {formatDisplayDate(returnDate)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Search CTA Button (12px radius, purple gradient, lifts 2px with glow on hover, active scale 0.98, loading spinner) */}
+          <div className="md:col-span-2 pt-5 md:pt-0">
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="w-full min-h-[48px] px-5 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-[#5B21B6] via-[#6D28D9] to-[#7C3AED] hover:from-[#4C1D95] hover:to-[#6D28D9] rounded-[12px] shadow-soft hover:-translate-y-0.5 hover:shadow-glow-purple active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 select-none disabled:opacity-75 disabled:cursor-wait"
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  <span>Search Buses</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* Inline Validation Alert */}
+      {inlineError && (
+        <div className="mt-3 p-2.5 rounded-sm bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2 animate-in fade-in duration-200">
+          <span>⚠️</span>
+          <span>{inlineError}</span>
+        </div>
+      )}
+
+      {/* Popular Route Chips (Fully rounded pills, hover lifts 2px and fills purple) */}
+      <div className="mt-5 pt-4 border-t border-[#F1F5F9] flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-[#64748B] font-medium mr-1">Popular:</span>
+        {popularChips.map((r, i) => (
           <button
             key={i}
             type="button"
-            onClick={() => {
-              setFromCity(route.from);
-              setToCity(route.to);
-            }}
-            className="px-2.5 py-1 rounded-full bg-purple-50 hover:bg-purple-100 text-[#4C1D95] font-medium transition text-[11px]"
+            onClick={() => setPopularRoute(r.from, r.to)}
+            className="px-3.5 py-1.5 rounded-full bg-[#F8F7FC] hover:bg-[#5B21B6] hover:text-white border border-[#E5E7EB] hover:border-[#5B21B6] text-[#475569] text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:scale-95"
           >
-            {route.from} ➔ {route.to}
+            {r.from} → {r.to}
           </button>
         ))}
       </div>
-    </form>
+    </div>
   );
 };
 

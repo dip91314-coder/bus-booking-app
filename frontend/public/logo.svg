@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" fill="none">
+  <defs>
+    <linearGradient id="ybGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B0764" />
+      <stop offset="60%" stop-color="#581C87" />
+      <stop offset="100%" stop-color="#7E22CE" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#FBBF24" />
+    </linearGradient>
+    <linearGradient id="busGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#9333EA" />
+      <stop offset="100%" stop-color="#581C87" />
+    </linearGradient>
+    <filter id="logoShadow" x="-10%" y="-10%" width="125%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#3B0764" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- Bus Emblem Icon Container -->
+  <g filter="url(#logoShadow)">
+    <rect x="4" y="8" width="48" height="48" rx="14" fill="url(#ybGrad)" />
+    
+    <!-- Stylized Modern Coach / Bus Silhoutte -->
+    <!-- Front Roof & Body -->
+    <path d="M16 19 C16 16.5 18 15 21 15 L35 15 C38 15 40 16.5 40 19 L40 37 C40 38.5 38.8 39.5 37 39.5 L19 39.5 C17.2 39.5 16 38.5 16 37 Z" fill="#FFFFFF" fill-opacity="0.95" />
+    
+    <!-- Windshield -->
+    <path d="M18.5 18 C18.5 17 19.5 16.5 21.5 16.5 L34.5 16.5 C36.5 16.5 37.5 17 37.5 18 L37.5 25 L18.5 25 Z" fill="#3B0764" />
+    
+    <!-- Passenger Windows (Side Grid) -->
+    <rect x="18.5" y="27" width="4" height="4.5" rx="0.8" fill="#3B0764" />
+    <rect x="23.5" y="27" width="4.5" height="4.5" rx="0.8" fill="#3B0764" />
+    <rect x="29" y="27" width="4" height="4.5" rx="0.8" fill="#3B0764" />
+    <rect x="34" y="27" width="3.5" height="4.5" rx="0.8" fill="#3B0764" />
+    
+    <!-- Coach Headlights (Golden Yellow Accent) -->
+    <circle cx="19.5" cy="35" r="1.5" fill="url(#accentGrad)" />
+    <circle cx="36.5" cy="35" r="1.5" fill="url(#accentGrad)" />
+    
+    <!-- Wheels -->
+    <rect x="19" y="39" width="4" height="4.5" rx="1" fill="#1E1B4B" />
+    <rect x="33" y="39" width="4" height="4.5" rx="1" fill="#1E1B4B" />
+    
+    <!-- Speed/Transit Wind lines overlay -->
+    <path d="M8 24 L13 24 M6 28 L12 28 M8 32 L14 32" stroke="url(#accentGrad)" stroke-width="1.8" stroke-linecap="round" />
+  </g>
+
+  <!-- Typography: YatraBus with Pan-India Transit Tagline -->
+  <g id="brand-text">
+    <!-- "Yatra" in Premium Deep Violet -->
+    <text x="62" y="38" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="27" font-weight="900" fill="#3B0764" letter-spacing="-0.03em">
+      Yatra<tspan fill="#7E22CE">Bus</tspan>
+    </text>
+    
+    <!-- Golden Speed Sparkle -->
+    <path d="M182 20 L184 24 L188 25 L184 26 L182 30 L180 26 L176 25 L180 24 Z" fill="url(#accentGrad)" />
+
+    <!-- Subtitle: PAN-INDIA EXPRESS TRANSIT -->
+    <text x="63" y="49" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="8" font-weight="700" fill="#94A3B8" letter-spacing="0.16em">
+      PAN-INDIA EXPRESS TRANSIT
+    </text>
+  </g>
+</svg>

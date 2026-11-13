@@ -73,18 +73,16 @@ const Register = () => {
     <div className="min-h-[85vh] bg-[#FAF8FD] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl shadow-purple-900/5 border border-purple-100">
         <div className="text-center mb-6">
-          <Link to="/" className="inline-flex items-center gap-2 mb-3 group">
+          <Link to="/" className="inline-flex items-center justify-center mb-3 group">
             <img
-              src="/logo.png"
+              src="/logo.svg"
               alt="YatraBus Logo"
-              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+              className="h-10 w-auto transition-transform group-hover:scale-105"
               onError={(e) => {
-                e.target.style.display = 'none';
+                e.target.onerror = null;
+                e.target.src = '/logo.png';
               }}
             />
-            <span className="text-2xl font-black text-[#3B0764] tracking-tight">
-              Yatra<span className="text-[#7E22CE]">Bus</span>
-            </span>
           </Link>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Create your account</h2>
           <p className="text-xs text-slate-500 mt-1">
