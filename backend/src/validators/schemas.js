@@ -60,21 +60,47 @@ export const holdSeatSchema = z.object({
   seatNumbers: z.array(z.string()).min(1, 'At least 1 seat required').max(6, 'Maximum 6 seats allowed'),
 });
 
-export const createBookingSchema = z.object({
+const tripBookingSchema = z.object({
+  tripId: z.string().min(1, 'Trip ID is required'),
+  boardingPoint: z.string().optional(),
+  droppingPoint: z.string().optional(),
+  passengers: z
+    .array(
+      z.object({
+        name: z.string().min(2, 'Passenger name is required'),
+        age: z.number().min(1).max(120),
+        gender: z.enum(['male', 'female', 'other']),
+        seatNumber: z.string().min(1),
+        contact: z.string().optional(),
+        email: z.string().optional(),
+      })
+    )
+    .min(1)
+    .max(6),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().regex(/^[0-9]{10}$/),
+});
+
+const legacyBookingSchema = z.object({
   busId: z.string().min(1, 'Bus ID is required'),
   journeyDate: z.string().min(1, 'Journey date is required'),
   boardingPoint: z.string().min(1, 'Boarding point is required'),
   droppingPoint: z.string().min(1, 'Dropping point is required'),
   seats: z.array(z.string()).min(1, 'At least 1 seat required').max(6, 'Maximum 6 seats per transaction'),
-  passengers: z.array(
-    z.object({
-      name: z.string().min(2, 'Passenger name is required'),
-      age: z.number().min(1).max(120),
-      gender: z.enum(['male', 'female', 'other']),
-      seatNumber: z.string().min(1),
-    })
-  ).min(1).max(6),
+  passengers: z
+    .array(
+      z.object({
+        name: z.string().min(2, 'Passenger name is required'),
+        age: z.number().min(1).max(120),
+        gender: z.enum(['male', 'female', 'other']),
+        seatNumber: z.string().min(1),
+      })
+    )
+    .min(1)
+    .max(6),
   paymentMethod: z.string().default('Simulated Payment'),
   contactEmail: z.string().email(),
   contactPhone: z.string().regex(/^[0-9]{10}$/),
 });
+
+export const createBookingSchema = z.union([tripBookingSchema, legacyBookingSchema]);

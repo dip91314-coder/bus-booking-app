@@ -16,6 +16,9 @@ import seatRoutes from './routes/seatRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import routeRoutes from './routes/routeRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import tripRoutes from './routes/tripRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import ticketRoutes from './routes/ticketRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -72,6 +75,9 @@ export function createApp() {
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/routes', routeRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/trips', tripRoutes);
+  app.use('/api/payments', paymentRoutes);
+  app.use('/api/tickets', ticketRoutes);
 
   // 404 handler for unknown routes
   app.use((req, res) => {

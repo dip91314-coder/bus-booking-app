@@ -35,3 +35,5 @@ export async function authenticate(req, res, next) {
   req.user = { userId: user._id.toString(), role: user.role };
   return next();
 }
+
+export const requireAuth = authenticate;

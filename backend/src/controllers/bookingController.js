@@ -3,10 +3,35 @@ import { Bus } from '../models/Bus.js';
 import { Seat } from '../models/Seat.js';
 import { Payment } from '../models/Payment.js';
 import { Cancellation } from '../models/Cancellation.js';
+import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/customErrors.js';
 
 export async function createBooking(req, res, next) {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new ValidationError('Authenticated user ID missing');
+    }
+
+    // OBTBS Trip-Centric Booking Flow
+    if (req.body.tripId) {
+      const pendingResult = await createPendingBooking({
+        userId,
+        tripId: req.body.tripId,
+        boardingPoint: req.body.boardingPoint,
+        droppingPoint: req.body.droppingPoint,
+        passengers: req.body.passengers,
+        contactEmail: req.body.contactEmail,
+        contactPhone: req.body.contactPhone,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Pending booking created. Please complete payment to confirm reservation.',
+        data: pendingResult,
+      });
+    }
+
     const {
       busId,
       journeyDate,
@@ -18,11 +43,6 @@ export async function createBooking(req, res, next) {
       contactEmail,
       contactPhone,
     } = req.body;
-
-    const userId = req.user?.userId;
-    if (!userId) {
-      throw new ValidationError('Authenticated user ID missing');
-    }
 
     const bus = await Bus.findById(busId);
     if (!bus) {
