@@ -4,7 +4,7 @@ import { ConflictError, UnauthorizedError, NotFoundError } from '../utils/custom
 
 export async function register(req, res, next) {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone } = req.body;
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
@@ -16,7 +16,7 @@ export async function register(req, res, next) {
       email: email.toLowerCase(),
       password,
       phone,
-      role: role || 'user',
+      role: 'user',
     });
 
     const tokenPayload = {
@@ -68,6 +68,9 @@ export async function login(req, res, next) {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       throw new UnauthorizedError('Invalid email or password.');
+    }
+    if (user.status === 'Suspended') {
+      throw new UnauthorizedError('This account has been suspended.');
     }
 
     const tokenPayload = {

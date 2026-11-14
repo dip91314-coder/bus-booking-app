@@ -37,6 +37,17 @@ const UserSchema = new mongoose.Schema(
       default: 'user',
       index: true,
     },
+    status: {
+      type: String,
+      enum: ['Active', 'Suspended'],
+      default: 'Active',
+      index: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     avatar: {
       type: String,
       default: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',

@@ -36,6 +36,30 @@
 
 ---
 
+## 1.1 Admin Management API
+
+All routes below require an authenticated administrator and use the standard `{ success, data }` response envelope. IDs in these routes are MongoDB resource IDs; booking cancellation also accepts a booking reference.
+
+| Resource | Path | Supported operations |
+| :--- | :--- | :--- |
+| Dashboard | `/admin/dashboard`, `/admin/reports` | `GET` metrics and analytics; reports accept `?timeframe=7D`, `30D`, `90D`, or `YTD` |
+| Buses | `/admin/buses` | `GET`, `POST`; `PUT` and `DELETE /:id` |
+| Routes | `/admin/routes` | `GET`, `POST`; `PUT` and `DELETE /:id` |
+| Schedules | `/admin/schedules` | `GET`, `POST`; `PUT` and `DELETE /:id` |
+| Bookings | `/admin/bookings` | `GET`; `POST /:id/cancel` |
+| Passengers | `/admin/passengers` | `GET`; `PUT /:id`; `PATCH /:id/status` |
+| Drivers | `/admin/drivers` | `GET`, `POST`; `PUT` and `DELETE /:id` |
+| Staff | `/admin/staff` | `GET`, `POST`; `PUT` and `DELETE /:id` |
+| Payments | `/admin/payments` | `GET`; `POST /:id/refund` |
+| Offers | `/admin/offers` | `GET`, `POST`; `PUT` and `DELETE /:id` |
+| Reviews | `/admin/reviews` | `GET`; `PATCH /:id/status`; `DELETE /:id` |
+| Notifications | `/admin/notifications` | `GET`, `POST`; `PATCH /:id/read`, `PATCH /read-all`, `DELETE /:id` |
+| Settings | `/admin/settings` | `GET`, `PUT`; `POST /change-password` |
+
+Admin bus, route, schedule, and booking responses include the field names used by the admin frontend (for example `capacity`, `source`, `distance`, `pnr`, and title-cased status values), while persistence continues to use the existing core domain models.
+
+---
+
 ## 2. Standard Protocol & Response Envelopes
 
 ### 2.1 Standard Success Envelope
@@ -99,7 +123,7 @@ All error responses return HTTP status codes `400`, `401`, `403`, `404`, `409`, 
 - `email`: Required, valid email format, normalized to lowercase.
 - `password`: Required, minimum 6 characters.
 - `phone`: Required, exactly 10 digits (`^[0-9]{10}$`).
-- `role`: Optional, enum `['user', 'admin']`, defaults to `'user'`.
+- `role`: Optional, only `'user'` is accepted. Administrator accounts must be provisioned by an administrator.
 
 #### Success Response (`201 Created`)
 ```json

@@ -33,6 +33,12 @@ const BusScheduleSchema = new mongoose.Schema(
       type: Number,
       default: 36,
     },
+    totalSeats: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 36,
+    },
     status: {
       type: String,
       enum: ['scheduled', 'departed', 'completed', 'cancelled'],
