@@ -271,12 +271,12 @@ const AdminLayout = () => {
 
       {/* ================= MAIN CONTENT WRAPPER ================= */}
       <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 bg-white dark:bg-[#070C16] text-slate-800 dark:text-slate-100 ${
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 bg-[#F8FAFC] dark:bg-[#070C16] text-slate-800 dark:text-slate-100 ${
           collapsed ? 'lg:pl-20' : 'lg:pl-64'
         }`}
       >
         {/* TOP NAVIGATION BAR */}
-        <header className="sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#0E1526]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-sm transition-colors">
+        <header className="sticky top-0 z-30 h-16 bg-white/95 dark:bg-[#0E1526]/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs transition-colors">
           <div className="flex items-center gap-3">
             {/* Mobile menu trigger */}
             <button
@@ -289,9 +289,9 @@ const AdminLayout = () => {
 
             {/* Breadcrumb location */}
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold">
-              <span className="text-slate-400">Admin Control</span>
+              <span className="text-slate-400">BharatBus Control</span>
               <span className="text-slate-300 dark:text-slate-600">/</span>
-              <span className="text-primary font-bold capitalize">
+              <span className="text-blue-600 dark:text-blue-400 font-bold capitalize">
                 {location.pathname.replace('/admin', '').replace('/', '') || 'Dashboard'}
               </span>
             </div>

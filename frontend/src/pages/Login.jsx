@@ -15,7 +15,16 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname;
+
+  const safeRedirect = (userRole) => {
+    if (userRole === 'admin') {
+      navigate('/admin', { replace: true });
+    } else {
+      const destination = from && from !== '/login' && from !== '/register' ? from : '/dashboard';
+      navigate(destination, { replace: true });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,20 +32,16 @@ const Login = () => {
       setError('Please enter a valid email address.');
       return;
     }
-    if (!password || password.length < 6) {
-      setError('Password must contain at least 6 characters.');
+    if (!password || password.length < 4) {
+      setError('Password must contain at least 4 characters.');
       return;
     }
 
     setError('');
     setLoading(true);
     try {
-      const user = await login(email, password);
-      if (user.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      const loggedUser = await login(email, password);
+      safeRedirect(loggedUser.role);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Invalid email or password.';
       setError(msg);
@@ -66,11 +71,7 @@ const Login = () => {
       setLoading(true);
       try {
         const loggedUser = await login(targetEmail, targetPassword);
-        if (loggedUser.role === 'admin') {
-          navigate('/admin', { replace: true });
-        } else {
-          navigate(from, { replace: true });
-        }
+        safeRedirect(loggedUser.role);
       } catch (err) {
         const msg = err.response?.data?.message || err.message || 'Authentication failed.';
         setError(msg);

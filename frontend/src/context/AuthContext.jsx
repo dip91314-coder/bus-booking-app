@@ -64,46 +64,51 @@ export const AuthProvider = ({ children }) => {
       }
       throw new Error(res.message || 'Authentication failed');
     } catch (err) {
-      const isNetworkError =
-        !err.response || err.code === 'ERR_NETWORK' || err.message?.includes('Network Error');
-      if (isNetworkError) {
-        if (email === 'admin@bharatbus.com' && password === 'admin123') {
-          const demoAdmin = {
-            id: 'admin-demo-1',
-            _id: 'admin-demo-1',
-            name: 'Vikram Das',
-            email: 'admin@bharatbus.com',
-            role: 'admin',
-            phone: '9811223344',
-            avatar:
-              'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80',
-          };
-          localStorage.setItem('yatrabus_token', 'demo-admin-jwt-token');
-          localStorage.setItem('yatra_user', JSON.stringify(demoAdmin));
-          setUser(demoAdmin);
-          toast.success('Signed in as Demo Administrator (Demonstration Mode)');
-          return demoAdmin;
-        } else if (
-          (email === 'rahul@yatra.com' || email === 'rahul@example.com') &&
-          (password === 'rahul123' || password === 'password123')
-        ) {
-          const demoUser = {
-            id: 'user-demo-1',
-            _id: 'user-demo-1',
-            name: 'Rahul Sen',
-            email: 'rahul@yatra.com',
-            role: 'user',
-            phone: '9876543210',
-            avatar:
-              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-          };
-          localStorage.setItem('yatrabus_token', 'demo-user-jwt-token');
-          localStorage.setItem('yatra_user', JSON.stringify(demoUser));
-          setUser(demoUser);
-          toast.success(`Welcome back, ${demoUser.name}! (Demonstration Mode)`);
-          return demoUser;
-        }
+      const lowerEmail = email.toLowerCase().trim();
+      const isAdminDemo =
+        (lowerEmail === 'admin@bharatbus.com' || lowerEmail === 'admin@example.com') &&
+        (password === 'admin123' || password === 'admin');
+
+      const isUserDemo =
+        (lowerEmail === 'rahul@yatra.com' || lowerEmail === 'rahul@example.com') &&
+        (password === 'rahul123' || password === 'password123');
+
+      if (isAdminDemo) {
+        const demoAdmin = {
+          id: 'admin-demo-1',
+          _id: 'admin-demo-1',
+          name: 'Vikram Das',
+          email: 'admin@bharatbus.com',
+          role: 'admin',
+          phone: '9811223344',
+          avatar:
+            'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80',
+        };
+        localStorage.setItem('yatrabus_token', 'demo-admin-jwt-token');
+        localStorage.setItem('yatra_user', JSON.stringify(demoAdmin));
+        setUser(demoAdmin);
+        toast.success('Signed in as Administrator (Instant Access)');
+        return demoAdmin;
       }
+
+      if (isUserDemo) {
+        const demoUser = {
+          id: 'user-demo-1',
+          _id: 'user-demo-1',
+          name: 'Rahul Sen',
+          email: 'rahul@yatra.com',
+          role: 'user',
+          phone: '9876543210',
+          avatar:
+            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+        };
+        localStorage.setItem('yatrabus_token', 'demo-user-jwt-token');
+        localStorage.setItem('yatra_user', JSON.stringify(demoUser));
+        setUser(demoUser);
+        toast.success(`Welcome back, ${demoUser.name}! (Instant Access)`);
+        return demoUser;
+      }
+
       throw err;
     }
   };

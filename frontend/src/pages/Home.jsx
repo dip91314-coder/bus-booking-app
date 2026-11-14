@@ -15,7 +15,11 @@ import {
   Star,
   Copy,
   Check,
-  Quote
+  Quote,
+  Play,
+  Volume2,
+  VolumeX,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -52,6 +56,9 @@ const Home = () => {
   const [mapDest, setMapDest] = useState('Pune');
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const videoRef = React.useRef(null);
 
   const handleSelectCityFromMap = (cityName, type) => {
     if (type === 'origin') setMapOrigin(cityName);
@@ -291,27 +298,50 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] text-[#0F172A] dark:text-slate-100 font-sans antialiased transition-colors">
-      {/* 1. HERO + SEARCH SECTION */}
-      <section className="relative pt-10 pb-20 overflow-hidden min-h-[460px] flex items-center">
-        {/* Full Image Background */}
+      {/* 1. HERO + SEARCH SECTION WITH CINEMATIC VIDEO BACKGROUND */}
+      <section className="relative pt-10 pb-20 overflow-hidden min-h-[480px] flex items-center">
+        {/* Full Video Background with Poster Fallback */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <img
-            src="/hero-bus.jpg"
-            alt="Intercity Bus Transit Heritage"
-            className="w-full h-full object-cover object-center"
-            loading="eager"
+          <video
+            ref={videoRef}
+            src="/hero-video.mp4"
+            autoPlay
+            loop
+            muted={isVideoMuted}
+            playsInline
+            poster="/hero-bus.jpg"
+            className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
           />
-          {/* Deep Dark Overlay for crisp contrast matching the screenshot */}
-          <div className="absolute inset-0 bg-[#0A0D14]/80 backdrop-blur-[0.5px]"></div>
+          {/* Deep Dark Overlay for crisp contrast matching design */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#070D1F]/90 via-[#0B132B]/80 to-[#1C0F38]/85 backdrop-blur-[0.5px]"></div>
           {/* Bottom gentle fade into page surface */}
           <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white dark:from-[#0B0F19] to-transparent"></div>
         </div>
 
         <div className="max-w-[1200px] mx-auto px-6 relative z-10 w-full">
-          {/* Badge & Title exactly as in screenshot */}
+          {/* Badge & Title */}
           <div className="mb-6 text-center sm:text-left max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-[#F59E0B] text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm mb-3">
-              <Sparkles className="w-3.5 h-3.5" /> India's Trusted Bus Transit Platform
+            <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start mb-3">
+              <div className="inline-flex items-center gap-2 bg-[#F59E0B] text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                <Sparkles className="w-3.5 h-3.5" /> India's Trusted Bus Transit Platform
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVideoMuted(!isVideoMuted)}
+                className="inline-flex items-center gap-1.5 bg-black/50 hover:bg-black/70 text-white backdrop-blur-md text-[11px] font-bold px-3 py-1 rounded-full border border-white/20 transition cursor-pointer"
+                title={isVideoMuted ? 'Turn on video audio' : 'Mute video audio'}
+              >
+                {isVideoMuted ? <VolumeX className="w-3.5 h-3.5 text-amber-300" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+                <span>{isVideoMuted ? 'Sound Off' : 'Sound On'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVideoModalOpen(true)}
+                className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white backdrop-blur-md text-[11px] font-bold px-3 py-1 rounded-full border border-white/25 transition cursor-pointer"
+              >
+                <Play className="w-3 h-3 fill-white text-white" />
+                <span>Watch Story Video</span>
+              </button>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-[44px] font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
               Book Bus Tickets
@@ -327,6 +357,42 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Full Video Modal */}
+      {videoModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setVideoModalOpen(false)}
+        >
+          <div
+            className="relative bg-slate-950 rounded-3xl overflow-hidden max-w-4xl w-full border border-slate-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/60 text-white">
+              <div className="flex items-center gap-2">
+                <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <h3 className="text-sm font-bold">YatraBus Journey Experience Video</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVideoModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="aspect-video w-full bg-black">
+              <video
+                src="/hero-video.mp4"
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. BEST OFFERS FOR YOU */}
       <section className="py-14 bg-white dark:bg-[#0E1526] border-b border-[#E5E7EB] dark:border-slate-800 transition-colors">

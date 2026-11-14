@@ -15,7 +15,17 @@ export const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!user) {
+  const currentUser =
+    user ||
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem('yatra_user') || 'null');
+      } catch {
+        return null;
+      }
+    })();
+
+  if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -34,13 +44,23 @@ export const AdminRoute = ({ children }) => {
     );
   }
 
-  if (!user) {
+  const currentUser =
+    user ||
+    (() => {
+      try {
+        return JSON.parse(localStorage.getItem('yatra_user') || 'null');
+      } catch {
+        return null;
+      }
+    })();
+
+  if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user.role !== 'admin') {
+  if (currentUser.role !== 'admin') {
     toast.error('Access denied. Administrator privileges required.');
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
