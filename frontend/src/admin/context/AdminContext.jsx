@@ -76,22 +76,24 @@ export const AdminProvider = ({ children }) => {
     let active = true;
     adminApi.getManagementData()
       .then((data) => {
-        if (!active) return;
-        setBuses(data.buses || []);
-        setRoutes(data.routes || []);
-        setSchedules(data.schedules || []);
-        setBookings(data.bookings || []);
-        setPassengers(data.passengers || []);
-        setDrivers(data.drivers || []);
-        setStaff(data.staff || []);
-        setPayments(data.payments || []);
-        setOffers(data.offers || []);
-        setReviews(data.reviews || []);
-        setNotifications(data.notifications || []);
-        setSettings(data.settings || {});
+        if (!active || !data) return;
+        if (Array.isArray(data.buses) && data.buses.length > 0) setBuses(data.buses);
+        if (Array.isArray(data.routes) && data.routes.length > 0) setRoutes(data.routes);
+        if (Array.isArray(data.schedules) && data.schedules.length > 0) setSchedules(data.schedules);
+        if (Array.isArray(data.bookings) && data.bookings.length > 0) setBookings(data.bookings);
+        if (Array.isArray(data.passengers) && data.passengers.length > 0) setPassengers(data.passengers);
+        if (Array.isArray(data.drivers) && data.drivers.length > 0) setDrivers(data.drivers);
+        if (Array.isArray(data.staff) && data.staff.length > 0) setStaff(data.staff);
+        if (Array.isArray(data.payments) && data.payments.length > 0) setPayments(data.payments);
+        if (Array.isArray(data.offers) && data.offers.length > 0) setOffers(data.offers);
+        if (Array.isArray(data.reviews) && data.reviews.length > 0) setReviews(data.reviews);
+        if (Array.isArray(data.notifications) && data.notifications.length > 0) setNotifications(data.notifications);
+        if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
+          setSettings(data.settings);
+        }
       })
       .catch((error) => {
-        if (active) toast.error(`Unable to load admin data: ${getAdminErrorMessage(error)}`);
+        console.warn('Admin management data sync note:', getAdminErrorMessage(error));
       });
 
     return () => {

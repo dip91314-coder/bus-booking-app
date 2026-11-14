@@ -1,18 +1,30 @@
 import React, { useState } from 'react';
 import { useBooking } from '../../context/BookingContext';
-import { Disc3, ShieldCheck, Heart, User, Sparkles, Check, Info } from 'lucide-react';
+import { Disc3, ShieldCheck, Heart, User, Sparkles, Check, Info, Lock } from 'lucide-react';
 
 const SeatLayout = ({ bus }) => {
   const { selectedSeats, toggleSeat } = useBooking();
   const [activeDeck, setActiveDeck] = useState('lower');
 
-  const hasUpperDeck = !!bus?.seats?.upper && bus.seats.upper.length > 0;
-  const currentSeats = activeDeck === 'lower' ? bus?.seats?.lower || [] : bus?.seats?.upper || [];
+  const isArray = Array.isArray(bus?.seats);
+  const upperSeats = isArray
+    ? bus.seats.filter(
+        (s) => s.position === 'upper' || s.seatNumber?.startsWith('U') || s.number?.startsWith('U')
+      )
+    : bus?.seats?.upper || [];
+  const lowerSeats = isArray
+    ? bus.seats.filter(
+        (s) => s.position !== 'upper' && !s.seatNumber?.startsWith('U') && !s.number?.startsWith('U')
+      )
+    : bus?.seats?.lower || (Array.isArray(bus?.seats) ? bus.seats : []);
 
-  const isSelected = (seatNo) => selectedSeats.some((s) => s.number === seatNo);
+  const hasUpperDeck = upperSeats.length > 0;
+  const currentSeats = activeDeck === 'upper' ? upperSeats : lowerSeats;
 
-  // Group seats by 4 columns (2 x aisle x 2) to recreate the DevIntelle mockup layout cleanly
-  // In the reference: Left side has 2 seats (Seat 1, Seat 2), aisle, Right side has 2 seats (Seat 3, Seat 4)
+  const isSelected = (seatNo) =>
+    selectedSeats.some((s) => (s.number || s.seatNumber) === seatNo);
+
+  // Group seats by 4 columns (2 x aisle x 2) to recreate the layout cleanly
   const rows = [];
   for (let i = 0; i < currentSeats.length; i += 4) {
     rows.push(currentSeats.slice(i, i + 4));
@@ -21,34 +33,54 @@ const SeatLayout = ({ bus }) => {
   const renderSeatButton = (seat) => {
     if (!seat) return <div className="w-10 h-11" />;
 
+    const seatNum = seat.seatNumber || seat.number;
     const booked = seat.status === 'booked';
-    const selected = isSelected(seat.number);
+    const locked = seat.status === 'locked';
+    const isUnavailable = booked || locked;
+    const selected = isSelected(seatNum);
+    const isLadies = Boolean(seat.isLadies);
+    const isSleeper = seat.type === 'sleeper';
+    const seatPrice = seat.price || bus?.fare || 650;
 
     return (
       <button
-        key={seat.number}
+        key={seatNum}
         type="button"
-        disabled={booked}
-        onClick={() => toggleSeat(seat)}
-        title={`Seat ${seat.number} - ₹${seat.price} (${booked ? 'Booked' : selected ? 'Selected' : 'Available'})`}
-        className={`w-10 h-11 rounded-lg border flex flex-col items-center justify-between p-1 transition-all duration-200 relative ${
+        disabled={isUnavailable}
+        onClick={() => toggleSeat({ ...seat, number: seatNum, seatNumber: seatNum, price: seatPrice })}
+        title={`Seat ${seatNum} - ₹${seatPrice} (${
+          booked ? 'Booked' : locked ? 'Locked (In checkout)' : selected ? 'Selected' : 'Available'
+        }${isLadies ? ' - Ladies Only' : ''})`}
+        className={`${
+          isSleeper ? 'w-13 sm:w-14' : 'w-10 sm:w-11'
+        } h-11 rounded-lg border flex flex-col items-center justify-between p-1 transition-all duration-200 relative ${
           booked
             ? 'bg-purple-100/70 border-purple-200 text-purple-400 cursor-not-allowed'
+            : locked
+            ? 'bg-amber-100 border-amber-300 text-amber-700 cursor-not-allowed'
             : selected
             ? 'bg-emerald-500 border-emerald-600 text-white shadow-md shadow-emerald-500/30 scale-105 ring-2 ring-emerald-300'
+            : isLadies
+            ? 'bg-pink-50/70 border-pink-300 text-pink-700 hover:border-pink-500 hover:bg-pink-100/50 shadow-xs'
             : 'bg-white border-slate-200 text-slate-700 hover:border-[#7E22CE] hover:bg-purple-50/40 shadow-xs'
         }`}
       >
         {/* Seat number */}
-        <span className="text-[10px] font-bold leading-none">{seat.number}</span>
+        <span className="text-[10px] font-bold leading-none">{seatNum}</span>
 
-        {/* Seat cushion graphic indicator matching the DevIntelle laptop graphic */}
+        {/* Cushion graphic indicator */}
         <div
-          className={`w-5 h-3.5 rounded-xs border transition-colors ${
+          className={`${
+            isSleeper ? 'w-8' : 'w-5'
+          } h-3.5 rounded-xs border transition-colors ${
             selected
               ? 'bg-white border-white'
               : booked
               ? 'bg-purple-200/90 border-purple-300'
+              : locked
+              ? 'bg-amber-200 border-amber-300'
+              : isLadies
+              ? 'bg-pink-200 border-pink-300'
               : 'bg-slate-50 border-slate-300'
           }`}
         ></div>
@@ -60,6 +92,10 @@ const SeatLayout = ({ bus }) => {
               ? 'bg-white'
               : booked
               ? 'bg-purple-400'
+              : locked
+              ? 'bg-amber-500'
+              : isLadies
+              ? 'bg-pink-500'
               : 'bg-emerald-500'
           }`}
         ></div>
@@ -155,19 +191,8 @@ const SeatLayout = ({ bus }) => {
         </div>
       </div>
 
-      {/* Seat Color Code Legend Matching the DevIntelle Screenshot */}
-      <div className="mt-8 pt-5 border-t border-purple-100 flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-xs text-slate-700">
-        {/* Booked Status */}
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-400">
-            <div className="w-2.5 h-2.5 rounded-full bg-purple-400"></div>
-          </div>
-          <div>
-            <span className="font-bold text-slate-800 block text-xs">Booked</span>
-            <span className="text-[10px] text-slate-400">Unavailable</span>
-          </div>
-        </div>
-
+      {/* Seat Color Code Legend Matching OBTBS SRS */}
+      <div className="mt-8 pt-5 border-t border-purple-100 flex flex-wrap items-center justify-center gap-5 sm:gap-7 text-xs text-slate-700">
         {/* Available Status */}
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-white border border-slate-300 flex items-center justify-center shadow-xs">
@@ -187,6 +212,39 @@ const SeatLayout = ({ bus }) => {
           <div>
             <span className="font-bold text-emerald-700 block text-xs">Selected</span>
             <span className="text-[10px] text-slate-400">Your choice</span>
+          </div>
+        </div>
+
+        {/* Locked Status */}
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shadow-xs">
+            <Lock className="w-3 h-3 text-amber-600" />
+          </div>
+          <div>
+            <span className="font-bold text-amber-800 block text-xs">Locked</span>
+            <span className="text-[10px] text-amber-600">In checkout</span>
+          </div>
+        </div>
+
+        {/* Booked Status */}
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-400">
+            <div className="w-2.5 h-2.5 rounded-full bg-purple-400"></div>
+          </div>
+          <div>
+            <span className="font-bold text-slate-800 block text-xs">Booked</span>
+            <span className="text-[10px] text-slate-400">Unavailable</span>
+          </div>
+        </div>
+
+        {/* Ladies Status */}
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-pink-100 border border-pink-300 flex items-center justify-center text-pink-600">
+            <Heart className="w-3 h-3 text-pink-500 fill-pink-500" />
+          </div>
+          <div>
+            <span className="font-bold text-pink-700 block text-xs">Ladies</span>
+            <span className="text-[10px] text-pink-400">Reserved quota</span>
           </div>
         </div>
       </div>

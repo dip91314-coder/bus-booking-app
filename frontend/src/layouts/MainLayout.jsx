@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast';
 
 const MainLayout = () => {
   return (
-    <div className="flex flex-col min-h-screen bg-[#F8FAFD] text-gray-900 font-sans antialiased">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[#0B0F19] text-gray-900 dark:text-slate-100 font-sans antialiased transition-colors duration-200">
       <ScrollToTop />
       <Toaster
         position="top-right"

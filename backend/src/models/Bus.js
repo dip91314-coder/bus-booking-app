@@ -1,5 +1,16 @@
 import mongoose from 'mongoose';
 
+const SeatLayoutItemSchema = new mongoose.Schema(
+  {
+    seatNumber: { type: String, required: true, uppercase: true, trim: true },
+    type: { type: String, enum: ['sleeper', 'seater'], default: 'seater' },
+    position: { type: String, enum: ['lower', 'upper'], default: 'lower' },
+    category: { type: String, enum: ['window', 'aisle', 'normal'], default: 'normal' },
+    isLadies: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const BusSchema = new mongoose.Schema(
   {
     busNumber: {
@@ -93,6 +104,10 @@ const BusSchema = new mongoose.Schema(
       enum: ['single', 'double'],
       default: 'double',
     },
+    seatLayout: {
+      type: [SeatLayoutItemSchema],
+      default: [],
+    },
     amenities: {
       type: [String],
       default: ['AC', 'WiFi', 'Charging Point', 'Water Bottle', 'Live GPS'],
@@ -139,6 +154,42 @@ const BusSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+BusSchema.pre('save', function (next) {
+  if (!this.seatLayout || this.seatLayout.length === 0) {
+    const total = this.totalSeats || 36;
+    const isDouble = this.deckType === 'double';
+    const half = isDouble ? Math.floor(total / 2) : total;
+    const layout = [];
+
+    // Lower deck
+    for (let i = 1; i <= half; i++) {
+      layout.push({
+        seatNumber: isDouble ? `L${i}` : `S${i}`,
+        type: isDouble ? 'sleeper' : 'seater',
+        position: 'lower',
+        category: i % 3 === 1 ? 'window' : i % 3 === 2 ? 'aisle' : 'normal',
+        isLadies: [3, 4, 7].includes(i),
+      });
+    }
+
+    // Upper deck
+    if (isDouble) {
+      for (let i = 1; i <= total - half; i++) {
+        layout.push({
+          seatNumber: `U${i}`,
+          type: 'sleeper',
+          position: 'upper',
+          category: i % 3 === 1 ? 'window' : i % 3 === 2 ? 'aisle' : 'normal',
+          isLadies: [1, 2].includes(i),
+        });
+      }
+    }
+
+    this.seatLayout = layout;
+  }
+  next();
+});
 
 BusSchema.index({ origin: 1, destination: 1, isActive: 1 });
 

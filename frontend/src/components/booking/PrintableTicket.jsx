@@ -16,6 +16,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ticketApi } from '../../services/api';
 
 const PrintableTicket = ({ booking }) => {
   if (!booking) return null;
@@ -24,11 +25,16 @@ const PrintableTicket = ({ booking }) => {
     window.print();
   };
 
-  const handleDownload = () => {
-    toast.success('Preparing ticket PDF download...');
-    setTimeout(() => {
+  const handleDownload = async () => {
+    try {
+      toast.loading('Generating official PDF ticket...', { id: 'pdf-dl' });
+      const ref = booking.pnr || booking.bookingReference || booking._id || booking.id;
+      await ticketApi.downloadPdf(ref);
+      toast.success('Official PDF ticket downloaded!', { id: 'pdf-dl' });
+    } catch {
+      toast.dismiss('pdf-dl');
       window.print();
-    }, 500);
+    }
   };
 
   const handleShare = () => {

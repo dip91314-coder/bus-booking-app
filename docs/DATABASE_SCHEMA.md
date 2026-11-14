@@ -24,40 +24,85 @@ The database layer is built on **MongoDB** accessed via **Mongoose ODM** (v8+ / 
 
 ---
 
-## 2. Entity-Relationship (ER) Diagram
+## 2. Entity-Relationship (ER) Diagram (OBTBS Trip-Centric)
 
 ```mermaid
 erDiagram
+    BUS ||--o{ TRIP : operates
+    ROUTE ||--o{ TRIP : defines
+    TRIP ||--o{ SEAT_RESERVATION : locks_or_books
+    TRIP ||--o{ BOOKING : reserved_under
     USER ||--o{ BOOKING : places
-    USER ||--o{ SAVED_TRAVELLER : saves
-    BUS ||--o{ BOOKING : scheduled_for
-
-    USER {
-        ObjectId _id PK
-        string name
-        string email UK
-        string password
-        string phone
-        string role
-        date createdAt
-        date updatedAt
-    }
-
-    SAVED_TRAVELLER {
-        ObjectId _id PK
-        ObjectId userId FK
-        string name
-        number age
-        string gender
-        date createdAt
-        date updatedAt
-    }
+    BOOKING ||--|| PAYMENT : settles
+    BOOKING ||--|| TICKET : issues
 
     BUS {
         ObjectId _id PK
         string busNumber UK
         string busName
         string busType
+        number totalSeats
+        objectArray seatLayout
+        string operationalStatus
+    }
+
+    ROUTE {
+        ObjectId _id PK
+        string origin
+        string destination
+        number distanceKm
+        number durationMinutes
+        objectArray boardingPoints
+        objectArray droppingPoints
+    }
+
+    TRIP {
+        ObjectId _id PK
+        ObjectId busId FK
+        ObjectId routeId FK
+        string travelDate
+        string departureTime
+        string arrivalTime
+        string status
+    }
+
+    SEAT_RESERVATION {
+        ObjectId _id PK
+        ObjectId tripId FK
+        ObjectId busId FK
+        string seatNumber
+        string status
+        date lockExpiresAt
+    }
+
+    BOOKING {
+        ObjectId _id PK
+        string pnr UK
+        ObjectId userId FK
+        ObjectId tripId FK
+        string bookingStatus
+        string paymentStatus
+        number totalFare
+    }
+
+    PAYMENT {
+        ObjectId _id PK
+        ObjectId bookingId FK
+        string gateway
+        string gatewayPaymentId UK
+        number amount
+        string status
+    }
+
+    TICKET {
+        ObjectId _id PK
+        ObjectId bookingId FK
+        string pnr UK
+        object journeySnapshot
+        objectArray passengerSnapshot
+        date generatedAt
+    }
+```
         string origin
         string destination
         string departureTime

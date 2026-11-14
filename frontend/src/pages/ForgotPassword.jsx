@@ -18,8 +18,8 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-[85vh] bg-[#F8FAFD] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-10 shadow-elevated border border-gray-100 space-y-6">
+    <div className="min-h-[85vh] bg-white dark:bg-[#0B0F19] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors">
+      <div className="max-w-md w-full bg-white dark:bg-[#111622] rounded-3xl p-6 sm:p-10 shadow-elevated border border-gray-100 dark:border-slate-800 space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary to-accent flex items-center justify-center mx-auto shadow-md">
             <Bus className="w-7 h-7 text-white" />

@@ -1,12 +1,49 @@
+import { User } from '../models/User.js';
 import { Booking } from '../models/Booking.js';
 import { Bus } from '../models/Bus.js';
 import { Seat } from '../models/Seat.js';
 import { Payment } from '../models/Payment.js';
 import { Cancellation } from '../models/Cancellation.js';
+import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/customErrors.js';
 
 export async function createBooking(req, res, next) {
   try {
+    let userId = req.user?.userId;
+    if (!userId) {
+      const email = req.body.contactEmail || 'guest@bharatbus.com';
+      let guestUser = await User.findOne({ email });
+      if (!guestUser) {
+        guestUser = await User.create({
+          name: req.body.passengers?.[0]?.name || 'Guest Passenger',
+          email,
+          phone: req.body.contactPhone || '9876543210',
+          password: 'GuestPassword123!',
+          role: 'user'
+        });
+      }
+      userId = guestUser._id.toString();
+    }
+
+    // OBTBS Trip-Centric Booking Flow
+    if (req.body.tripId) {
+      const pendingResult = await createPendingBooking({
+        userId,
+        tripId: req.body.tripId,
+        boardingPoint: req.body.boardingPoint,
+        droppingPoint: req.body.droppingPoint,
+        passengers: req.body.passengers,
+        contactEmail: req.body.contactEmail,
+        contactPhone: req.body.contactPhone,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Pending booking created. Please complete payment to confirm reservation.',
+        data: pendingResult,
+      });
+    }
+
     const {
       busId,
       journeyDate,
@@ -18,11 +55,6 @@ export async function createBooking(req, res, next) {
       contactEmail,
       contactPhone,
     } = req.body;
-
-    const userId = req.user?.userId;
-    if (!userId) {
-      throw new ValidationError('Authenticated user ID missing');
-    }
 
     const bus = await Bus.findById(busId);
     if (!bus) {

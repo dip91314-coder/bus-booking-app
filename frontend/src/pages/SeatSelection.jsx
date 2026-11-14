@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
+import { seatApi } from '../services/api';
 import SeatLayout from '../components/bus/SeatLayout';
 import FareSummaryCard from '../components/booking/FareSummaryCard';
 import {
@@ -12,7 +13,8 @@ import {
   Star,
   CheckCircle2,
   Calendar,
-  Printer
+  Printer,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -31,19 +33,86 @@ const SeatSelection = () => {
     searchParams
   } = useBooking();
 
+  const [isLoadingSeats, setIsLoadingSeats] = useState(false);
+
   // Find bus if not currently set or if navigated directly
-  const bus = selectedBus || buses.find((b) => b.id === id) || buses[0];
+  const bus = selectedBus || buses.find((b) => b.id === id || b.tripId === id || b._id === id) || buses[0];
 
   useEffect(() => {
-    if (bus && (!selectedBus || selectedBus.id !== bus.id)) {
+    let active = true;
+    if (id) {
+      setIsLoadingSeats(true);
+      seatApi
+        .getSeats(id, searchParams.journeyDate)
+        .then((tripData) => {
+          if (!active || !tripData) return;
+          const mergedBus = {
+            ...(selectedBus || bus || {}),
+            id: tripData.tripId || id,
+            tripId: tripData.tripId || id,
+            busId: tripData.bus?.id || bus?.busId,
+            busName: tripData.bus?.name || bus?.busName || 'Express Coach',
+            busNumber: tripData.bus?.number || bus?.busNumber || 'WB-01-EXP',
+            busType: tripData.bus?.type || bus?.busType || 'AC Sleeper 2+1',
+            deckType: tripData.bus?.deckType || bus?.deckType || 'single',
+            origin: tripData.route?.source || bus?.origin || 'Kolkata',
+            destination: tripData.route?.destination || bus?.destination || 'Siliguri',
+            departureTime: tripData.departureTime || bus?.departureTime || '20:00',
+            arrivalTime: tripData.arrivalTime || bus?.arrivalTime || '06:30',
+            availableSeatsCount: tripData.availableSeats ?? bus?.availableSeatsCount,
+            seats: tripData.seats,
+            boardingPoints: bus?.boardingPoints?.length
+              ? bus.boardingPoints
+              : [
+                  {
+                    id: 'bp-1',
+                    name: `${tripData.route?.source || bus?.origin || 'Origin'} Central Terminal`,
+                    time: tripData.departureTime || '20:00'
+                  }
+                ],
+            droppingPoints: bus?.droppingPoints?.length
+              ? bus.droppingPoints
+              : [
+                  {
+                    id: 'dp-1',
+                    name: `${tripData.route?.destination || bus?.destination || 'Destination'} Highway Bypass`,
+                    time: tripData.arrivalTime || '06:30'
+                  }
+                ]
+          };
+          setSelectedBus(mergedBus);
+          if (!selectedBoardingPoint && mergedBus.boardingPoints?.length) {
+            setSelectedBoardingPoint(mergedBus.boardingPoints[0]);
+          }
+          if (!selectedDroppingPoint && mergedBus.droppingPoints?.length) {
+            setSelectedDroppingPoint(mergedBus.droppingPoints[0]);
+          }
+        })
+        .catch((err) => {
+          console.warn('Could not fetch live trip seats:', err?.message);
+        })
+        .finally(() => {
+          if (active) setIsLoadingSeats(false);
+        });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (bus && (!selectedBus || (selectedBus.id !== bus.id && selectedBus.tripId !== bus.id))) {
       setSelectedBus(bus);
     }
     // Set default boarding & dropping if not chosen
-    if (bus && !selectedBoardingPoint && bus.boardingPoints?.length > 0) {
-      setSelectedBoardingPoint(bus.boardingPoints[0]);
+    if (bus && !selectedBoardingPoint) {
+      const defaultBp = bus.boardingPoints?.[0] || { id: 'bp-def', name: `${bus.origin} Bus Stand`, time: bus.departureTime };
+      setSelectedBoardingPoint(defaultBp);
     }
-    if (bus && !selectedDroppingPoint && bus.droppingPoints?.length > 0) {
-      setSelectedDroppingPoint(bus.droppingPoints[0]);
+    if (bus && !selectedDroppingPoint) {
+      const defaultDp = bus.droppingPoints?.[0] || { id: 'dp-def', name: `${bus.destination} Junction`, time: bus.arrivalTime };
+      setSelectedDroppingPoint(defaultDp);
     }
   }, [bus, selectedBus]);
 
@@ -81,7 +150,7 @@ const SeatSelection = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8FD] pb-24 font-sans text-slate-800">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 font-sans text-slate-800 dark:text-slate-100 transition-colors">
       {/* DevIntelle inspired top control header bar */}
       <div className="bg-[#3B0764] text-white py-4 px-4 sm:px-6 lg:px-8 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">

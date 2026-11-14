@@ -35,3 +35,30 @@ export async function authenticate(req, res, next) {
   req.user = { userId: user._id.toString(), role: user.role };
   return next();
 }
+
+export async function optionalAuthenticate(req, res, next) {
+  let token;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = verifyAccessToken(token);
+    const user = await User.findById(decoded.userId).select('role status');
+    if (user && user.status !== 'Suspended') {
+      req.user = { userId: user._id.toString(), role: user.role };
+    }
+  } catch (err) {
+    // Gracefully ignore token errors for optional routes
+  }
+  return next();
+}
+
+export const requireAuth = authenticate;

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
+import { tripApi } from '../services/api';
 import BusCard from '../components/bus/BusCard';
 import BusFilters from '../components/bus/BusFilters';
 import BusSearchForm from '../components/bus/BusSearchForm';
@@ -13,7 +14,8 @@ import {
   ChevronRight,
   RefreshCw,
   AlertCircle,
-  Bus
+  Bus,
+  Loader2
 } from 'lucide-react';
 
 const SearchResults = () => {
@@ -25,9 +27,42 @@ const SearchResults = () => {
   const destQuery = urlParams.get('destination') || searchParams.destination || 'Siliguri';
   const dateQuery = urlParams.get('date') || searchParams.journeyDate || new Date().toISOString().split('T')[0];
 
+  const [liveTrips, setLiveTrips] = useState(null);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
   const [showModifySearch, setShowModifySearch] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('price-asc'); // price-asc, duration-asc, departure-asc, rating-desc
+
+  // Fetch live trips from tripApi if available
+  useEffect(() => {
+    let active = true;
+    setIsLoadingTrips(true);
+    tripApi
+      .searchTrips({
+        from: originQuery,
+        to: destQuery,
+        date: dateQuery
+      })
+      .then((trips) => {
+        if (!active) return;
+        if (Array.isArray(trips) && trips.length > 0) {
+          setLiveTrips(trips);
+        } else {
+          setLiveTrips(null);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not query live trips, using inventory:', err?.message);
+        if (active) setLiveTrips(null);
+      })
+      .finally(() => {
+        if (active) setIsLoadingTrips(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [originQuery, destQuery, dateQuery]);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -50,17 +85,19 @@ const SearchResults = () => {
 
   // Filter & Sort Logic
   const filteredBuses = useMemo(() => {
+    const sourcePool = liveTrips && liveTrips.length > 0 ? liveTrips : buses;
+
     // 1. Route match (or relaxed if viewing all)
-    let list = buses.filter((bus) => {
-      const matchOrigin = bus.origin.toLowerCase().includes(originQuery.toLowerCase());
-      const matchDest = bus.destination.toLowerCase().includes(destQuery.toLowerCase());
+    let list = sourcePool.filter((bus) => {
+      const matchOrigin = (bus.origin || bus.source || '').toLowerCase().includes(originQuery.toLowerCase());
+      const matchDest = (bus.destination || '').toLowerCase().includes(destQuery.toLowerCase());
       return matchOrigin && matchDest;
     });
 
     // If zero match on exact query, provide all buses with a clear banner
     const isExactMatch = list.length > 0;
     if (!isExactMatch) {
-      list = buses; // fallback to demonstrate UI
+      list = sourcePool; // fallback to demonstrate UI
     }
 
     // 2. Bus type filter
@@ -112,9 +149,9 @@ const SearchResults = () => {
   }, [buses, originQuery, destQuery, filters, sortBy]);
 
   return (
-    <div className="min-h-screen bg-[#FAF8FD] pb-24 font-sans text-slate-800">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 font-sans text-slate-800 dark:text-slate-100 transition-colors">
       {/* Top Route Ribbon */}
-      <div className="bg-[#3B0764] text-white py-6 px-4 sm:px-6 lg:px-8 shadow-md">
+      <div className="bg-[#3B0764] dark:bg-[#150A2A] text-white py-6 px-4 sm:px-6 lg:px-8 shadow-md transition-colors">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-purple-200 mb-1">
@@ -180,12 +217,12 @@ const SearchResults = () => {
           {/* Mobile Filter Modal */}
           {mobileFilterOpen && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end lg:hidden">
-              <div className="w-80 bg-white h-full p-4 overflow-y-auto">
-                <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                  <h3 className="font-bold text-gray-900">Filters</h3>
+              <div className="w-80 bg-white dark:bg-[#111622] h-full p-4 overflow-y-auto">
+                <div className="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-800">
+                  <h3 className="font-bold text-gray-900 dark:text-white">Filters</h3>
                   <button
                     onClick={() => setMobileFilterOpen(false)}
-                    className="text-gray-500 font-bold p-1 text-sm"
+                    className="text-gray-500 dark:text-slate-400 font-bold p-1 text-sm"
                   >
                     ✕ Close
                   </button>
@@ -202,38 +239,38 @@ const SearchResults = () => {
           {/* Bus Results List Column */}
           <div className="lg:col-span-9 space-y-4">
             {/* Sorting & Result Count Bar */}
-            <div className="bg-white rounded-2xl p-4 shadow-card border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white dark:bg-[#111622] rounded-2xl p-4 shadow-card border border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
               <div>
-                <p className="text-sm font-extrabold text-gray-900">
+                <p className="text-sm font-extrabold text-gray-900 dark:text-white">
                   {filteredBuses.list.length} Buses Available
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-slate-400">
                   Showing buses for {originQuery} ➔ {destQuery}
                 </p>
               </div>
 
               {/* Sort Dropdown */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-primary" /> Sort by:
+                <span className="text-xs font-bold text-gray-500 dark:text-slate-400 flex items-center gap-1">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-primary dark:text-purple-400" /> Sort by:
                 </span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-gray-50 border border-gray-200 text-gray-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="bg-gray-50 dark:bg-[#161D2E] border border-gray-200 dark:border-slate-700 text-gray-800 dark:text-slate-100 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                  <option value="price-asc">Cheapest First (Price Low ➔ High)</option>
-                  <option value="price-desc">Price (High ➔ Low)</option>
-                  <option value="departure-asc">Departure (Earliest First)</option>
-                  <option value="rating-desc">Highest Customer Rating</option>
+                  <option value="price-asc" className="dark:bg-[#111622]">Cheapest First (Price Low ➔ High)</option>
+                  <option value="price-desc" className="dark:bg-[#111622]">Price (High ➔ Low)</option>
+                  <option value="departure-asc" className="dark:bg-[#111622]">Departure (Earliest First)</option>
+                  <option value="rating-desc" className="dark:bg-[#111622]">Highest Customer Rating</option>
                 </select>
               </div>
             </div>
 
             {/* In case no exact route found notice */}
             {!filteredBuses.isExactMatch && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold">Showing All Active Indian Bus Schedules</h4>
                   <p className="mt-0.5">
@@ -252,12 +289,12 @@ const SearchResults = () => {
                 ))}
               </div>
             ) : (
-              <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100 space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 text-primary flex items-center justify-center mx-auto">
+              <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-primary dark:text-purple-400 flex items-center justify-center mx-auto">
                   <Bus className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">No Buses Match Your Active Filters</h3>
-                <p className="text-xs text-gray-500 max-w-md mx-auto">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">No Buses Match Your Active Filters</h3>
+                <p className="text-xs text-gray-500 dark:text-slate-400 max-w-md mx-auto">
                   Try widening your price range, deselecting time slots, or resetting all filters to see more buses.
                 </p>
                 <button

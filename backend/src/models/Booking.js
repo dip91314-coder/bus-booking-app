@@ -24,6 +24,24 @@ const PassengerEntrySchema = new mongoose.Schema(
       uppercase: true,
       trim: true,
     },
+    contact: {
+      type: String,
+      default: '',
+    },
+    email: {
+      type: String,
+      default: '',
+    },
+  },
+  { _id: false }
+);
+
+const PriceBreakdownSchema = new mongoose.Schema(
+  {
+    basePrice: { type: Number, default: 0 },
+    additionalCharges: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
+    totalAmount: { type: Number, default: 0 },
   },
   { _id: false }
 );
@@ -38,10 +56,22 @@ const BookingSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
+    pnr: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      index: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
+    },
+    tripId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Trip',
+      default: null,
       index: true,
     },
     busId: {
@@ -69,25 +99,30 @@ const BookingSchema = new mongoose.Schema(
       type: [PassengerEntrySchema],
       required: true,
     },
+    priceBreakdown: {
+      type: PriceBreakdownSchema,
+      default: () => ({}),
+    },
     totalFare: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0,
     },
     bookingStatus: {
       type: String,
-      enum: ['confirmed', 'cancelled', 'completed'],
-      default: 'confirmed',
+      enum: ['pending', 'confirmed', 'failed', 'expired', 'cancelled', 'completed'],
+      default: 'pending',
       index: true,
     },
     paymentStatus: {
       type: String,
-      enum: ['paid', 'refunded', 'pending'],
-      default: 'paid',
+      enum: ['pending', 'paid', 'successful', 'failed', 'refunded', 'refund_required'],
+      default: 'pending',
+      index: true,
     },
     paymentMethod: {
       type: String,
-      default: 'Simulated Payment',
+      default: 'Online Payment',
     },
     contactEmail: {
       type: String,
@@ -107,7 +142,17 @@ const BookingSchema = new mongoose.Schema(
   }
 );
 
-// Compound Unique Index to eliminate double seat bookings at the database engine level
+BookingSchema.pre('save', function (next) {
+  if (!this.pnr && this.bookingReference) {
+    this.pnr = this.bookingReference;
+  }
+  if (!this.bookingReference && this.pnr) {
+    this.bookingReference = this.pnr;
+  }
+  next();
+});
+
+// Compound Unique Index on busId + journeyDate + seatNumber for confirmed bookings (legacy safety)
 BookingSchema.index(
   { busId: 1, journeyDate: 1, 'passengers.seatNumber': 1 },
   {
@@ -116,5 +161,4 @@ BookingSchema.index(
   }
 );
 
-export const Booking =
-  mongoose.models.Booking || mongoose.model('Booking', BookingSchema);
+export const Booking = mongoose.models.Booking || mongoose.model('Booking', BookingSchema);

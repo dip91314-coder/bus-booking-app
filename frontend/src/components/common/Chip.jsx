@@ -21,10 +21,10 @@ export const Chip = ({
       disabled={!isClickable}
       className={`inline-flex items-center gap-1.5 rounded-full font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5B21B6] ${sizeClasses} ${
         active
-          ? 'bg-[#5B21B6] text-white shadow-sm'
+          ? 'bg-[#5B21B6] dark:bg-purple-600 text-white shadow-sm'
           : isClickable
-          ? 'bg-[#F8F7FC] text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] border border-[#E2E8F0]'
-          : 'bg-[#F1F5F9] text-[#475569] border border-[#E2E8F0]'
+          ? 'bg-[#F8F7FC] dark:bg-slate-800 text-[#475569] dark:text-slate-300 hover:bg-[#F1F5F9] dark:hover:bg-slate-700 hover:text-[#0F172A] dark:hover:text-white border border-[#E2E8F0] dark:border-slate-700'
+          : 'bg-[#F1F5F9] dark:bg-slate-800/60 text-[#475569] dark:text-slate-400 border border-[#E2E8F0] dark:border-slate-800'
       } ${className}`}
       {...props}
     >

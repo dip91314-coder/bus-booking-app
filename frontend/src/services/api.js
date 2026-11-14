@@ -4,13 +4,15 @@ import { MOCK_BUSES, POPULAR_ROUTES } from '../data/mockData';
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
 // Attach JWT access token from localStorage if available
@@ -59,44 +61,97 @@ export const authApi = {
   },
 };
 
-// Buses Endpoints
+// OBTBS Trip & Search Endpoints
+export const tripApi = {
+  searchTrips: async (params) => {
+    try {
+      const res = await apiClient.get('/trips', { params });
+      return res.data?.data || [];
+    } catch (err) {
+      if (USE_MOCKS) return MOCK_BUSES;
+      throw err;
+    }
+  },
+  getTripById: async (tripId) => {
+    const res = await apiClient.get(`/trips/${tripId}`);
+    return res.data?.data;
+  },
+  getSeats: async (tripId) => {
+    const res = await apiClient.get(`/trips/${tripId}/seats`);
+    return res.data?.data;
+  },
+  lockSeats: async (tripId, seatNumbers) => {
+    const res = await apiClient.post(`/trips/${tripId}/locks`, { seatNumbers });
+    return res.data?.data;
+  },
+  releaseLocks: async (tripId, seatNumbers) => {
+    const res = await apiClient.post(`/trips/${tripId}/locks/release`, { seatNumbers });
+    return res.data?.data;
+  },
+};
+
+// Buses Endpoints (Customer & Legacy support)
 export const busApi = {
   getBuses: async (params) => {
     try {
-      const res = await apiClient.get('/buses', { params });
+      const res = await apiClient.get('/trips', { params });
       return res.data?.data || [];
     } catch {
-      // Fallback to mock data for resilience
-      return MOCK_BUSES;
+      try {
+        const res2 = await apiClient.get('/buses', { params });
+        return res2.data?.data || [];
+      } catch (err) {
+        if (USE_MOCKS) return MOCK_BUSES;
+        throw err;
+      }
     }
   },
   getBusById: async (id) => {
     try {
-      const res = await apiClient.get(`/buses/${id}`);
+      const res = await apiClient.get(`/trips/${id}`);
       return res.data?.data;
     } catch {
-      return MOCK_BUSES.find((b) => b.id === id || b._id === id);
+      try {
+        const res2 = await apiClient.get(`/buses/${id}`);
+        return res2.data?.data;
+      } catch (err) {
+        if (USE_MOCKS) return MOCK_BUSES.find((b) => b.id === id || b._id === id);
+        throw err;
+      }
     }
   },
 };
 
 // Seats Endpoints
 export const seatApi = {
-  getSeats: async (busId, date) => {
+  getSeats: async (tripOrBusId, date) => {
     try {
-      const res = await apiClient.get(`/seats/${busId}`, { params: { date } });
+      // First try trip seats
+      const res = await apiClient.get(`/trips/${tripOrBusId}/seats`);
       return res.data?.data;
     } catch {
-      return null;
+      // Fallback to legacy seat endpoint
+      const res2 = await apiClient.get(`/seats/${tripOrBusId}`, { params: { date } });
+      return res2.data?.data;
     }
   },
-  holdSeats: async (busId, journeyDate, seatNumbers) => {
-    const res = await apiClient.post('/seats/hold', { busId, journeyDate, seatNumbers });
-    return res.data;
+  holdSeats: async (tripId, journeyDate, seatNumbers) => {
+    try {
+      const res = await apiClient.post(`/trips/${tripId}/locks`, { seatNumbers });
+      return res.data;
+    } catch {
+      const res2 = await apiClient.post('/seats/hold', { busId: tripId, journeyDate, seatNumbers });
+      return res2.data;
+    }
   },
-  releaseSeats: async (busId, journeyDate, seatNumbers) => {
-    const res = await apiClient.post('/seats/release', { busId, journeyDate, seatNumbers });
-    return res.data;
+  releaseSeats: async (tripId, journeyDate, seatNumbers) => {
+    try {
+      const res = await apiClient.post(`/trips/${tripId}/locks/release`, { seatNumbers });
+      return res.data;
+    } catch {
+      const res2 = await apiClient.post('/seats/release', { busId: tripId, journeyDate, seatNumbers });
+      return res2.data;
+    }
   },
 };
 
@@ -117,6 +172,38 @@ export const bookingApi = {
   cancelBooking: async (id, reason) => {
     const res = await apiClient.post(`/bookings/${id}/cancel`, { reason });
     return res.data;
+  },
+};
+
+// Payment Endpoints
+export const paymentApi = {
+  initiatePayment: async (bookingId) => {
+    const res = await apiClient.post('/payments/initiate', { bookingId });
+    return res.data?.data;
+  },
+  verifyPayment: async (paymentData) => {
+    const res = await apiClient.post('/payments/verify', paymentData);
+    return res.data?.data;
+  },
+};
+
+// Ticket Endpoints
+export const ticketApi = {
+  getTicket: async (identifier) => {
+    const res = await apiClient.get(`/tickets/${identifier}`);
+    return res.data?.data;
+  },
+  downloadPdf: async (identifier) => {
+    const res = await apiClient.get(`/tickets/${identifier}/pdf`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = `ticket-${identifier}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   },
 };
 
@@ -143,11 +230,17 @@ export const adminApi = {
       'reviews',
       'notifications',
       'settings',
+      'trips',
+      'pricing',
     ];
     const values = await Promise.all(
-      resources.map((resource) =>
-        adminRequestData(apiClient.get(adminResourcePath(resource)))
-      )
+      resources.map(async (resource) => {
+        try {
+          return await adminRequestData(apiClient.get(adminResourcePath(resource)));
+        } catch {
+          return [];
+        }
+      })
     );
     return Object.fromEntries(resources.map((resource, index) => [resource, values[index]]));
   },
@@ -191,6 +284,10 @@ export const adminApi = {
     const res = await apiClient.get('/admin/reports', { params });
     return res.data?.data;
   },
+  updateBusLayout: async (busId, layoutData) => {
+    const res = await apiClient.put(`/admin/buses/${busId}/layout`, layoutData);
+    return res.data?.data;
+  },
 };
 
 // Route Endpoints
@@ -199,8 +296,9 @@ export const routeApi = {
     try {
       const res = await apiClient.get('/routes');
       return res.data?.data || [];
-    } catch {
-      return POPULAR_ROUTES;
+    } catch (err) {
+      if (USE_MOCKS) return POPULAR_ROUTES;
+      throw err;
     }
   },
 };

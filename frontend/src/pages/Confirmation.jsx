@@ -1,16 +1,64 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
+import { ticketApi } from '../services/api';
 import PrintableTicket from '../components/booking/PrintableTicket';
-import { CheckCircle2, Home, Ticket, Sparkles, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Home, Ticket, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 
 const Confirmation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { bookings } = useBooking();
 
-  // Find booking by PNR or ID
-  const booking = bookings.find((b) => b.pnr === id || b.id === id) || bookings[0];
+  const [remoteBooking, setRemoteBooking] = useState(null);
+  const [loadingTicket, setLoadingTicket] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (id && !bookings.find((b) => b.pnr === id || b.id === id)) {
+      setLoadingTicket(true);
+      ticketApi
+        .getTicket(id)
+        .then((ticketData) => {
+          if (!active || !ticketData) return;
+          setRemoteBooking({
+            id: ticketData.pnr || ticketData._id,
+            pnr: ticketData.pnr,
+            busName: ticketData.journey?.busName,
+            busNumber: ticketData.journey?.busNumber,
+            operator: ticketData.journey?.operator || 'Fleet Partner',
+            busType: ticketData.journey?.busType || 'AC Luxury Coach',
+            origin: ticketData.journey?.source || ticketData.journey?.origin,
+            destination: ticketData.journey?.destination,
+            journeyDate: ticketData.journey?.travelDate,
+            departureTime: ticketData.journey?.departureTime,
+            arrivalTime: ticketData.journey?.arrivalTime,
+            boardingPoint: ticketData.journey?.boardingPoint?.name || 'Main Boarding Terminal',
+            droppingPoint: ticketData.journey?.droppingPoint?.name || 'City Junction',
+            seats: ticketData.seats || [],
+            passengers: ticketData.passengers || [],
+            totalFare: ticketData.pricing?.totalFare || 950,
+            bookingStatus: ticketData.status || 'confirmed',
+            paymentStatus: ticketData.paymentStatus || 'paid',
+            paymentMethod: ticketData.paymentMethod || 'Online Gateway',
+            bookedAt: ticketData.issuedAt || new Date().toISOString()
+          });
+        })
+        .catch((err) => {
+          console.warn('Could not fetch remote ticket:', err?.message);
+        })
+        .finally(() => {
+          if (active) setLoadingTicket(false);
+        });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [id, bookings]);
+
+  // Find booking by PNR or ID, or remote fallback, or first local
+  const booking = bookings.find((b) => b.pnr === id || b.id === id) || remoteBooking || bookings[0];
 
   if (!booking) {
     return (
@@ -33,7 +81,7 @@ const Confirmation = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] py-10 px-4 sm:px-6 lg:px-8 text-slate-800 dark:text-slate-100 transition-colors">
       {/* Success Hero Notice */}
       <div className="no-print max-w-3xl mx-auto mb-8 text-center space-y-2">
         <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-sm">

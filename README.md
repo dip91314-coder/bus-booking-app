@@ -149,11 +149,19 @@ bus-booking-app/
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) (v18+ LTS recommended)
 - npm (included with Node.js)
 - [Git](https://git-scm.com/)
-- A MongoDB Atlas database or local MongoDB instance
-- A code editor such as [Visual Studio Code](https://code.visualstudio.com/)
+- A **MongoDB database with Replica Set support** (for atomic transactions):
+  - **Option 1 (Recommended Cloud)**: Free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster (Replica Sets are enabled by default).
+  - **Option 2 (Local Docker Replica Set)**:
+    ```bash
+    docker run -d --name mongo-rs -p 27017:27017 mongo:7 --replSet rs0
+    # Initialize the replica set once:
+    docker exec -it mongo-rs mongosh --eval "rs.initiate({_id:'rs0', members:[{_id:0, host:'127.0.0.1:27017'}]})"
+    ```
+    Set `MONGO_URI=mongodb://127.0.0.1:27017/busbooking?replicaSet=rs0&directConnection=true` in `backend/.env`.
+  - **Option 3 (Local Standalone MongoDB)**: Standard MongoDB works out of the box; the application automatically detects standalone mode and falls back to atomic compound unique index locking.
 
 ### 1. Clone the repository
 
@@ -169,16 +177,17 @@ cd backend
 npm install
 ```
 
-Dependencies used by the backend (already listed in `package.json`):
+### 3. Configure backend environment & Seed Database
+
+Create `backend/.env` (see template below), then populate seed trips:
 
 ```bash
-npm i express mongoose dotenv cors bcryptjs jsonwebtoken express-validator
-npm i -D nodemon
+# Seed database with buses, physical layouts, routes, trips, pricing & tickets
+npm run seed
+
+# Or run migration on existing data:
+node src/scripts/migrate-to-trips.js
 ```
-
-### 3. Configure backend environment
-
-Create a `.env` file inside `backend/` (see [Environment Variables](#-environment-variables)).
 
 ### 4. Start the backend
 
@@ -195,19 +204,25 @@ cd frontend
 npm install
 ```
 
-Dependencies used by the frontend (already listed in `package.json`):
-
-```bash
-npm i axios react-router-dom bootstrap
-```
-
 ### 6. Start the frontend
 
 ```bash
 npm run dev
 ```
 
-Open the local URL printed by Vite, usually `http://localhost:5173`.
+Open `http://localhost:5173` in your browser.
+
+### 7. Run Test Suites
+
+Run all tests across backend and frontend:
+
+```bash
+# Backend Test Suite (32 tests covering models, transactions, concurrency, customer & admin APIs)
+cd backend && npm test
+
+# Frontend Test Suite & Build Verification
+cd frontend && npm test && npm run build
+```
 
 ## 🔑 Environment Variables
 

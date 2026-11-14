@@ -10,15 +10,16 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Wallet,
-  Clock,
-  ShieldCheck,
   Sparkles,
   MapPin,
   Star,
   Copy,
   Check,
-  Quote
+  Quote,
+  Play,
+  Volume2,
+  VolumeX,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -55,6 +56,9 @@ const Home = () => {
   const [mapDest, setMapDest] = useState('Pune');
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const videoRef = React.useRef(null);
 
   const handleSelectCityFromMap = (cityName, type) => {
     if (type === 'origin') setMapOrigin(cityName);
@@ -293,28 +297,51 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white text-[#0F172A] font-sans antialiased">
-      {/* 1. HERO + SEARCH SECTION */}
-      <section className="relative pt-10 pb-20 overflow-hidden min-h-[460px] flex items-center">
-        {/* Full Image Background */}
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] text-[#0F172A] dark:text-slate-100 font-sans antialiased transition-colors">
+      {/* 1. HERO + SEARCH SECTION WITH CINEMATIC VIDEO BACKGROUND */}
+      <section className="relative pt-10 pb-20 overflow-hidden min-h-[480px] flex items-center">
+        {/* Full Video Background with Poster Fallback */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <img
-            src="/hero-bus.jpg"
-            alt="Intercity Bus Transit Heritage"
-            className="w-full h-full object-cover object-center"
-            loading="eager"
+          <video
+            ref={videoRef}
+            src="/hero-video.mp4"
+            autoPlay
+            loop
+            muted={isVideoMuted}
+            playsInline
+            poster="/hero-bus.jpg"
+            className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
           />
-          {/* Deep Dark Overlay for crisp contrast matching the screenshot */}
-          <div className="absolute inset-0 bg-[#0A0D14]/80 backdrop-blur-[0.5px]"></div>
+          {/* Deep Dark Overlay for crisp contrast matching design */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#070D1F]/90 via-[#0B132B]/80 to-[#1C0F38]/85 backdrop-blur-[0.5px]"></div>
           {/* Bottom gentle fade into page surface */}
-          <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white to-transparent"></div>
+          <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white dark:from-[#0B0F19] to-transparent"></div>
         </div>
 
         <div className="max-w-[1200px] mx-auto px-6 relative z-10 w-full">
-          {/* Badge & Title exactly as in screenshot */}
+          {/* Badge & Title */}
           <div className="mb-6 text-center sm:text-left max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-[#F59E0B] text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm mb-3">
-              <Sparkles className="w-3.5 h-3.5" /> India's Trusted Bus Transit Platform
+            <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start mb-3">
+              <div className="inline-flex items-center gap-2 bg-[#F59E0B] text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                <Sparkles className="w-3.5 h-3.5" /> India's Trusted Bus Transit Platform
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVideoMuted(!isVideoMuted)}
+                className="inline-flex items-center gap-1.5 bg-black/50 hover:bg-black/70 text-white backdrop-blur-md text-[11px] font-bold px-3 py-1 rounded-full border border-white/20 transition cursor-pointer"
+                title={isVideoMuted ? 'Turn on video audio' : 'Mute video audio'}
+              >
+                {isVideoMuted ? <VolumeX className="w-3.5 h-3.5 text-amber-300" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+                <span>{isVideoMuted ? 'Sound Off' : 'Sound On'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVideoModalOpen(true)}
+                className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white backdrop-blur-md text-[11px] font-bold px-3 py-1 rounded-full border border-white/25 transition cursor-pointer"
+              >
+                <Play className="w-3 h-3 fill-white text-white" />
+                <span>Watch Story Video</span>
+              </button>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-[44px] font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
               Book Bus Tickets
@@ -331,21 +358,57 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 2. BEST OFFERS FOR YOU (Matching localhost_5173_ (3).png exactly) */}
-      <section className="py-14 bg-white border-b border-[#E5E7EB]">
+      {/* Full Video Modal */}
+      {videoModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+          onClick={() => setVideoModalOpen(false)}
+        >
+          <div
+            className="relative bg-slate-950 rounded-3xl overflow-hidden max-w-4xl w-full border border-slate-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/60 text-white">
+              <div className="flex items-center gap-2">
+                <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <h3 className="text-sm font-bold">YatraBus Journey Experience Video</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVideoModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="aspect-video w-full bg-black">
+              <video
+                src="/hero-video.mp4"
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. BEST OFFERS FOR YOU */}
+      <section className="py-14 bg-white dark:bg-[#0E1526] border-b border-[#E5E7EB] dark:border-slate-800 transition-colors">
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#3B0764] tracking-tight">
+              <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#3B0764] dark:text-purple-300 tracking-tight">
                 Best offers for you
               </h2>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-slate-400 mt-0.5">
                 Exclusive promo discounts and instant fare savings on trending routes
               </p>
             </div>
             <Link
               to="/routes"
-              className="text-xs sm:text-sm font-bold text-[#7E22CE] hover:text-[#5B21B6] inline-flex items-center gap-1.5 transition-colors"
+              className="text-xs sm:text-sm font-bold text-[#7E22CE] dark:text-purple-400 hover:text-[#5B21B6] dark:hover:text-purple-300 inline-flex items-center gap-1.5 transition-colors"
             >
               <span>View all offers</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -356,7 +419,7 @@ const Home = () => {
             {OFFERS.map((offer, idx) => (
               <div
                 key={idx}
-                className="group relative rounded-[20px] overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-purple-100 cursor-pointer flex flex-col justify-between h-44"
+                className="group relative rounded-[20px] overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-purple-100 dark:border-purple-900/40 cursor-pointer flex flex-col justify-between h-44"
               >
                 {/* Background Image */}
                 <img
@@ -401,132 +464,22 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. PURPLE WALLET (Compact 3-Step Section) */}
+
+      {/* 4. SHORT TRIPS */}
       <motion.section
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-60px' }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="py-16 bg-[#F8F7FC] border-b border-[#E5E7EB]"
-      >
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left: Heading & Steps */}
-            <div className="lg:col-span-7 space-y-6">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#5B21B6] bg-[#F5F3FF] px-3 py-1 rounded-full border border-[#DDD6FE]">
-                  Purple Rewards
-                </span>
-                <h2 className="text-2xl sm:text-[28px] font-semibold text-[#0F172A] mt-3 tracking-tight">
-                  Purple Wallet & Instant Cashback
-                </h2>
-                <p className="text-sm text-[#475569] mt-1.5 leading-relaxed">
-                  Earn credits on every trip and enjoy hassle-free 1-click checkout with guaranteed zero-cancellation fee protection.
-                </p>
-              </div>
-
-              {/* 3-Step List */}
-              <div className="space-y-4 pt-1">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-7 h-7 rounded-full bg-[#5B21B6] text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#0F172A]">Instant ₹100 Welcome Credit</h4>
-                    <p className="text-sm text-[#64748B] mt-0.5">
-                      Create an account on YatraBus to get ₹100 credited to your wallet instantly.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <div className="w-7 h-7 rounded-full bg-[#5B21B6] text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#0F172A]">Use Wallet Balance on Any Ticket</h4>
-                    <p className="text-sm text-[#64748B] mt-0.5">
-                      Redeem wallet funds seamlessly at checkout for instant fare discounts on any bus operator.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3.5">
-                  <div className="w-7 h-7 rounded-full bg-[#5B21B6] text-white text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-[#0F172A]">Earn More on Every Journey</h4>
-                    <p className="text-sm text-[#64748B] mt-0.5">
-                      Accumulate reward points with each completed trip and unlock exclusive member perks.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Button
-                  onClick={() => navigate('/register')}
-                  variant="primary"
-                  className="mt-2 rounded-sm shadow-soft hover:-translate-y-0.5 hover:shadow-glow-purple active:scale-95 transition-all duration-200"
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Activate Purple Wallet
-                </Button>
-              </div>
-            </div>
-
-            {/* Right: 3 Short Benefit Highlights */}
-            <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4">
-              <div className="bg-white rounded-md border border-[#E5E7EB] shadow-soft p-4 flex items-center gap-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-hover">
-                <div className="w-10 h-10 rounded-sm bg-[#F5F3FF] text-[#5B21B6] flex items-center justify-center shrink-0">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-[#0F172A]">Instant Welcome</h4>
-                  <p className="text-xs text-[#64748B]">₹100 credited right upon signup</p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-md border border-[#E5E7EB] shadow-soft p-4 flex items-center gap-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-hover">
-                <div className="w-10 h-10 rounded-sm bg-[#F5F3FF] text-[#5B21B6] flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-[#0F172A]">1-Click Checkout</h4>
-                  <p className="text-xs text-[#64748B]">Zero payment gateway drop-offs</p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-md border border-[#E5E7EB] shadow-soft p-4 flex items-center gap-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-hover">
-                <div className="w-10 h-10 rounded-sm bg-[#F5F3FF] text-[#5B21B6] flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-[#0F172A]">Zero Cancellation Fee</h4>
-                  <p className="text-xs text-[#64748B]">Instant refunds back to wallet</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* 4. SHORT TRIPS (Image zooms to 1.05 inside rounded frame on card hover) */}
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-60px' }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="py-16 bg-white border-b border-[#E5E7EB]"
+        className="py-16 bg-white dark:bg-[#0B0F19] border-b border-[#E2E8F0] dark:border-slate-800 transition-colors"
       >
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
             <div>
-              <h2 className="text-2xl sm:text-[28px] font-semibold text-[#0F172A] tracking-tight">
+              <h2 className="text-2xl sm:text-[28px] font-semibold text-[#0F172A] dark:text-white tracking-tight">
                 Explore Short Trips & Weekend Circuits
               </h2>
-              <p className="text-sm text-[#64748B] mt-1">
+              <p className="text-sm text-[#64748B] dark:text-slate-400 mt-1">
                 Handpicked weekend getaways, coastal corridors, and pilgrim tours with guaranteed seats.
               </p>
             </div>
@@ -541,7 +494,7 @@ const Home = () => {
                   className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 select-none ${
                     activeTab === tab
                       ? 'bg-[#5B21B6] text-white shadow-sm'
-                      : 'bg-[#F8F7FC] text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] border border-[#E5E7EB]'
+                      : 'bg-white dark:bg-slate-800 text-[#475569] dark:text-slate-300 hover:bg-[#F1F5F9] dark:hover:bg-slate-700 hover:text-[#0F172A] dark:hover:text-white border border-[#E2E8F0] dark:border-slate-700'
                   }`}
                 >
                   {tab}
@@ -550,16 +503,16 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Cards Grid: hover translateY(-6px), shadow grows, image zooms to 1.05 */}
+          {/* Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {currentTrips.map((trip) => (
               <div
                 key={trip.id}
-                className="bg-white rounded-md border border-[#E5E7EB] shadow-soft overflow-hidden flex flex-col justify-between transition-all duration-200 hover:-translate-y-1.5 hover:shadow-soft-hover hover:border-[#CBD5E1] cursor-pointer group"
+                className="bg-white dark:bg-[#111622] rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col justify-between transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer group"
               >
                 <div>
                   {/* Fixed 16:10 Aspect Ratio with Lazy Loading and Zoom Container */}
-                  <div className="relative aspect-[16/10] w-full bg-[#F1F5F9] overflow-hidden rounded-t-md">
+                  <div className="relative aspect-[16/10] w-full bg-[#F1F5F9] dark:bg-slate-800 overflow-hidden rounded-t-md">
                     <img
                       src={trip.image}
                       alt={trip.title}
@@ -580,20 +533,20 @@ const Home = () => {
                   </div>
 
                   <div className="p-4">
-                    <h3 className="text-base font-semibold text-[#0F172A] line-clamp-1 group-hover:text-[#5B21B6] transition-colors">
+                    <h3 className="text-base font-semibold text-[#0F172A] dark:text-white line-clamp-1 group-hover:text-[#5B21B6] dark:group-hover:text-purple-400 transition-colors">
                       {trip.title}
                     </h3>
-                    <p className="text-xs text-[#64748B] mt-1.5 flex items-center gap-1.5 font-medium">
-                      <MapPin className="w-3.5 h-3.5 text-[#5B21B6] shrink-0" />
+                    <p className="text-xs text-[#64748B] dark:text-slate-400 mt-1.5 flex items-center gap-1.5 font-medium">
+                      <MapPin className="w-3.5 h-3.5 text-[#5B21B6] dark:text-purple-400 shrink-0" />
                       <span className="truncate">{trip.route}</span>
                     </p>
                   </div>
                 </div>
 
-                <div className="p-4 pt-3 border-t border-[#F1F5F9] flex items-center justify-between">
+                <div className="p-4 pt-3 border-t border-[#F1F5F9] dark:border-slate-800 flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-[#64748B] block font-medium">Starting from</span>
-                    <span className="text-base font-bold text-[#5B21B6]">₹{trip.fare}</span>
+                    <span className="text-xs text-[#64748B] dark:text-slate-400 block font-medium">Starting from</span>
+                    <span className="text-base font-bold text-[#5B21B6] dark:text-purple-400">₹{trip.fare}</span>
                   </div>
                   <Button
                     variant="primary"
@@ -617,15 +570,15 @@ const Home = () => {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-60px' }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="py-16 bg-[#F8F7FC] border-b border-[#E5E7EB]"
+        className="py-16 bg-white dark:bg-[#0E1526] border-b border-[#E5E7EB] dark:border-slate-800 transition-colors"
       >
         <div className="max-w-[1200px] mx-auto px-6">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-2xl sm:text-[28px] font-semibold text-[#0F172A] tracking-tight">
+              <h2 className="text-2xl sm:text-[28px] font-semibold text-[#0F172A] dark:text-white tracking-tight">
                 National Highway Route Navigator
               </h2>
-              <p className="text-sm text-[#64748B] mt-1">
+              <p className="text-sm text-[#64748B] dark:text-slate-400 mt-1">
                 Explore major highway transit corridors and bus terminus connections.
               </p>
             </div>
@@ -640,35 +593,35 @@ const Home = () => {
         </div>
       </motion.section>
 
-      {/* 6. CUSTOMER TESTIMONIALS (Matching screenshot reference) */}
+      {/* 6. CUSTOMER TESTIMONIALS */}
       <section className="py-16 max-w-4xl mx-auto px-6 text-center">
         <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-[#3B0764] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#3B0764] dark:text-purple-300 tracking-tight">
             Customer Testimonials
           </h2>
           <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
-            From the first stop to the final destination, Purple bus journey was more than just a ride.
+            From the first stop to the final destination, YatraBus journey is more than just a ride.
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 sm:p-12 border border-purple-100 shadow-xl shadow-purple-950/5 relative">
-          <div className="absolute top-6 right-8 text-purple-200">
+        <div className="bg-white dark:bg-[#111622] rounded-3xl p-8 sm:p-12 border border-purple-100 dark:border-slate-800 shadow-xl shadow-purple-950/5 relative transition-colors">
+          <div className="absolute top-6 right-8 text-purple-200 dark:text-purple-900/40">
             <Quote className="w-12 h-12 rotate-180" />
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-base font-extrabold text-slate-900">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
               {PURPLE_TESTIMONIALS[testimonialIdx].name}
             </h3>
-            <span className="text-[11px] font-semibold text-[#7E22CE] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-100 mt-1.5 inline-block">
+            <span className="text-[11px] font-semibold text-[#7E22CE] dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2.5 py-0.5 rounded-full border border-purple-100 dark:border-purple-800/50 mt-1.5 inline-block">
               {PURPLE_TESTIMONIALS[testimonialIdx].location} • {PURPLE_TESTIMONIALS[testimonialIdx].role}
             </span>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mt-5 italic">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed mt-5 italic">
               "{PURPLE_TESTIMONIALS[testimonialIdx].quote}"
             </p>
 
-            {/* Navigation buttons matching screenshot */}
+            {/* Navigation buttons */}
             <div className="flex items-center justify-center gap-3 mt-8">
               <button
                 type="button"
@@ -678,7 +631,7 @@ const Home = () => {
                   )
                 }
                 aria-label="Previous testimonial"
-                className="w-8 h-8 rounded-full border border-slate-200 hover:border-[#7E22CE] hover:text-[#7E22CE] flex items-center justify-center transition active:scale-90"
+                className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 hover:border-[#7E22CE] dark:hover:border-purple-400 text-slate-600 dark:text-slate-300 flex items-center justify-center transition active:scale-90"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -689,7 +642,7 @@ const Home = () => {
                     key={i}
                     onClick={() => setTestimonialIdx(i)}
                     className={`h-1.5 rounded-full cursor-pointer transition-all ${
-                      i === testimonialIdx ? 'w-5 bg-[#3B0764]' : 'w-1.5 bg-purple-200'
+                      i === testimonialIdx ? 'w-5 bg-[#3B0764] dark:bg-purple-400' : 'w-1.5 bg-purple-200 dark:bg-slate-700'
                     }`}
                   ></span>
                 ))}
@@ -703,7 +656,7 @@ const Home = () => {
                   )
                 }
                 aria-label="Next testimonial"
-                className="w-8 h-8 rounded-full border border-slate-200 hover:border-[#7E22CE] hover:text-[#7E22CE] flex items-center justify-center transition active:scale-90"
+                className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 hover:border-[#7E22CE] dark:hover:border-purple-400 text-slate-600 dark:text-slate-300 flex items-center justify-center transition active:scale-90"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -712,13 +665,13 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 7. READY TO GET OUR LATEST NEWSLETTER? (Matching screenshot reference) */}
-      <section className="py-16 bg-gradient-to-b from-[#FAF5FF] via-[#FAF5FF]/60 to-[#F3E8FF]/60 border-t border-purple-100">
+      {/* 7. READY TO GET OUR LATEST NEWSLETTER? */}
+      <section className="py-16 bg-gradient-to-b from-[#FAF5FF] dark:from-[#0E1526] via-[#FAF5FF]/60 dark:via-[#0E1526]/80 to-[#F3E8FF]/60 dark:to-[#0B0F19] border-t border-purple-100 dark:border-slate-800 transition-colors">
         <div className="max-w-[640px] mx-auto px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-black text-[#3B0764] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#3B0764] dark:text-white tracking-tight">
             Ready to Get our <span className="underline decoration-amber-400 decoration-wavy decoration-2">latest newsletter?</span>
           </h2>
-          <p className="text-xs sm:text-sm text-[#64748B] mt-2">
+          <p className="text-xs sm:text-sm text-[#64748B] dark:text-slate-400 mt-2">
             Sign up to receive route announcements, weekend holiday discount coupons, and express schedules.
           </p>
 
@@ -728,7 +681,7 @@ const Home = () => {
               placeholder="Enter your email..."
               value={newsletterEmail}
               onChange={(e) => setNewsletterEmail(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-purple-200 bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] shadow-sm"
+              className="w-full px-4 py-2.5 rounded-xl border border-purple-200 dark:border-slate-700 bg-white dark:bg-[#111622] text-xs sm:text-sm text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] shadow-sm"
               required
             />
             <button

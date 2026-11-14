@@ -1,8 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
 import MainLayout from './layouts/MainLayout';
+import { ProtectedRoute, AdminRoute } from './components/common/RouteGuards';
 
 // Customer Pages
 import Home from './pages/Home';
@@ -19,6 +21,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Destinations from './pages/Destinations';
 import RoutesPage from './pages/Routes';
+import PopularTrips from './pages/PopularTrips';
 import Help from './pages/Help';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
@@ -46,9 +49,10 @@ import './App.css';
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <BookingProvider>
-          <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <BookingProvider>
+            <Routes>
             {/* Customer Storefront with MainLayout */}
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
@@ -67,15 +71,16 @@ function App() {
               <Route path="forgot-password" element={<ForgotPassword />} />
 
               {/* User Account */}
-              <Route path="dashboard" element={<UserDashboard />} />
-              <Route path="my-bookings" element={<UserDashboard />} />
-              <Route path="profile" element={<UserDashboard />} />
+              <Route path="dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+              <Route path="my-bookings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+              <Route path="profile" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
 
               {/* Information & Policies */}
               <Route path="about" element={<About />} />
               <Route path="contact" element={<Contact />} />
               <Route path="destinations" element={<Destinations />} />
-              <Route path="routes" element={<RoutesPage />} />
+              <Route path="routes" element={<PopularTrips />} />
+              <Route path="popular-trips" element={<PopularTrips />} />
               <Route path="help" element={<Help />} />
               <Route path="privacy-policy" element={<PrivacyPolicy />} />
               <Route path="terms-and-conditions" element={<TermsConditions />} />
@@ -85,9 +90,11 @@ function App() {
             <Route
               path="/admin"
               element={
-                <AdminProvider>
-                  <AdminLayout />
-                </AdminProvider>
+                <AdminRoute>
+                  <AdminProvider>
+                    <AdminLayout />
+                  </AdminProvider>
+                </AdminRoute>
               }
             >
               <Route index element={<DashboardPage />} />
@@ -110,8 +117,9 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BookingProvider>
-      </AuthProvider>
+          </BookingProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
