@@ -70,8 +70,8 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-[85vh] bg-[#FAF8FD] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-xl shadow-purple-900/5 border border-purple-100">
+    <div className="min-h-[85vh] bg-white dark:bg-[#0B0F19] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans transition-colors">
+      <div className="max-w-md w-full bg-white dark:bg-[#111622] rounded-3xl p-8 sm:p-10 shadow-xl shadow-purple-900/5 border border-purple-100 dark:border-slate-800">
         <div className="text-center mb-6">
           <Link to="/" className="inline-flex items-center justify-center mb-3 group">
             <img

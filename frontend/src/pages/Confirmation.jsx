@@ -33,7 +33,7 @@ const Confirmation = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] py-10 px-4 sm:px-6 lg:px-8 text-slate-800 dark:text-slate-100 transition-colors">
       {/* Success Hero Notice */}
       <div className="no-print max-w-3xl mx-auto mb-8 text-center space-y-2">
         <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-sm">

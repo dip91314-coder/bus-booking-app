@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
 import MainLayout from './layouts/MainLayout';
@@ -19,6 +20,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Destinations from './pages/Destinations';
 import RoutesPage from './pages/Routes';
+import PopularTrips from './pages/PopularTrips';
 import Help from './pages/Help';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
@@ -46,9 +48,10 @@ import './App.css';
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <BookingProvider>
-          <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <BookingProvider>
+            <Routes>
             {/* Customer Storefront with MainLayout */}
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
@@ -75,7 +78,8 @@ function App() {
               <Route path="about" element={<About />} />
               <Route path="contact" element={<Contact />} />
               <Route path="destinations" element={<Destinations />} />
-              <Route path="routes" element={<RoutesPage />} />
+              <Route path="routes" element={<PopularTrips />} />
+              <Route path="popular-trips" element={<PopularTrips />} />
               <Route path="help" element={<Help />} />
               <Route path="privacy-policy" element={<PrivacyPolicy />} />
               <Route path="terms-and-conditions" element={<TermsConditions />} />
@@ -110,8 +114,9 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BookingProvider>
-      </AuthProvider>
+          </BookingProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

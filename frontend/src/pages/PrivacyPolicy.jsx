@@ -3,7 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 
 const PrivacyPolicy = () => {
   return (
-    <div className="min-h-screen bg-[#F8FAFD] pb-24">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-slate-800 dark:text-slate-100 transition-colors">
       <div className="bg-[#071A4D] text-white py-12 px-4 text-center">
         <h1 className="text-3xl font-black">Privacy Policy</h1>
         <p className="text-xs text-blue-200 mt-1">Last Updated: November 2026</p>

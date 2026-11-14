@@ -78,7 +78,7 @@ const RoutesPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F7FC] pb-24 text-[#0F172A] font-sans antialiased">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-[#0F172A] dark:text-slate-100 font-sans antialiased transition-colors">
       {/* 1. HERO SECTION (Clean solid Navy-to-Purple gradient, max 240px tall) */}
       <div className="bg-gradient-to-r from-[#0F172A] via-[#1E1B4B] to-[#5B21B6] text-white py-12 px-6 shadow-soft">
         <div className="max-w-[1200px] mx-auto text-center space-y-2.5">

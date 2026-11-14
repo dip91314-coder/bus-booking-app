@@ -15,7 +15,7 @@ const Destinations = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] pb-24">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-slate-800 dark:text-slate-100 transition-colors">
       {/* Hero */}
       <div className="bg-gradient-to-r from-[#071A4D] via-[#0C247A] to-primary text-white py-16 px-4 sm:px-6 lg:px-8 text-center shadow-lg">
         <div className="max-w-3xl mx-auto space-y-3">

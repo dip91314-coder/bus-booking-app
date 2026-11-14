@@ -81,7 +81,7 @@ const SeatSelection = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8FD] pb-24 font-sans text-slate-800">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 font-sans text-slate-800 dark:text-slate-100 transition-colors">
       {/* DevIntelle inspired top control header bar */}
       <div className="bg-[#3B0764] text-white py-4 px-4 sm:px-6 lg:px-8 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">

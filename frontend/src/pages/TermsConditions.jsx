@@ -2,7 +2,7 @@ import React from 'react';
 
 const TermsConditions = () => {
   return (
-    <div className="min-h-screen bg-[#F8FAFD] pb-24">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-slate-800 dark:text-slate-100 transition-colors">
       <div className="bg-[#071A4D] text-white py-12 px-4 text-center">
         <h1 className="text-3xl font-black">Terms & Conditions</h1>
         <p className="text-xs text-blue-200 mt-1">Effective: November 2026</p>

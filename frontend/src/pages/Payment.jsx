@@ -86,7 +86,7 @@ const Payment = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] pb-24">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-slate-800 dark:text-slate-100 transition-colors">
       {/* Header */}
       <div className="bg-[#071A4D] text-white py-6 px-4 sm:px-6 lg:px-8 border-b border-blue-900/60 shadow-md">
         <div className="max-w-4xl mx-auto flex items-center justify-between">

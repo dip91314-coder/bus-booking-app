@@ -43,34 +43,34 @@ const BusCard = ({ bus }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 hover:border-slate-300 shadow-sm transition mb-4 overflow-hidden">
+    <div className="bg-white dark:bg-[#111622] rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition mb-4 overflow-hidden">
       <div className="p-5">
         {/* Top Meta: Operator, Bus Type, Rating */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-slate-100 dark:border-slate-800">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 {bus.operator}
               </h3>
               {bus.hasLiveTracking && (
-                <span className="text-[10px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                   Live Tracking
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {bus.busName} • <span className="text-slate-400 font-mono text-[11px]">{bus.busNumber}</span>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {bus.busName} • <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px]">{bus.busNumber}</span>
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
               {bus.busType}
             </span>
-            <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-xs font-semibold text-amber-900">
+            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-900 dark:text-amber-200">
               <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
               <span>{bus.rating}</span>
-              <span className="text-slate-400 font-normal">({bus.reviewsCount})</span>
+              <span className="text-slate-400 dark:text-slate-500 font-normal">({bus.reviewsCount})</span>
             </div>
           </div>
         </div>
@@ -79,51 +79,51 @@ const BusCard = ({ bus }) => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center py-4">
           {/* Departure */}
           <div className="md:col-span-3">
-            <div className="text-2xl font-bold text-slate-900">{bus.departureTime}</div>
-            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{bus.origin}</p>
-            <p className="text-[11px] text-slate-400 truncate max-w-[180px]">
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">{bus.departureTime}</div>
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{bus.origin}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[180px]">
               {bus.boardingPoints?.[0]?.name || 'Origin Bus Stand'}
             </p>
           </div>
 
           {/* Duration Timeline */}
           <div className="md:col-span-3 flex flex-col items-center justify-center text-center">
-            <span className="text-xs text-slate-500 mb-1 flex items-center gap-1 font-medium">
+            <span className="text-xs text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1 font-medium">
               <Clock className="w-3 h-3 text-slate-400" />
               {bus.journeyDuration}
             </span>
             <div className="w-full flex items-center justify-center relative my-1">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-              <div className="flex-1 h-[1px] bg-slate-200 mx-1"></div>
+              <div className="flex-1 h-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
               <Bus className="w-3.5 h-3.5 text-slate-400 mx-0.5" />
-              <div className="flex-1 h-[1px] bg-slate-200 mx-1"></div>
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+              <div className="flex-1 h-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-700 dark:bg-slate-300"></div>
             </div>
-            <span className="text-[11px] text-slate-400">Non-Stop Intercity</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">Non-Stop Intercity</span>
           </div>
 
           {/* Arrival */}
           <div className="md:col-span-3">
-            <div className="text-2xl font-bold text-slate-900">{bus.arrivalTime}</div>
-            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{bus.destination}</p>
-            <p className="text-[11px] text-slate-400 truncate max-w-[180px]">
+            <div className="text-2xl font-bold text-slate-900 dark:text-white">{bus.arrivalTime}</div>
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{bus.destination}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate max-w-[180px]">
               {bus.droppingPoints?.[0]?.name || 'Destination Terminal'}
             </p>
           </div>
 
           {/* Price & Booking Button */}
-          <div className="md:col-span-3 flex md:flex-col items-center md:items-end justify-between border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+          <div className="md:col-span-3 flex md:flex-col items-center md:items-end justify-between border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
             <div className="text-left md:text-right">
-              <span className="text-[11px] text-slate-400 block">Starting from</span>
-              <div className="text-2xl font-bold text-slate-900 leading-none">
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Starting from</span>
+              <div className="text-2xl font-bold text-slate-900 dark:text-white leading-none">
                 ₹{bus.fare}
               </div>
-              <span className="text-[10px] text-slate-400">+ taxes</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">+ taxes</span>
             </div>
 
             <div className="mt-2 text-right">
               <span className={`text-xs font-medium block mb-1.5 ${
-                bus.availableSeatsCount <= 5 ? 'text-rose-600 font-semibold' : 'text-emerald-700'
+                bus.availableSeatsCount <= 5 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-emerald-700 dark:text-emerald-400'
               }`}>
                 {bus.availableSeatsCount} seats available
               </span>
@@ -140,12 +140,12 @@ const BusCard = ({ bus }) => {
         </div>
 
         {/* Amenities Bar & Toggle */}
-        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {bus.amenities?.slice(0, 4).map((amenity, idx) => (
               <span
                 key={idx}
-                className="inline-flex items-center gap-1 text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200"
+                className="inline-flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#161D2E] px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800"
               >
                 {getAmenityIcon(amenity)}
                 <span>{amenity}</span>
@@ -156,7 +156,7 @@ const BusCard = ({ bus }) => {
           <button
             type="button"
             onClick={() => setShowDetails(!showDetails)}
-            className="text-xs text-blue-700 hover:text-blue-900 font-medium flex items-center gap-1"
+            className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium flex items-center gap-1"
           >
             {showDetails ? 'Hide Details' : 'Boarding & Dropping Points'}
             {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -166,39 +166,39 @@ const BusCard = ({ bus }) => {
 
       {/* Expandable Points Drawer */}
       {showDetails && (
-        <div className="bg-slate-50 border-t border-slate-200 p-4 text-xs text-slate-700 space-y-3">
+        <div className="bg-slate-50 dark:bg-[#0E1526] border-t border-slate-200 dark:border-slate-800 p-4 text-xs text-slate-700 dark:text-slate-300 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Boarding */}
-            <div className="bg-white p-3 rounded-md border border-slate-200">
-              <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-1.5 text-xs">
-                <MapPin className="w-3.5 h-3.5 text-blue-600" /> Boarding Points
+            <div className="bg-white dark:bg-[#111622] p-3 rounded-md border border-slate-200 dark:border-slate-800">
+              <h5 className="font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5 text-xs">
+                <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Boarding Points
               </h5>
               <ul className="space-y-1.5">
                 {bus.boardingPoints?.map((bp) => (
                   <li key={bp.id} className="flex items-start justify-between">
                     <div>
-                      <span className="font-medium text-slate-800">{bp.name}</span>
-                      <span className="text-[11px] text-slate-400 block">{bp.landmark}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{bp.name}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 block">{bp.landmark}</span>
                     </div>
-                    <span className="font-bold text-slate-900 ml-2">{bp.time}</span>
+                    <span className="font-bold text-slate-900 dark:text-white ml-2">{bp.time}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* Dropping */}
-            <div className="bg-white p-3 rounded-md border border-slate-200">
-              <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-1.5 text-xs">
-                <MapPin className="w-3.5 h-3.5 text-amber-600" /> Dropping Points
+            <div className="bg-white dark:bg-[#111622] p-3 rounded-md border border-slate-200 dark:border-slate-800">
+              <h5 className="font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5 text-xs">
+                <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Dropping Points
               </h5>
               <ul className="space-y-1.5">
                 {bus.droppingPoints?.map((dp) => (
                   <li key={dp.id} className="flex items-start justify-between">
                     <div>
-                      <span className="font-medium text-slate-800">{dp.name}</span>
-                      <span className="text-[11px] text-slate-400 block">{dp.landmark}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{dp.name}</span>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 block">{dp.landmark}</span>
                     </div>
-                    <span className="font-bold text-slate-900 ml-2">{dp.time}</span>
+                    <span className="font-bold text-slate-900 dark:text-white ml-2">{dp.time}</span>
                   </li>
                 ))}
               </ul>
