@@ -10,29 +10,46 @@
 
 ## 1. Endpoints Summary Table
 
-| Module | Method | Path | Access Level | Description | Traceable FR |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Auth** | `POST` | `/auth/register` | Public | Register new user account | FR-01, FR-05 |
-| **Auth** | `POST` | `/auth/login` | Public | Authenticate user & return JWT | FR-02, FR-05 |
-| **Auth** | `GET` | `/auth/me` | Authenticated | Get current authenticated user profile | FR-03, FR-04 |
-| **Profile** | `GET` | `/users/profile` | Authenticated | Fetch passenger profile details | FR-14 |
-| **Profile** | `PUT` | `/users/profile` | Authenticated | Update passenger profile details | FR-14 |
-| **Travellers** | `GET` | `/travellers` | Authenticated | Get user's saved travellers list | FR-15 |
-| **Travellers** | `POST` | `/travellers` | Authenticated | Create a new saved traveller | FR-15 |
-| **Travellers** | `DELETE`| `/travellers/:id` | Authenticated | Delete a saved traveller | FR-15 |
-| **Buses** | `GET` | `/buses/search` | Public | Search buses by origin & destination | FR-06, FR-07 |
-| **Buses** | `GET` | `/buses/:id` | Public | Get single bus details & amenities | FR-08 |
-| **Buses** | `GET` | `/buses/:id/seats` | Public | Get booked seats for a bus on a date | FR-10 |
-| **Bookings** | `POST` | `/bookings` | Authenticated | Create new booking (Atomic / Concurrency Safe)| FR-17, FR-18, FR-19 |
-| **Bookings** | `GET` | `/bookings/my-bookings` | Authenticated | Get current user's booking history | FR-22 |
-| **Bookings** | `GET` | `/bookings/:bookingReference` | Authenticated | Get single booking/ticket details | FR-21 |
-| **Bookings** | `PUT` | `/bookings/:bookingReference/cancel` | Authenticated | Cancel a booking *(Post-MVP)* | FR-23 |
-| **Admin** | `GET` | `/admin/buses` | Admin Only | Get all buses (including inactive) | FR-26, FR-27 |
-| **Admin** | `POST` | `/admin/buses` | Admin Only | Create a new bus schedule | FR-27 |
-| **Admin** | `PUT` | `/admin/buses/:id` | Admin Only | Update existing bus details | FR-28 |
-| **Admin** | `DELETE`| `/admin/buses/:id` | Admin Only | Delete or deactivate bus | FR-29 |
-| **Admin** | `GET` | `/admin/bookings` | Admin Only | View all system bookings (Paginated) | FR-30 |
-| **Admin** | `GET` | `/admin/stats` | Admin Only | Fleet & revenue statistics *(Post-MVP)* | FR-31 |
+| Module | Method | Path | Access Level | Description | Traceable FR | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/auth/register` | Public | Register new customer account | FR-01, FR-05 | Active |
+| **Auth** | `POST` | `/auth/login` | Public | Authenticate user & return JWT | FR-02, FR-05 | Active |
+| **Auth** | `GET` | `/auth/me` | Authenticated | Get current authenticated user profile | FR-03, FR-04 | Active |
+| **Trips** | `GET` | `/trips` | Public | Search scheduled trips by From, To, and Date | SRS §6.1, §6.2 | Active (Canonical) |
+| **Trips** | `GET` | `/trips/:id` | Public | Get trip journey details and pricing | SRS §6.3 | Active |
+| **Trips** | `GET` | `/trips/:tripId/seats` | Public | Get physical seating layout with real-time lock/booked status | SRS §6.4, §7.1 | Active (Canonical) |
+| **Trips** | `POST` | `/trips/:tripId/locks` | Authenticated | Temporarily lock selected seats (8 mins) with 409 conflict handling | SRS §7.5, §7.6 | Active (Canonical) |
+| **Trips** | `POST` | `/trips/:tripId/locks/release` | Authenticated | Release user's active seat locks | SRS §7.5 | Active |
+| **Bookings** | `POST` | `/bookings` | Authenticated | Create pending booking tied to active locks; recomputes server price | SRS §6.6, §7.5 | Active (Trip-Centric) |
+| **Bookings** | `GET` | `/bookings/my-bookings` | Authenticated | Get customer booking history | SRS §6.10 | Active |
+| **Bookings** | `GET` | `/bookings/:reference` | Authenticated | Get booking details by PNR or ID | SRS §6.7 | Active |
+| **Bookings** | `POST` | `/bookings/:id/cancel` | Authenticated | Cancel a booking and release seats | SRS §7.5 | Active |
+| **Payments** | `POST` | `/payments/initiate` | Authenticated | Create gateway payment order for pending booking | SRS §6.6 | Active |
+| **Payments** | `POST` | `/payments/verify` | Authenticated | Verify signature and confirm reservation idempotently | SRS §6.6, §7.5 | Active |
+| **Payments** | `POST` | `/payments/webhook` | Public (Signed)| Gateway webhook listener with HMAC SHA256 timing-safe verification | SRS §6.6, §12 | Active |
+| **Tickets** | `GET` | `/tickets/:id` | Authenticated | View confirmed digital ticket | SRS §6.7 | Active |
+| **Tickets** | `GET` | `/tickets/pnr/:pnr` | Authenticated | View confirmed digital ticket by PNR | SRS §6.7 | Active |
+| **Tickets** | `GET` | `/tickets/:id/pdf` | Authenticated | Download official server-generated PDF ticket | SRS §6.7, §11 | Active |
+| **Tickets** | `GET` | `/tickets/pnr/:pnr/pdf` | Authenticated | Download official PDF ticket by PNR | SRS §6.7, §11 | Active |
+| **Buses** | `GET` | `/buses/search` | Public | Legacy search buses | FR-06 | *Deprecated* (Use `/trips`) |
+| **Buses** | `GET` | `/buses/:id/seats` | Public | Legacy computed seat layout | FR-10 | *Deprecated* (Use `/trips/:tripId/seats`) |
+| **Seats** | `POST` | `/seats/hold` | Authenticated | Legacy seat hold | FR-10 | *Deprecated* (Use `/trips/:tripId/locks`) |
+| **Admin** | `GET` | `/admin/dashboard` | Admin Only | Dashboard KPI metrics & recent activity | SRS §5.1 | Active |
+| **Admin** | `GET` | `/admin/trips` | Admin Only | List scheduled trips with filters | SRS §5.4 | Active |
+| **Admin** | `POST` | `/admin/trips` | Admin Only | Schedule a new trip | SRS §5.4 | Active |
+| **Admin** | `PUT` | `/admin/trips/:id` | Admin Only | Update trip schedule or status | SRS §5.4 | Active |
+| **Admin** | `DELETE`| `/admin/trips/:id` | Admin Only | Delete scheduled trip | SRS §5.4 | Active |
+| **Admin** | `GET` | `/admin/pricing` | Admin Only | List multi-tier pricing policies | SRS §5.6 | Active |
+| **Admin** | `POST` | `/admin/pricing` | Admin Only | Create dynamic pricing policy | SRS §5.6 | Active |
+| **Admin** | `PUT` | `/admin/pricing/:id` | Admin Only | Update pricing policy | SRS §5.6 | Active |
+| **Admin** | `DELETE`| `/admin/pricing/:id` | Admin Only | Delete pricing policy | SRS §5.6 | Active |
+| **Admin** | `PUT` | `/admin/buses/:id/layout` | Admin Only | Manage physical seat layout | SRS §5.5 | Active |
+| **Admin** | `GET` | `/admin/buses` | Admin Only | Fleet management | SRS §5.2 | Active |
+| **Admin** | `GET` | `/admin/routes` | Admin Only | Route management | SRS §5.3 | Active |
+| **Admin** | `GET` | `/admin/bookings` | Admin Only | Booking records | SRS §5.7 | Active |
+| **Admin** | `GET` | `/admin/payments` | Admin Only | Payment monitoring & refunds | SRS §5.8 | Active |
+| **Admin** | `GET` | `/admin/passengers`| Admin Only | Customer management & account status | SRS §5.9 | Active |
+| **Admin** | `GET` | `/admin/reports` | Admin Only | Comprehensive analytical reports | SRS §5.10 | Active |
 
 ---
 
