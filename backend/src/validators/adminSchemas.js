@@ -8,7 +8,7 @@ const nonEmptyUpdate = (schema) =>
 export const adminBusSchema = z.object({
   busNumber: z.string().trim().min(4),
   busName: z.string().trim().min(2),
-  operator: z.string().trim().min(2),
+  operator: z.literal('YatraBus').default('YatraBus'),
   busType: z.string().trim().min(2),
   isAc: z.boolean(),
   capacity: z.coerce.number().int().min(1).max(100),

@@ -23,7 +23,7 @@ const Footer = () => {
               />
             </Link>
             <p className="text-sm text-[#64748B] dark:text-slate-400 leading-relaxed">
-              India's premier intercity bus ticket booking platform. Verified operators, safe travels, and transparent fares.
+              Book directly with YatraBus, our own intercity fleet. Safe journeys and transparent fares on every route.
             </p>
           </div>
 

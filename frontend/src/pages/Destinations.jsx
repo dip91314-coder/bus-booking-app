@@ -26,7 +26,7 @@ const Destinations = () => {
             Discover Incredible India by Bus
           </h1>
           <p className="text-sm sm:text-base text-blue-100 max-w-xl mx-auto">
-            From misty Himalayan valleys and golden desert citadels to sacred ghats and coastal beaches, travel comfortably with verified coach operators.
+            Explore YatraBus routes from misty Himalayan valleys and golden desert citadels to sacred ghats and coastal beaches. Every ticket is for a YatraBus coach.
           </p>
 
           <div className="max-w-md mx-auto pt-4">

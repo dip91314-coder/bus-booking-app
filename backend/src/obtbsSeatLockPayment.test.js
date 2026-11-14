@@ -342,4 +342,43 @@ describe('OBTBS Concurrency, Seat Locking, & Payment Engine', () => {
     expect(paymentDoc.refundStatus).toBe('refund_required');
     expect(paymentDoc.status).toBe('failed');
   });
+
+  it('Flags refund when payment arrives after the booking lock expires', async () => {
+    await lockSeats({
+      tripId: testTrip._id,
+      seatNumbers: ['S8'],
+      userId: userA._id,
+    });
+
+    const bookingRes = await createPendingBooking({
+      userId: userA._id,
+      tripId: testTrip._id,
+      passengers: [{ name: 'Expired Hold', age: 31, gender: 'male', seatNumber: 'S8' }],
+      contactEmail: 'expired@test.com',
+      contactPhone: '9876543210',
+    });
+
+    const initRes = await initiatePayment({
+      bookingId: bookingRes.bookingId,
+      userId: userA._id,
+    });
+
+    await SeatReservation.updateMany(
+      { bookingId: bookingRes.bookingId },
+      { $set: { lockExpiresAt: new Date(Date.now() - 1000) } }
+    );
+
+    const paymentId = `pay_expired_${Date.now()}`;
+    const signature = paymentGateway.generateSignature(initRes.orderId, paymentId);
+    const result = await confirmPayment({
+      gatewayOrderId: initRes.orderId,
+      gatewayPaymentId: paymentId,
+      gatewaySignature: signature,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.refundFlagged).toBe(true);
+    expect((await Booking.findById(bookingRes.bookingId)).bookingStatus).toBe('failed');
+    expect((await Payment.findOne({ gatewayOrderId: initRes.orderId })).refundStatus).toBe('refund_required');
+  });
 });

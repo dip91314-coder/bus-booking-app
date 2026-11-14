@@ -14,19 +14,29 @@ export const loginSchema = z.object({
 });
 
 export const busQuerySchema = z.object({
-  origin: z.string().optional(),
-  destination: z.string().optional(),
-  date: z.string().optional(),
-  busType: z.string().optional(),
-  minPrice: z.string().optional(),
-  maxPrice: z.string().optional(),
-  operator: z.string().optional(),
+  origin: z.string().max(100).optional(),
+  destination: z.string().max(100).optional(),
+  date: z.string().max(20).optional(),
+  busType: z.string().max(100).optional(),
+  minPrice: z.coerce.number().finite().min(0).optional(),
+  maxPrice: z.coerce.number().finite().min(0).optional(),
+}).refine(
+  (query) => query.minPrice === undefined || query.maxPrice === undefined || query.minPrice <= query.maxPrice,
+  { message: 'minPrice must not exceed maxPrice', path: ['minPrice'] }
+);
+
+export const tripQuerySchema = z.object({
+  from: z.string().max(100).optional(),
+  to: z.string().max(100).optional(),
+  origin: z.string().max(100).optional(),
+  destination: z.string().max(100).optional(),
+  date: z.string().max(20).optional(),
 });
 
 export const createBusSchema = z.object({
   busNumber: z.string().min(4, 'Registration number is required'),
   busName: z.string().min(2, 'Bus name is required'),
-  operator: z.string().min(2, 'Operator is required'),
+  operator: z.literal('YatraBus').default('YatraBus'),
   busType: z.string().default('AC Sleeper (2+1)'),
   origin: z.string().min(2, 'Origin city is required'),
   destination: z.string().min(2, 'Destination city is required'),
@@ -101,6 +111,19 @@ const legacyBookingSchema = z.object({
   paymentMethod: z.string().default('Simulated Payment'),
   contactEmail: z.string().email(),
   contactPhone: z.string().regex(/^[0-9]{10}$/),
+}).superRefine((booking, context) => {
+  const requestedSeats = booking.seats.map((seat) => seat.toUpperCase().trim());
+  const passengerSeats = booking.passengers.map((passenger) => passenger.seatNumber.toUpperCase().trim());
+  if (new Set(requestedSeats).size !== requestedSeats.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['seats'], message: 'Each seat can only be selected once.' });
+  }
+  if (requestedSeats.length !== passengerSeats.length || requestedSeats.some((seat) => !passengerSeats.includes(seat))) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['passengers'],
+      message: 'Passenger seats must match the selected seats.',
+    });
+  }
 });
 
 export const createBookingSchema = z.union([tripBookingSchema, legacyBookingSchema]);

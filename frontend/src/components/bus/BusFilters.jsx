@@ -1,6 +1,5 @@
 import React from 'react';
-import { Filter, RotateCcw, Clock, ShieldCheck, Star } from 'lucide-react';
-import { BUS_OPERATORS } from '../../data/mockData';
+import { Filter, RotateCcw, Clock, Star } from 'lucide-react';
 
 const BusFilters = ({ filters, setFilters, onReset }) => {
   const handleCheckboxChange = (category, value) => {
@@ -112,29 +111,6 @@ const BusFilters = ({ filters, setFilters, onReset }) => {
         <div className="flex justify-between text-[10px] text-gray-400 mt-1">
           <span>₹300</span>
           <span>₹2,500</span>
-        </div>
-      </div>
-
-      {/* Operators Filter */}
-      <div>
-        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5">
-          Bus Operators
-        </h4>
-        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-          {BUS_OPERATORS.map((op) => (
-            <label
-              key={op}
-              className="flex items-center gap-2.5 text-xs text-gray-700 cursor-pointer hover:text-primary transition font-medium"
-            >
-              <input
-                type="checkbox"
-                checked={filters.operators?.includes(op)}
-                onChange={() => handleCheckboxChange('operators', op)}
-                className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300"
-              />
-              <span className="truncate">{op}</span>
-            </label>
-          ))}
         </div>
       </div>
 

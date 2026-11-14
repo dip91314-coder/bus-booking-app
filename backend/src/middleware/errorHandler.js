@@ -45,6 +45,27 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_REQUEST_VALUE',
+        message: 'A request value has an invalid format.',
+      },
+    });
+  }
+
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'The submitted data is invalid.',
+        details: Object.values(err.errors || {}).map(({ path, message }) => ({ field: path, message })),
+      },
+    });
+  }
+
   // 4. Fallback Internal Server Error
   logger.error({ err, requestId: req.id }, 'Unhandled Exception');
 

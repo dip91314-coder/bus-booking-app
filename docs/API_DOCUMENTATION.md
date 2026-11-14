@@ -345,7 +345,7 @@ All error responses return HTTP status codes `400`, `401`, `403`, `404`, `409`, 
     {
       "_id": "654a1b2c3d4e5f6789a00100",
       "busNumber": "WB-04-E-5678",
-      "busName": "Greenline Express",
+      "busName": "YatraBus AC Sleeper",
       "busType": "AC Sleeper",
       "origin": "kolkata",
       "destination": "siliguri",
@@ -376,7 +376,7 @@ All error responses return HTTP status codes `400`, `401`, `403`, `404`, `409`, 
   "data": {
     "_id": "654a1b2c3d4e5f6789a00100",
     "busNumber": "WB-04-E-5678",
-    "busName": "Greenline Express",
+    "busName": "YatraBus AC Sleeper",
     "busType": "AC Sleeper",
     "origin": "kolkata",
     "destination": "siliguri",
@@ -534,7 +534,7 @@ All error responses return HTTP status codes `400`, `401`, `403`, `404`, `409`, 
       "busId": {
         "_id": "654a1b2c3d4e5f6789a00100",
         "busNumber": "WB-04-E-5678",
-        "busName": "Greenline Express",
+        "busName": "YatraBus AC Sleeper",
         "busType": "AC Sleeper",
         "origin": "kolkata",
         "destination": "siliguri",
@@ -703,7 +703,7 @@ Accepts any mutable bus fields (`fare`, `departureTime`, `arrivalTime`, `isActiv
         },
         "busId": {
           "busNumber": "WB-04-E-5678",
-          "busName": "Greenline Express"
+          "busName": "YatraBus AC Sleeper"
         }
       }
     ],

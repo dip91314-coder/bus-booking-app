@@ -15,6 +15,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_SETTINGS
 } from '../data/mockAdminData';
+import { normalizeYatraFleetItems } from '../../utils/yatraFleet';
 
 const AdminContext = createContext(null);
 
@@ -39,7 +40,10 @@ export const AdminProvider = ({ children }) => {
     try {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') return fallback;
       const saved = localStorage.getItem(`bb_admin_${key}`);
-      return saved ? JSON.parse(saved) : fallback;
+      const state = saved ? JSON.parse(saved) : fallback;
+      return ['buses', 'schedules', 'bookings'].includes(key)
+        ? normalizeYatraFleetItems(state)
+        : state;
     } catch (e) {
       return fallback;
     }
@@ -77,10 +81,16 @@ export const AdminProvider = ({ children }) => {
     adminApi.getManagementData()
       .then((data) => {
         if (!active || !data) return;
-        if (Array.isArray(data.buses) && data.buses.length > 0) setBuses(data.buses);
+        if (Array.isArray(data.buses) && data.buses.length > 0) {
+          setBuses(normalizeYatraFleetItems(data.buses));
+        }
         if (Array.isArray(data.routes) && data.routes.length > 0) setRoutes(data.routes);
-        if (Array.isArray(data.schedules) && data.schedules.length > 0) setSchedules(data.schedules);
-        if (Array.isArray(data.bookings) && data.bookings.length > 0) setBookings(data.bookings);
+        if (Array.isArray(data.schedules) && data.schedules.length > 0) {
+          setSchedules(normalizeYatraFleetItems(data.schedules));
+        }
+        if (Array.isArray(data.bookings) && data.bookings.length > 0) {
+          setBookings(normalizeYatraFleetItems(data.bookings));
+        }
         if (Array.isArray(data.passengers) && data.passengers.length > 0) setPassengers(data.passengers);
         if (Array.isArray(data.drivers) && data.drivers.length > 0) setDrivers(data.drivers);
         if (Array.isArray(data.staff) && data.staff.length > 0) setStaff(data.staff);

@@ -35,17 +35,6 @@ const ALL_AMENITIES = [
   'Emergency Exit'
 ];
 
-const OPERATORS_LIST = [
-  'Greenline Express',
-  'Royal Cruiser',
-  'VRL Travels',
-  'Zingbus Intercity',
-  'SRS Travels',
-  'Orange Tours & Travels',
-  'IntrCity SmartBus',
-  'Himalayan Golden Bus'
-];
-
 const BUS_TYPES_LIST = [
   'AC Sleeper (2+1)',
   'Multi-Axle AC Seater (2+2)',
@@ -74,7 +63,7 @@ const BusManagementPage = () => {
   const defaultFormState = {
     busNumber: '',
     busName: '',
-    operator: 'Greenline Express',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     isAc: true,
     capacity: 36,
@@ -128,7 +117,7 @@ const BusManagementPage = () => {
     setFormData({
       busNumber: bus.busNumber,
       busName: bus.busName,
-      operator: bus.operator,
+      operator: 'YatraBus',
       busType: bus.busType,
       isAc: bus.isAc,
       capacity: bus.capacity,
@@ -210,7 +199,7 @@ const BusManagementPage = () => {
     },
     {
       key: 'busName',
-      label: 'Operator & Bus Name',
+      label: 'YatraBus Fleet & Bus Name',
       render: (row) => (
         <div>
           <span className="font-bold text-slate-900 block">{row.operator}</span>
@@ -409,7 +398,7 @@ const BusManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredBuses}
-        searchPlaceholder="Search by bus number, operator, name, city..."
+        searchPlaceholder="Search by bus number, fleet label, or city..."
         searchKeys={['busNumber', 'busName', 'operator', 'origin', 'destination', 'busType']}
         exportFileName="bus_fleet_inventory"
       />
@@ -448,7 +437,7 @@ const BusManagementPage = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Royal Cruiser Multi-Axle"
+                placeholder="e.g. YatraBus Premium Sleeper"
                 value={formData.busName}
                 onChange={(e) => setFormData({ ...formData, busName: e.target.value })}
                 className={`w-full px-3 py-2 rounded-xl border ${
@@ -464,19 +453,14 @@ const BusManagementPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
-                Fleet Operator *
+                Fleet Operator
               </label>
-              <select
-                value={formData.operator}
-                onChange={(e) => setFormData({ ...formData, operator: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-              >
-                {OPERATORS_LIST.map((op) => (
-                  <option key={op} value={op}>
-                    {op}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value="YatraBus"
+                readOnly
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+              />
             </div>
 
             <div>
@@ -656,19 +640,14 @@ const BusManagementPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
-                Fleet Operator *
+                Fleet Operator
               </label>
-              <select
-                value={formData.operator}
-                onChange={(e) => setFormData({ ...formData, operator: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-              >
-                {OPERATORS_LIST.map((op) => (
-                  <option key={op} value={op}>
-                    {op}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value="YatraBus"
+                readOnly
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+              />
             </div>
 
             <div>

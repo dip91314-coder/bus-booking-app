@@ -7,11 +7,13 @@ import {
   releaseLocksHandler,
 } from '../controllers/tripController.js';
 import { requireAuth } from '../middleware/auth.js';
+import { validateQuery } from '../middleware/validate.js';
+import { tripQuerySchema } from '../validators/schemas.js';
 
 const router = express.Router();
 
 // Public Trip Discovery
-router.get('/', searchTrips);
+router.get('/', validateQuery(tripQuerySchema), searchTrips);
 router.get('/:id', getTripById);
 router.get('/:tripId/seats', getTripSeatsHandler);
 

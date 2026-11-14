@@ -51,7 +51,7 @@ const PrintableTicket = ({ booking }) => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="printable-ticket-container max-w-3xl mx-auto space-y-6">
       {/* Action buttons (hidden on print) */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex items-center gap-2">

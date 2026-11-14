@@ -18,6 +18,7 @@ import { Pricing } from '../models/Pricing.js';
 import { SeatReservation } from '../models/SeatReservation.js';
 import { Ticket } from '../models/Ticket.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
+import { normalizeYatraBus } from '../utils/yatraFleet.js';
 
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
@@ -31,6 +32,10 @@ function requireDocument(document, label) {
 function parseBusInput(input) {
   const { capacity, status, ...fields } = input;
   const updates = { ...fields };
+  updates.operator = 'YatraBus';
+  if (updates.busName !== undefined) {
+    updates.busName = normalizeYatraBus(updates).busName;
+  }
   if (capacity !== undefined) updates.totalSeats = capacity;
   if (status !== undefined) {
     updates.isActive = status === 'Active';
@@ -40,7 +45,7 @@ function parseBusInput(input) {
 }
 
 function formatBus(bus) {
-  const value = toObject(bus);
+  const value = normalizeYatraBus(bus);
   return {
     ...value,
     id: idOf(bus),
@@ -106,6 +111,8 @@ function formatBooking(booking) {
   const passenger = booking.passengers?.[0];
   return {
     ...value,
+    operator: 'YatraBus',
+    busName: normalizeYatraBus(value).busName,
     id: idOf(booking),
     pnr: booking.bookingReference,
     passengerName: passenger?.name || 'Passenger',
@@ -476,7 +483,7 @@ function formatSchedule(schedule) {
     id: idOf(schedule),
     busId: bus ? idOf(bus) : String(schedule.busId),
     busNumber: bus?.busNumber || '',
-    busName: bus?.busName || '',
+    busName: bus ? normalizeYatraBus(bus).busName : '',
     routeId: route ? idOf(route) : String(schedule.routeId || ''),
     source: route?.origin || '',
     destination: route?.destination || '',
@@ -569,6 +576,25 @@ export async function cancelAdminBooking(req, res, next) {
     booking.paymentStatus = 'refunded';
     await booking.save();
 
+    const seatRelease = booking.tripId
+      ? SeatReservation.deleteMany({
+          tripId: booking.tripId,
+          bookingId: booking._id,
+          status: 'booked',
+        })
+      : Promise.all([
+          Seat.updateMany(
+            {
+              busId: booking.busId,
+              journeyDate: booking.journeyDate,
+              seatNumber: { $in: booking.seats },
+              status: 'booked',
+            },
+            { $set: { status: 'available' }, $unset: { heldUntil: '', heldBy: '' } }
+          ),
+          Bus.findByIdAndUpdate(booking.busId, { $inc: { availableSeatsCount: booking.seats.length } }),
+        ]);
+
     await Promise.all([
       Cancellation.create({
         bookingId: booking._id,
@@ -578,15 +604,11 @@ export async function cancelAdminBooking(req, res, next) {
         refundAmount: booking.totalFare,
         refundStatus: 'processed',
       }),
-      Seat.updateMany(
-        { busId: booking.busId, journeyDate: booking.journeyDate, seatNumber: { $in: booking.seats } },
-        { status: 'available', $unset: { heldUntil: '', heldBy: '' } }
-      ),
+      seatRelease,
       Payment.updateMany(
         { bookingId: booking._id },
         { status: 'refunded', refundStatus: 'Processed' }
       ),
-      Bus.findByIdAndUpdate(booking.busId, { $inc: { availableSeatsCount: booking.seats.length } }),
     ]);
 
     res.status(200).json({
@@ -868,7 +890,7 @@ export async function getAdminReviews(req, res, next) {
         ...toObject(review),
         id: idOf(review),
         passengerName: review.userId?.name || review.userName,
-        busName: review.busId?.busName || '',
+        busName: review.busId ? normalizeYatraBus(review.busId).busName : '',
         route: review.busId ? `${review.busId.origin} ➔ ${review.busId.destination}` : '',
         date: review.createdAt,
       })),
@@ -1018,7 +1040,14 @@ export async function getAdminTrips(req, res, next) {
       .populate('routeId', 'origin destination source departurePoint arrivalPoint')
       .sort({ travelDate: -1, departureTime: 1 });
 
-    res.status(200).json({ success: true, count: trips.length, data: trips });
+    res.status(200).json({
+      success: true,
+      count: trips.length,
+      data: trips.map((trip) => ({
+        ...trip.toObject(),
+        busId: normalizeYatraBus(trip.busId),
+      })),
+    });
   } catch (error) {
     next(error);
   }
@@ -1028,7 +1057,10 @@ export async function createAdminTrip(req, res, next) {
   try {
     const trip = await Trip.create(req.body);
     const populated = await Trip.findById(trip._id).populate('busId routeId');
-    res.status(201).json({ success: true, data: populated });
+    res.status(201).json({
+      success: true,
+      data: { ...populated.toObject(), busId: normalizeYatraBus(populated.busId) },
+    });
   } catch (error) {
     next(error);
   }
@@ -1040,7 +1072,10 @@ export async function updateAdminTrip(req, res, next) {
     const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate('busId routeId');
     requireDocument(trip, 'Trip');
-    res.status(200).json({ success: true, data: trip });
+    res.status(200).json({
+      success: true,
+      data: { ...trip.toObject(), busId: normalizeYatraBus(trip.busId) },
+    });
   } catch (error) {
     next(error);
   }
@@ -1117,7 +1152,7 @@ export async function updateBusSeatLayout(req, res, next) {
 
     const bus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
     requireDocument(bus, 'Bus');
-    res.status(200).json({ success: true, data: bus });
+    res.status(200).json({ success: true, data: normalizeYatraBus(bus) });
   } catch (error) {
     next(error);
   }

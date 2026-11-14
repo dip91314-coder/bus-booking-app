@@ -146,7 +146,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
             aria-selected={tripType === 'onward'}
             onClick={() => setTripType('onward')}
             className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-full transition-colors duration-200 select-none ${
-              tripType === 'onward' ? 'text-white' : 'text-[#64748B] hover:text-[#0F172A]'
+              tripType === 'onward' ? 'text-white' : 'text-[#475569] hover:text-[#0F172A]'
             }`}
           >
             One Way
@@ -160,7 +160,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
               if (!returnDate) setReturnDate(journeyDate);
             }}
             className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-full transition-colors duration-200 select-none ${
-              tripType === 'return' ? 'text-white' : 'text-[#64748B] hover:text-[#0F172A]'
+              tripType === 'return' ? 'text-white' : 'text-[#475569] hover:text-[#0F172A]'
             }`}
           >
             Round Trip
@@ -168,7 +168,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
         </div>
 
         <span className="text-xs text-[#64748B] hidden sm:inline font-medium">
-          Verified operators & live seat booking
+          YatraBus fleet & live seat booking
         </span>
       </div>
 
@@ -198,7 +198,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
                 <span className="block text-base font-semibold text-[#0F172A] truncate leading-tight">
                   {fromCity || 'Select Origin'}
                 </span>
-                <span className="block text-xs text-[#64748B] truncate mt-0.5">
+                <span className="block text-xs text-[#475569] truncate mt-0.5">
                   {POPULAR_CITIES.find((c) => c.name === fromCity)?.state || 'India'}
                 </span>
               </div>
@@ -275,7 +275,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
                 <span className="block text-base font-semibold text-[#0F172A] truncate leading-tight">
                   {toCity || 'Select Destination'}
                 </span>
-                <span className="block text-xs text-[#64748B] truncate mt-0.5">
+                <span className="block text-xs text-[#475569] truncate mt-0.5">
                   {POPULAR_CITIES.find((c) => c.name === toCity)?.state || 'India'}
                 </span>
               </div>
@@ -316,11 +316,12 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
           {/* Date Field(s) */}
           <div className={tripType === 'return' ? 'md:col-span-3 grid grid-cols-2 gap-2' : 'md:col-span-3'}>
             <div>
-              <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
+              <label htmlFor="journey-date" className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
                 Date
               </label>
               <div className="relative">
                 <input
+                  id="journey-date"
                   type="date"
                   min={todayISO}
                   value={journeyDate}
@@ -335,11 +336,12 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
 
             {tripType === 'return' && (
               <div>
-                <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
+                <label htmlFor="return-date" className="block text-xs font-semibold text-[#475569] uppercase tracking-wider mb-1">
                   Return
                 </label>
                 <div className="relative">
                   <input
+                    id="return-date"
                     type="date"
                     min={journeyDate || todayISO}
                     value={returnDate}

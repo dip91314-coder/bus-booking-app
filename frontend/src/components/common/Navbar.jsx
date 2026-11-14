@@ -119,7 +119,7 @@ const Navbar = () => {
             to="/login"
             className="text-sm font-medium text-[#475569] dark:text-slate-300 hover:text-[#0F172A] dark:hover:text-white px-2 py-1 transition-colors"
           >
-            Agent Login
+            Staff Login
           </Link>
 
           {isAdmin && (
@@ -252,7 +252,7 @@ const Navbar = () => {
               onClick={() => setMobileMenuOpen(false)}
               className="text-sm font-medium text-[#475569] dark:text-slate-300 py-2"
             >
-              Agent Login
+              Staff Login
             </Link>
             {!isAuthenticated ? (
               <Link

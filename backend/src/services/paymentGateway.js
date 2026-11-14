@@ -46,14 +46,13 @@ export class MockPaymentGateway {
 
   verifyWebhookSignature({ rawBody, signature, secret = env.RAZORPAY_WEBHOOK_SECRET }) {
     if (!signature || !rawBody) return false;
-    const bodyStr = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
-    const expected = crypto.createHmac('sha256', secret).update(bodyStr).digest('hex');
+    const body = Buffer.isBuffer(rawBody)
+      ? rawBody
+      : Buffer.from(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody));
+    const expected = crypto.createHmac('sha256', secret).update(body).digest();
+    const received = Buffer.from(signature, 'hex');
 
-    try {
-      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-    } catch {
-      return false;
-    }
+    return received.length === expected.length && crypto.timingSafeEqual(received, expected);
   }
 }
 

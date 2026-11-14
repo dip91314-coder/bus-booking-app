@@ -89,7 +89,7 @@ const RoutesPage = () => {
             Interstate Highway Bus Routes
           </h1>
           <p className="text-base text-slate-200 max-w-xl mx-auto">
-            Explore daily schedules, highway transit distances, durations, and verified coach operators across India.
+            Explore YatraBus schedules, highway distances, and journey times across our intercity network.
           </p>
         </div>
       </div>
