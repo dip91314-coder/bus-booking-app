@@ -84,10 +84,13 @@ export const BookingProvider = ({ children }) => {
 
   // Seat toggle logic with 6-seat cap
   const toggleSeat = (seat) => {
-    const isAlreadySelected = selectedSeats.some((s) => s.number === seat.number);
+    const seatNum = seat.seatNumber || seat.number;
+    const isAlreadySelected = selectedSeats.some(
+      (s) => (s.seatNumber || s.number) === seatNum
+    );
 
     if (isAlreadySelected) {
-      setSelectedSeats((prev) => prev.filter((s) => s.number !== seat.number));
+      setSelectedSeats((prev) => prev.filter((s) => (s.seatNumber || s.number) !== seatNum));
     } else {
       if (selectedSeats.length >= 6) {
         toast.error('You can select a maximum of 6 seats per booking transaction.', {
@@ -95,7 +98,7 @@ export const BookingProvider = ({ children }) => {
         });
         return;
       }
-      setSelectedSeats((prev) => [...prev, seat]);
+      setSelectedSeats((prev) => [...prev, { ...seat, number: seatNum, seatNumber: seatNum }]);
     }
   };
 
@@ -139,14 +142,14 @@ export const BookingProvider = ({ children }) => {
       journeyDate: searchParams.journeyDate || today,
       departureTime: selectedBus.departureTime,
       arrivalTime: selectedBus.arrivalTime,
-      boardingPoint: selectedBoardingPoint ? selectedBoardingPoint.name : selectedBus.boardingPoints[0]?.name,
-      droppingPoint: selectedDroppingPoint ? selectedDroppingPoint.name : selectedBus.droppingPoints[0]?.name,
-      seats: selectedSeats.map((s) => s.number),
+      boardingPoint: selectedBoardingPoint ? selectedBoardingPoint.name : (selectedBus.boardingPoints?.[0]?.name || 'Central Bus Station'),
+      droppingPoint: selectedDroppingPoint ? selectedDroppingPoint.name : (selectedBus.droppingPoints?.[0]?.name || 'City Drop Terminal'),
+      seats: selectedSeats.map((s) => s.seatNumber || s.number),
       passengers: passengers.length > 0 ? passengers : selectedSeats.map((s, idx) => ({
         name: `Passenger ${idx + 1}`,
         age: 25,
         gender: 'male',
-        seatNumber: s.number
+        seatNumber: s.seatNumber || s.number
       })),
       totalFare: totalFare + taxAndGst,
       bookingStatus: 'confirmed',

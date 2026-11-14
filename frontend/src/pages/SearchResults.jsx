@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
+import { tripApi } from '../services/api';
 import BusCard from '../components/bus/BusCard';
 import BusFilters from '../components/bus/BusFilters';
 import BusSearchForm from '../components/bus/BusSearchForm';
@@ -13,7 +14,8 @@ import {
   ChevronRight,
   RefreshCw,
   AlertCircle,
-  Bus
+  Bus,
+  Loader2
 } from 'lucide-react';
 
 const SearchResults = () => {
@@ -25,9 +27,42 @@ const SearchResults = () => {
   const destQuery = urlParams.get('destination') || searchParams.destination || 'Siliguri';
   const dateQuery = urlParams.get('date') || searchParams.journeyDate || new Date().toISOString().split('T')[0];
 
+  const [liveTrips, setLiveTrips] = useState(null);
+  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
   const [showModifySearch, setShowModifySearch] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('price-asc'); // price-asc, duration-asc, departure-asc, rating-desc
+
+  // Fetch live trips from tripApi if available
+  useEffect(() => {
+    let active = true;
+    setIsLoadingTrips(true);
+    tripApi
+      .searchTrips({
+        from: originQuery,
+        to: destQuery,
+        date: dateQuery
+      })
+      .then((trips) => {
+        if (!active) return;
+        if (Array.isArray(trips) && trips.length > 0) {
+          setLiveTrips(trips);
+        } else {
+          setLiveTrips(null);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not query live trips, using inventory:', err?.message);
+        if (active) setLiveTrips(null);
+      })
+      .finally(() => {
+        if (active) setIsLoadingTrips(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [originQuery, destQuery, dateQuery]);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -50,17 +85,19 @@ const SearchResults = () => {
 
   // Filter & Sort Logic
   const filteredBuses = useMemo(() => {
+    const sourcePool = liveTrips && liveTrips.length > 0 ? liveTrips : buses;
+
     // 1. Route match (or relaxed if viewing all)
-    let list = buses.filter((bus) => {
-      const matchOrigin = bus.origin.toLowerCase().includes(originQuery.toLowerCase());
-      const matchDest = bus.destination.toLowerCase().includes(destQuery.toLowerCase());
+    let list = sourcePool.filter((bus) => {
+      const matchOrigin = (bus.origin || bus.source || '').toLowerCase().includes(originQuery.toLowerCase());
+      const matchDest = (bus.destination || '').toLowerCase().includes(destQuery.toLowerCase());
       return matchOrigin && matchDest;
     });
 
     // If zero match on exact query, provide all buses with a clear banner
     const isExactMatch = list.length > 0;
     if (!isExactMatch) {
-      list = buses; // fallback to demonstrate UI
+      list = sourcePool; // fallback to demonstrate UI
     }
 
     // 2. Bus type filter

@@ -76,6 +76,26 @@ const PassengerDetails = () => {
     toast.success(`Autofilled details for ${traveller.name}`);
   };
 
+  const handleQuickFillAll = () => {
+    const demoNames = ['Rahul Sen', 'Priya Sharma', 'Ananya Roy', 'Amit Das', 'Sanjay Gupta', 'Pooja Verma'];
+    const demoAges = ['26', '24', '28', '31', '45', '22'];
+    const demoGenders = ['male', 'female', 'female', 'male', 'male', 'female'];
+
+    setContactEmail(user?.email || 'rahul@yatra.com');
+    setContactPhone(user?.phone || '9876543210');
+
+    setPassengerList((prev) =>
+      prev.map((p, idx) => ({
+        ...p,
+        name: p.name || demoNames[idx % demoNames.length],
+        age: p.age || demoAges[idx % demoAges.length],
+        gender: p.gender || demoGenders[idx % demoGenders.length]
+      }))
+    );
+    setErrors({});
+    toast.success('Passenger information auto-filled with demo travelers!');
+  };
+
   const handleProceedToPayment = () => {
     // Validate inputs
     const newErrors = {};
@@ -157,9 +177,20 @@ const PassengerDetails = () => {
           <div className="lg:col-span-8 space-y-6">
             {/* Primary Contact Details */}
             <div className="bg-white rounded-2xl p-6 shadow-card border border-gray-100">
-              <h3 className="text-sm font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary" /> Primary Contact Information
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <h3 className="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-primary" /> Primary Contact Information
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleQuickFillAll}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl border border-amber-200 transition"
+                  title="Auto-fill sample passenger and contact data"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>⚡ Auto-fill Demo Passengers</span>
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mb-4">
                 Your ticket PNR and live bus tracking link will be sent to these details.
               </p>

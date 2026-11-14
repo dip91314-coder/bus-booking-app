@@ -1,3 +1,4 @@
+import { User } from '../models/User.js';
 import { Booking } from '../models/Booking.js';
 import { Bus } from '../models/Bus.js';
 import { Seat } from '../models/Seat.js';
@@ -8,9 +9,20 @@ import { NotFoundError, ConflictError, ValidationError } from '../utils/customEr
 
 export async function createBooking(req, res, next) {
   try {
-    const userId = req.user?.userId;
+    let userId = req.user?.userId;
     if (!userId) {
-      throw new ValidationError('Authenticated user ID missing');
+      const email = req.body.contactEmail || 'guest@bharatbus.com';
+      let guestUser = await User.findOne({ email });
+      if (!guestUser) {
+        guestUser = await User.create({
+          name: req.body.passengers?.[0]?.name || 'Guest Passenger',
+          email,
+          phone: req.body.contactPhone || '9876543210',
+          password: 'GuestPassword123!',
+          role: 'user'
+        });
+      }
+      userId = guestUser._id.toString();
     }
 
     // OBTBS Trip-Centric Booking Flow

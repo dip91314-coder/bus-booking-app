@@ -164,6 +164,16 @@ const Navbar = () => {
                     <Ticket className="w-4 h-4 text-[#5B21B6] dark:text-purple-400" />
                     <span>My Bookings</span>
                   </Link>
+                  {isAdmin ? (
+                    <Link
+                      to="/admin"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-[#5B21B6] dark:text-purple-300 font-semibold hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[#5B21B6] dark:text-purple-400" />
+                      <span>Admin Operations</span>
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     onClick={handleLogout}

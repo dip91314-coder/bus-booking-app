@@ -46,15 +46,38 @@ const Login = () => {
     }
   };
 
-  const handleQuickFill = (type) => {
+  const handleQuickFill = async (type, autoSubmit = false) => {
+    let targetEmail = '';
+    let targetPassword = '';
     if (type === 'agent') {
       setLoginType('agent');
-      setEmail('admin@bharatbus.com');
-      setPassword('admin123');
+      targetEmail = 'admin@bharatbus.com';
+      targetPassword = 'admin123';
     } else {
       setLoginType('user');
-      setEmail('rahul@example.com');
-      setPassword('password123');
+      targetEmail = 'rahul@yatra.com';
+      targetPassword = 'rahul123';
+    }
+    setEmail(targetEmail);
+    setPassword(targetPassword);
+
+    if (autoSubmit) {
+      setError('');
+      setLoading(true);
+      try {
+        const loggedUser = await login(targetEmail, targetPassword);
+        if (loggedUser.role === 'admin') {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate(from, { replace: true });
+        }
+      } catch (err) {
+        const msg = err.response?.data?.message || err.message || 'Authentication failed.';
+        setError(msg);
+        toast.error(msg);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -181,22 +204,30 @@ const Login = () => {
         </form>
 
         {/* Demo Credentials Helper */}
-        <div className="mt-5 p-3 rounded-2xl bg-purple-50/60 border border-purple-100 text-[11px] text-slate-600">
-          <span className="font-bold text-[#3B0764] block mb-1">Quick Demo Credentials:</span>
-          <div className="flex items-center justify-between gap-2 mt-1">
+        <div className="mt-5 p-3 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 text-[11px] text-slate-600 dark:text-slate-300">
+          <span className="font-bold text-[#3B0764] dark:text-purple-300 block mb-1">
+            ⚡ Quick Demo 1-Click Access:
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             <button
               type="button"
-              onClick={() => handleQuickFill('user')}
-              className="px-2 py-1 bg-white hover:bg-purple-100 rounded-lg border border-purple-200 text-[#4C1D95] font-semibold transition"
+              onClick={() => handleQuickFill('user', true)}
+              className="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-slate-700 rounded-lg border border-purple-200 dark:border-slate-700 text-[#4C1D95] dark:text-purple-300 font-semibold transition text-left flex items-center justify-between"
             >
-              Passenger: rahul@example.com
+              <span>Passenger: Rahul</span>
+              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded">
+                1-Click ➔
+              </span>
             </button>
             <button
               type="button"
-              onClick={() => handleQuickFill('agent')}
-              className="px-2 py-1 bg-white hover:bg-purple-100 rounded-lg border border-purple-200 text-[#4C1D95] font-semibold transition"
+              onClick={() => handleQuickFill('agent', true)}
+              className="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-slate-700 rounded-lg border border-purple-200 dark:border-slate-700 text-[#4C1D95] dark:text-purple-300 font-semibold transition text-left flex items-center justify-between"
             >
-              Agent: admin@bharatbus.com
+              <span>Admin: Vikram</span>
+              <span className="text-[10px] text-purple-700 font-bold bg-purple-100 dark:bg-purple-900 px-1.5 py-0.5 rounded">
+                1-Click ➔
+              </span>
             </button>
           </div>
         </div>

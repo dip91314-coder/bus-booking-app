@@ -23,7 +23,7 @@ const BusCard = ({ bus }) => {
 
   const handleSelectSeats = () => {
     setSelectedBus(bus);
-    navigate(`/bus/${bus.id || bus._id}/seats`);
+    navigate(`/bus/${bus.tripId || bus.id || bus._id}/seats`);
   };
 
   const getAmenityIcon = (name) => {
@@ -116,16 +116,18 @@ const BusCard = ({ bus }) => {
             <div className="text-left md:text-right">
               <span className="text-[11px] text-slate-400 dark:text-slate-500 block">Starting from</span>
               <div className="text-2xl font-bold text-slate-900 dark:text-white leading-none">
-                ₹{bus.fare}
+                ₹{bus.price || bus.fare}
               </div>
               <span className="text-[10px] text-slate-400 dark:text-slate-500">+ taxes</span>
             </div>
 
             <div className="mt-2 text-right">
               <span className={`text-xs font-medium block mb-1.5 ${
-                bus.availableSeatsCount <= 5 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-emerald-700 dark:text-emerald-400'
+                (bus.availableSeats ?? bus.availableSeatsCount ?? 20) <= 5
+                  ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                  : 'text-emerald-700 dark:text-emerald-400'
               }`}>
-                {bus.availableSeatsCount} seats available
+                {bus.availableSeats ?? bus.availableSeatsCount ?? 20} seats available
               </span>
               <button
                 type="button"
