@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
 import MainLayout from './layouts/MainLayout';
+import { ProtectedRoute, AdminRoute } from './components/common/RouteGuards';
 
 // Customer Pages
 import Home from './pages/Home';
@@ -70,9 +71,9 @@ function App() {
               <Route path="forgot-password" element={<ForgotPassword />} />
 
               {/* User Account */}
-              <Route path="dashboard" element={<UserDashboard />} />
-              <Route path="my-bookings" element={<UserDashboard />} />
-              <Route path="profile" element={<UserDashboard />} />
+              <Route path="dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+              <Route path="my-bookings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+              <Route path="profile" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
 
               {/* Information & Policies */}
               <Route path="about" element={<About />} />
@@ -89,9 +90,11 @@ function App() {
             <Route
               path="/admin"
               element={
-                <AdminProvider>
-                  <AdminLayout />
-                </AdminProvider>
+                <AdminRoute>
+                  <AdminProvider>
+                    <AdminLayout />
+                  </AdminProvider>
+                </AdminRoute>
               }
             >
               <Route index element={<DashboardPage />} />

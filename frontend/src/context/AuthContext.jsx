@@ -14,7 +14,13 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    try {
+      return Boolean(typeof window !== 'undefined' && localStorage.getItem('yatrabus_token'));
+    } catch {
+      return false;
+    }
+  });
 
   // Validate session against backend on mount
   useEffect(() => {
