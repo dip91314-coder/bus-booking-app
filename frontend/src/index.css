@@ -46,7 +46,7 @@
 
   html {
     scroll-behavior: smooth;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
@@ -218,5 +218,86 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
     transform: none !important;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .print-ticket-shell {
+    display: block !important;
+    min-height: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .print-ticket-shell > :not(main) {
+    display: none !important;
+  }
+
+  .print-ticket-shell > main {
+    display: block !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .ticket-confirmation-page {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .ticket-confirmation-page > :not(.printable-ticket-container) {
+    display: none !important;
+  }
+
+  .printable-ticket-container {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .printable-ticket-container > .no-print {
+    display: none !important;
+  }
+
+  #printable-ticket {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #printable-ticket tr,
+  #printable-ticket th,
+  #printable-ticket td {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

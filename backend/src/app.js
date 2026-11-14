@@ -47,7 +47,14 @@ export function createApp() {
   app.use('/api/', limiter);
 
   // Body parser and compression
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({
+    limit: '1mb',
+    verify: (req, _res, buffer) => {
+      if (req.originalUrl.split('?')[0] === '/api/payments/webhook') {
+        req.rawBody = Buffer.from(buffer);
+      }
+    },
+  }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use(cookieParser());
   app.use(compression());

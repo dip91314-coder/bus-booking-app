@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { POPULAR_CITIES } from '../../data/mockData';
-import { MapPin, Navigation, Loader2 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { Loader2 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 // Create clean, accessible pin marker
@@ -33,6 +33,26 @@ const createCleanIcon = (color = '#5B21B6', label = '') => {
   });
 };
 
+const RouteViewport = ({ origin, destination }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (origin && destination) {
+      map.fitBounds(
+        [
+          [origin.lat, origin.lng],
+          [destination.lat, destination.lng]
+        ],
+        { padding: [40, 40], maxZoom: 8 }
+      );
+    } else if (origin) {
+      map.setView([origin.lat, origin.lng], 6);
+    }
+  }, [map, origin?.lat, origin?.lng, destination?.lat, destination?.lng]);
+
+  return null;
+};
+
 const LeafletMap = ({
   originCity = 'Mumbai',
   destinationCity = 'Pune',
@@ -42,6 +62,8 @@ const LeafletMap = ({
   const [mounted, setMounted] = useState(false);
   const [selectedOrigin, setSelectedOrigin] = useState(originCity);
   const [selectedDest, setSelectedDest] = useState(destinationCity);
+  const [tileProvider, setTileProvider] = useState('osm');
+  const [tilesUnavailable, setTilesUnavailable] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -79,6 +101,14 @@ const LeafletMap = ({
     const val = e.target.value;
     setSelectedDest(val);
     if (onCitySelect) onCitySelect(val, 'destination');
+  };
+
+  const handleTileError = () => {
+    if (tileProvider === 'carto') {
+      setTileProvider('osm');
+    } else {
+      setTilesUnavailable(true);
+    }
   };
 
   return (
@@ -153,13 +183,24 @@ const LeafletMap = ({
           <MapContainer
             center={originCoord ? [originCoord.lat, originCoord.lng] : defaultCenter}
             zoom={6}
+            fadeAnimation={false}
             scrollWheelZoom={false}
             style={{ height: '100%', width: '100%' }}
           >
-            {/* CartoDB Positron - Clean Light Vector Tiles with English Labels */}
+            <RouteViewport origin={originCoord} destination={destCoord} />
             <TileLayer
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              key={tileProvider}
+              attribution={
+                tileProvider === 'carto'
+                  ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+                  : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              }
+              url={
+                tileProvider === 'carto'
+                  ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+                  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              }
+              eventHandlers={{ tileerror: handleTileError }}
             />
 
             {/* Display only the selected route markers to eliminate cluster clutter */}
@@ -203,6 +244,14 @@ const LeafletMap = ({
               />
             )}
           </MapContainer>
+        )}
+        {tilesUnavailable && (
+          <div
+            className="absolute inset-x-4 bottom-4 z-[1000] rounded-xl bg-white/95 px-4 py-3 text-xs font-medium text-slate-700 shadow-lg"
+            role="alert"
+          >
+            Map tiles are temporarily unavailable. You can still use the route selectors above.
+          </div>
         )}
       </div>
     </div>

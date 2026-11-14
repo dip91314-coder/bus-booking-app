@@ -63,12 +63,12 @@ export async function login(req, res, next) {
 
     let user = await User.findOne({ email: lowerEmail }).select('+password');
 
-    // Auto-provision demo accounts if database is fresh or unseeded
+    // Keep demo-account provisioning out of production.
     if (!user) {
-      if (
+      if (process.env.NODE_ENV !== 'production' && (
         (lowerEmail === 'admin@bharatbus.com' || lowerEmail === 'admin@example.com') &&
         (password === 'admin123' || password === 'admin')
-      ) {
+      )) {
         user = await User.create({
           name: 'Vikram Das',
           email: lowerEmail,
@@ -79,10 +79,10 @@ export async function login(req, res, next) {
             'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80',
         });
         user = await User.findById(user._id).select('+password');
-      } else if (
+      } else if (process.env.NODE_ENV !== 'production' && (
         (lowerEmail === 'rahul@yatra.com' || lowerEmail === 'rahul@example.com') &&
         (password === 'rahul123' || password === 'password123')
-      ) {
+      )) {
         user = await User.create({
           name: 'Rahul Sen',
           email: lowerEmail,

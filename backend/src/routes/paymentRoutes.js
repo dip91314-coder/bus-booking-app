@@ -11,6 +11,6 @@ const router = express.Router();
 // Customer Payment Initiation & Verification
 router.post('/initiate', requireAuth, initiatePaymentHandler);
 router.post('/verify', verifyPaymentHandler);
-router.post('/webhook', express.raw({ type: 'application/json' }), webhookHandler);
+router.post('/webhook', webhookHandler);
 
 export default router;

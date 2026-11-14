@@ -21,25 +21,12 @@ export const POPULAR_CITIES = [
   { name: 'Shillong', state: 'Meghalaya', lat: 25.5788, lng: 91.8933, terminals: ['Police Bazar Stand', 'Anjali Point', 'Dhankheti'] },
 ];
 
-export const BUS_OPERATORS = [
-  'Greenline Express',
-  'Royal Cruiser',
-  'VRL Travels',
-  'Zingbus Intercity',
-  'SRS Travels',
-  'Orange Tours & Travels',
-  'IntrCity SmartBus',
-  'Shyamoli Paribahan',
-  'Himalayan Golden Bus',
-  'KSRTC FlyBus'
-];
-
 export const MOCK_BUSES = [
   {
     id: 'BUS-101',
     busNumber: 'WB-04-E-5678',
-    busName: 'Greenline Platinum Express',
-    operator: 'Greenline Express',
+    busName: 'YatraBus Platinum Sleeper',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     origin: 'Kolkata',
     destination: 'Siliguri',
@@ -110,8 +97,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-102',
     busNumber: 'WB-02-B-9911',
-    busName: 'Royal Cruiser Volvo B11R',
-    operator: 'Royal Cruiser',
+    busName: 'YatraBus Volvo Coach',
+    operator: 'YatraBus',
     busType: 'Multi-Axle AC Seater (2+2)',
     origin: 'Kolkata',
     destination: 'Siliguri',
@@ -155,8 +142,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-103',
     busNumber: 'DL-01-TC-4400',
-    busName: 'Zingbus Maxx AC Sleeper',
-    operator: 'Zingbus Intercity',
+    busName: 'YatraBus Premium Sleeper',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     origin: 'Delhi',
     destination: 'Jaipur',
@@ -203,8 +190,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-104',
     busNumber: 'MH-12-RN-7788',
-    busName: 'VRL I-Shift Volvo Multi-Axle',
-    operator: 'VRL Travels',
+    busName: 'YatraBus Multi-Axle Coach',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     origin: 'Mumbai',
     destination: 'Pune',
@@ -251,8 +238,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-105',
     busNumber: 'KA-01-F-1100',
-    busName: 'SRS Diamond Class Multi-Axle',
-    operator: 'SRS Travels',
+    busName: 'YatraBus Diamond Sleeper',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     origin: 'Bengaluru',
     destination: 'Chennai',
@@ -299,8 +286,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-106',
     busNumber: 'HP-01-A-7007',
-    busName: 'Himalayan Golden Volvo B9R',
-    operator: 'Himalayan Golden Bus',
+    busName: 'YatraBus Mountain Coach',
+    operator: 'YatraBus',
     busType: 'AC Seater Semi-Sleeper (2+2)',
     origin: 'Delhi',
     destination: 'Manali',
@@ -342,8 +329,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-107',
     busNumber: 'TS-09-UB-3344',
-    busName: 'Orange Sleeper Gold Edition',
-    operator: 'Orange Tours & Travels',
+    busName: 'YatraBus Sleeper Coach',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     origin: 'Hyderabad',
     destination: 'Bengaluru',
@@ -390,8 +377,8 @@ export const MOCK_BUSES = [
   {
     id: 'BUS-108',
     busNumber: 'UP-65-AX-1020',
-    busName: 'IntrCity SmartBus Kashi Yatra',
-    operator: 'IntrCity SmartBus',
+    busName: 'YatraBus Pilgrim Sleeper',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     origin: 'Kolkata',
     destination: 'Varanasi',
@@ -511,7 +498,7 @@ export const MOCK_TESTIMONIALS = [
     location: 'Kolkata, WB',
     route: 'Kolkata ➔ Siliguri',
     rating: 5,
-    comment: 'Booked the Greenline Platinum sleeper for my trip to North Bengal. Smooth seat selection, punctual departure from Esplanade, and super clean bedding. Best bus booking experience!',
+    comment: 'Booked the YatraBus Platinum Sleeper for my trip to North Bengal. Smooth seat selection, punctual departure from Esplanade, and super clean bedding. Best bus booking experience!',
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80'
   },
   {
@@ -529,7 +516,7 @@ export const MOCK_TESTIMONIALS = [
     location: 'New Delhi',
     route: 'Delhi ➔ Manali',
     rating: 5,
-    comment: 'Travelled on the Himalayan Golden Volvo. Booking via mobile was seamless, driver details were sent promptly, and the bus was warm despite sub-zero temperatures in Himachal.',
+    comment: 'Travelled on a YatraBus mountain coach. Booking via mobile was seamless, driver details were sent promptly, and the bus was warm despite sub-zero temperatures in Himachal.',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80'
   }
 ];
@@ -546,8 +533,8 @@ export const INITIAL_USER_BOOKINGS = [
     id: 'BK-98F42A7C',
     pnr: 'BK-98F42A7C',
     busId: 'BUS-101',
-    busName: 'Greenline Platinum Express',
-    operator: 'Greenline Express',
+    busName: 'YatraBus Platinum Sleeper',
+    operator: 'YatraBus',
     busNumber: 'WB-04-E-5678',
     busType: 'AC Sleeper (2+1)',
     origin: 'Kolkata',
@@ -572,8 +559,8 @@ export const INITIAL_USER_BOOKINGS = [
     id: 'BK-45D81B20',
     pnr: 'BK-45D81B20',
     busId: 'BUS-103',
-    busName: 'Zingbus Maxx AC Sleeper',
-    operator: 'Zingbus Intercity',
+    busName: 'YatraBus Premium Sleeper',
+    operator: 'YatraBus',
     busNumber: 'DL-01-TC-4400',
     busType: 'AC Sleeper (2+1)',
     origin: 'Delhi',
@@ -603,11 +590,11 @@ export const MOCK_ADMIN_METRICS = {
   occupancyRate: '87.4%',
   growthRate: '+18.2% this month',
   recentBookings: [
-    { pnr: 'BK-98F42A7C', customer: 'Rahul Sen', phone: '9876543210', bus: 'Greenline Platinum Express', route: 'Kolkata ➔ Siliguri', seats: 'L1, L4', fare: '₹2,300', date: '20-Nov-2026', status: 'Confirmed' },
-    { pnr: 'BK-33A19C02', customer: 'Sunita Banerjee', phone: '9876543211', bus: 'VRL I-Shift Volvo', route: 'Mumbai ➔ Pune', seats: 'L3', fare: '₹450', date: '18-Nov-2026', status: 'Confirmed' },
-    { pnr: 'BK-77K88P99', customer: 'Vikramjit Singh', phone: '9811223344', bus: 'Himalayan Golden Volvo', route: 'Delhi ➔ Manali', seats: 'A1, A2', fare: '₹2,900', date: '22-Nov-2026', status: 'Confirmed' },
-    { pnr: 'BK-12M44Q55', customer: 'Kavita Iyer', phone: '9444332211', bus: 'SRS Diamond Class', route: 'Bengaluru ➔ Chennai', seats: 'U4', fare: '₹899', date: '19-Nov-2026', status: 'Confirmed' },
-    { pnr: 'BK-66R22T11', customer: 'Devendra Patel', phone: '9825001122', bus: 'Zingbus Maxx AC', route: 'Delhi ➔ Jaipur', seats: 'L6, L7', fare: '₹1,300', date: '21-Nov-2026', status: 'Confirmed' },
+    { pnr: 'BK-98F42A7C', customer: 'Rahul Sen', phone: '9876543210', bus: 'YatraBus Platinum Sleeper', route: 'Kolkata ➔ Siliguri', seats: 'L1, L4', fare: '₹2,300', date: '20-Nov-2026', status: 'Confirmed' },
+    { pnr: 'BK-33A19C02', customer: 'Sunita Banerjee', phone: '9876543211', bus: 'YatraBus Multi-Axle Coach', route: 'Mumbai ➔ Pune', seats: 'L3', fare: '₹450', date: '18-Nov-2026', status: 'Confirmed' },
+    { pnr: 'BK-77K88P99', customer: 'Vikramjit Singh', phone: '9811223344', bus: 'YatraBus Mountain Coach', route: 'Delhi ➔ Manali', seats: 'A1, A2', fare: '₹2,900', date: '22-Nov-2026', status: 'Confirmed' },
+    { pnr: 'BK-12M44Q55', customer: 'Kavita Iyer', phone: '9444332211', bus: 'YatraBus Diamond Sleeper', route: 'Bengaluru ➔ Chennai', seats: 'U4', fare: '₹899', date: '19-Nov-2026', status: 'Confirmed' },
+    { pnr: 'BK-66R22T11', customer: 'Devendra Patel', phone: '9825001122', bus: 'YatraBus Premium Sleeper', route: 'Delhi ➔ Jaipur', seats: 'L6, L7', fare: '₹1,300', date: '21-Nov-2026', status: 'Confirmed' },
   ],
   revenueByRoute: [
     { route: 'Kolkata - Siliguri', bookings: 4210, revenue: '₹48,41,500' },

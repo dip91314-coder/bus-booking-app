@@ -59,8 +59,8 @@ describe('Admin management API', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         busNumber: 'WB-04-E-5678',
-        busName: 'Greenline Platinum Express',
-        operator: 'Greenline Express',
+        busName: 'YatraBus Platinum Sleeper',
+        operator: 'YatraBus',
         busType: 'AC Sleeper (2+1)',
         isAc: true,
         capacity: 36,
@@ -130,8 +130,8 @@ describe('Admin management API', () => {
   it('creates schedules from admin bus and route records with frontend field names', async () => {
     const bus = await Bus.create({
       busNumber: 'WB-04-E-5678',
-      busName: 'Greenline Platinum Express',
-      operator: 'Greenline Express',
+      busName: 'YatraBus Platinum Sleeper',
+      operator: 'YatraBus',
       busType: 'AC Sleeper (2+1)',
       origin: 'Kolkata',
       destination: 'Siliguri',

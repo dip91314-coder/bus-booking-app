@@ -16,6 +16,10 @@ import { logger } from '../config/logger.js';
 
 export async function seedDatabase() {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Database seeding is disabled in production.');
+    }
+
     await connectDB();
     logger.info('Purging collections for clean seed...');
     await Promise.all([
@@ -52,13 +56,9 @@ export async function seedDatabase() {
     });
 
     // 2. Create Operators
-    logger.info('Creating fleet operators...');
+    logger.info('Creating YatraBus fleet operator...');
     await BusOperator.create([
-      { name: 'Greenline Express', contactNumber: '033-2287-9911', email: 'support@greenline.in', rating: 4.8 },
-      { name: 'Royal Cruiser', contactNumber: '033-2255-4433', email: 'help@royalcruiser.com', rating: 4.6 },
-      { name: 'Zingbus Intercity', contactNumber: '011-4455-6677', email: 'care@zingbus.com', rating: 4.9 },
-      { name: 'VRL Travels', contactNumber: '022-2433-1122', email: 'info@vrltravels.com', rating: 4.7 },
-      { name: 'SRS Travels', contactNumber: '080-2677-8899', email: 'booking@srstravels.in', rating: 4.5 },
+      { name: 'YatraBus', contactNumber: '1800-250-8737', email: 'support@yatrabus.in', rating: 4.8 },
     ]);
 
     // 3. Create Routes
@@ -168,8 +168,8 @@ export async function seedDatabase() {
     const buses = await Bus.create([
       {
         busNumber: 'WB-04-E-5678',
-        busName: 'Greenline Platinum Express',
-        operator: 'Greenline Express',
+        busName: 'YatraBus Platinum Sleeper',
+        operator: 'YatraBus',
         busType: 'AC Sleeper (2+1)',
         origin: 'Kolkata',
         destination: 'Siliguri',
@@ -188,8 +188,8 @@ export async function seedDatabase() {
       },
       {
         busNumber: 'WB-02-B-9911',
-        busName: 'Royal Cruiser Volvo B11R',
-        operator: 'Royal Cruiser',
+        busName: 'YatraBus Volvo Coach',
+        operator: 'YatraBus',
         busType: 'Multi-Axle AC Seater (2+2)',
         origin: 'Kolkata',
         destination: 'Siliguri',
@@ -208,8 +208,8 @@ export async function seedDatabase() {
       },
       {
         busNumber: 'DL-01-TC-4400',
-        busName: 'Zingbus Maxx AC Sleeper',
-        operator: 'Zingbus Intercity',
+        busName: 'YatraBus Premium Sleeper',
+        operator: 'YatraBus',
         busType: 'AC Sleeper (2+1)',
         origin: 'Delhi',
         destination: 'Jaipur',
@@ -228,8 +228,8 @@ export async function seedDatabase() {
       },
       {
         busNumber: 'MH-12-RN-7788',
-        busName: 'VRL I-Shift Volvo Multi-Axle',
-        operator: 'VRL Travels',
+        busName: 'YatraBus Multi-Axle Coach',
+        operator: 'YatraBus',
         busType: 'AC Sleeper (2+1)',
         origin: 'Mumbai',
         destination: 'Pune',
@@ -248,8 +248,8 @@ export async function seedDatabase() {
       },
       {
         busNumber: 'KA-01-F-1100',
-        busName: 'SRS Diamond Class Multi-Axle',
-        operator: 'SRS Travels',
+        busName: 'YatraBus Diamond Sleeper',
+        operator: 'YatraBus',
         busType: 'AC Sleeper (2+1)',
         origin: 'Bengaluru',
         destination: 'Chennai',

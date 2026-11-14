@@ -2,6 +2,7 @@ import { Bus } from '../models/Bus.js';
 import { Booking } from '../models/Booking.js';
 import { Seat } from '../models/Seat.js';
 import { NotFoundError, ConflictError } from '../utils/customErrors.js';
+import { normalizeYatraBus } from '../utils/yatraFleet.js';
 
 export async function getSeatsByBus(req, res, next) {
   try {
@@ -35,6 +36,7 @@ export async function getSeatsByBus(req, res, next) {
     });
     const heldSeatNumbers = new Set();
     activeHeldSeats.forEach((s) => heldSeatNumbers.add(s.seatNumber));
+    const unavailableSeatNumbers = new Set([...bookedSeatNumbers, ...heldSeatNumbers]);
 
     // Construct 2-deck layout (Lower and Upper deck for sleepers)
     const isDoubleDeck = bus.deckType === 'double';
@@ -86,10 +88,10 @@ export async function getSeatsByBus(req, res, next) {
       data: {
         busId,
         journeyDate,
-        busName: bus.busName,
-        operator: bus.operator,
+        busName: normalizeYatraBus(bus).busName,
+        operator: 'YatraBus',
         totalSeats: bus.totalSeats,
-        availableSeats: Math.max(0, bus.totalSeats - bookedSeatNumbers.size),
+        availableSeats: Math.max(0, bus.totalSeats - unavailableSeatNumbers.size),
         bookedSeats: Array.from(bookedSeatNumbers),
         heldSeats: Array.from(heldSeatNumbers),
         seats: {
@@ -107,43 +109,102 @@ export async function holdSeats(req, res, next) {
   try {
     const { busId, journeyDate, seatNumbers } = req.body;
     const userId = req.user?.userId;
+    const bus = await Bus.findById(busId);
+    if (!bus) {
+      throw new NotFoundError(`Bus with ID ${busId} not found.`);
+    }
+
+    const normalizedSeats = [...new Set(seatNumbers.map((seat) => String(seat).toUpperCase().trim()))];
+    const seatLayout = new Map((bus.seatLayout || []).map((seat) => [seat.seatNumber, seat]));
+    const invalidSeats = normalizedSeats.filter((seat) => !seatLayout.has(seat));
+    if (invalidSeats.length > 0) {
+      throw new ConflictError(`The following seats do not exist on this bus: ${invalidSeats.join(', ')}`);
+    }
 
     // Check if any seat is already booked under a confirmed booking
     const conflictingBooking = await Booking.findOne({
       busId,
       journeyDate,
       bookingStatus: 'confirmed',
-      'passengers.seatNumber': { $in: seatNumbers },
+      'passengers.seatNumber': { $in: normalizedSeats },
     });
 
     if (conflictingBooking) {
       throw new ConflictError('One or more selected seats have already been booked by another passenger.');
     }
 
-    // 10-minute hold timestamp
-    const holdExpiration = new Date(Date.now() + 10 * 60 * 1000);
+    const now = new Date();
+    const holdExpiration = new Date(now.getTime() + 10 * 60 * 1000);
+    const existingOwnHolds = await Seat.find({
+      busId,
+      journeyDate,
+      seatNumber: { $in: normalizedSeats },
+      status: 'held',
+      heldBy: userId,
+      heldUntil: { $gt: now },
+    }).select('seatNumber');
+    const existingOwnSeatNumbers = new Set(existingOwnHolds.map((seat) => seat.seatNumber));
+    const newlyHeldSeatNumbers = [];
 
-    for (const seatNo of seatNumbers) {
-      await Seat.findOneAndUpdate(
-        { busId, journeyDate, seatNumber: seatNo },
-        {
-          busId,
-          journeyDate,
-          seatNumber: seatNo,
-          status: 'held',
-          heldUntil: holdExpiration,
-          heldBy: userId,
-          price: 999,
-        },
-        { upsert: true, new: true }
-      );
+    try {
+      for (const seatNo of normalizedSeats) {
+        const layout = seatLayout.get(seatNo);
+        const heldSeat = await Seat.findOneAndUpdate(
+          {
+            busId,
+            journeyDate,
+            seatNumber: seatNo,
+            $or: [
+              { status: 'available' },
+              { status: 'held', heldUntil: { $lte: now } },
+              { status: 'held', heldBy: userId, heldUntil: { $gt: now } },
+            ],
+          },
+          {
+            $set: {
+              status: 'held',
+              heldUntil: holdExpiration,
+              heldBy: userId,
+              price: layout.type === 'sleeper' ? bus.fare + 100 : bus.fare,
+              deck: layout.position,
+              type: layout.type === 'sleeper' ? 'single' : 'seater',
+              isLadies: layout.isLadies,
+            },
+            $setOnInsert: { busId, journeyDate, seatNumber: seatNo },
+          },
+          { upsert: true, new: true, runValidators: true }
+        );
+        if (!heldSeat) {
+          throw new ConflictError(`Seat ${seatNo} is already held or booked.`);
+        }
+        if (!existingOwnSeatNumbers.has(seatNo)) {
+          newlyHeldSeatNumbers.push(seatNo);
+        }
+      }
+    } catch (error) {
+      if (newlyHeldSeatNumbers.length > 0) {
+        await Seat.updateMany(
+          {
+            busId,
+            journeyDate,
+            seatNumber: { $in: newlyHeldSeatNumbers },
+            status: 'held',
+            heldBy: userId,
+          },
+          { $set: { status: 'available' }, $unset: { heldUntil: '', heldBy: '' } }
+        );
+      }
+      if (error.code === 11000) {
+        throw new ConflictError('One or more selected seats are already held or booked.');
+      }
+      throw error;
     }
 
     res.status(200).json({
       success: true,
-      message: `${seatNumbers.length} seats temporarily held for 10 minutes.`,
+      message: `${normalizedSeats.length} seats temporarily held for 10 minutes.`,
       data: {
-        seatNumbers,
+        seatNumbers: normalizedSeats,
         expiresAt: holdExpiration,
       },
     });
@@ -155,15 +216,17 @@ export async function holdSeats(req, res, next) {
 export async function releaseSeats(req, res, next) {
   try {
     const { busId, journeyDate, seatNumbers } = req.body;
+    const userId = req.user?.userId;
 
-    await Seat.updateMany(
-      { busId, journeyDate, seatNumber: { $in: seatNumbers }, status: 'held' },
+    const result = await Seat.updateMany(
+      { busId, journeyDate, seatNumber: { $in: seatNumbers.map((seat) => String(seat).toUpperCase().trim()) }, status: 'held', heldBy: userId },
       { status: 'available', $unset: { heldUntil: '', heldBy: '' } }
     );
 
     res.status(200).json({
       success: true,
-      message: 'Seats released back to available inventory',
+      message: 'Your held seats were released back to available inventory.',
+      data: { releasedCount: result.modifiedCount },
     });
   } catch (error) {
     next(error);

@@ -1,6 +1,9 @@
 import { Trip, Bus, Route, SeatReservation, Pricing } from '../models/index.js';
 import { getTripSeats, lockSeats, releaseLocks } from '../services/seatLockService.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
+import { normalizeYatraBus } from '../utils/yatraFleet.js';
+
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export async function searchTrips(req, res, next) {
   try {
@@ -20,8 +23,8 @@ export async function searchTrips(req, res, next) {
       // Find matching routes
       const matchingRoutes = await Route.find({
         $and: [
-          { $or: [{ origin: new RegExp(`^${sourceCity}$`, 'i') }, { source: new RegExp(`^${sourceCity}$`, 'i') }] },
-          { destination: new RegExp(`^${destCity}$`, 'i') },
+          { $or: [{ origin: new RegExp(`^${escapeRegex(sourceCity)}$`, 'i') }, { source: new RegExp(`^${escapeRegex(sourceCity)}$`, 'i') }] },
+          { destination: new RegExp(`^${escapeRegex(destCity)}$`, 'i') },
         ],
         isActive: true,
       });
@@ -40,6 +43,7 @@ export async function searchTrips(req, res, next) {
       if (!bus || bus.operationalStatus === 'Inactive' || bus.isActive === false) {
         continue;
       }
+      const yatraBus = normalizeYatraBus(bus);
 
       // Count booked and actively locked seats
       const activeReservations = await SeatReservation.countDocuments({
@@ -62,11 +66,11 @@ export async function searchTrips(req, res, next) {
         id: trip._id,
         tripId: trip._id,
         busId: bus._id,
-        busName: bus.busName,
+        busName: yatraBus.busName,
         busNumber: bus.busNumber,
         busType: bus.busType,
         deckType: bus.deckType,
-        operator: bus.operator,
+        operator: yatraBus.operator,
         source: trip.routeId?.source || trip.routeId?.origin || bus.origin,
         destination: trip.routeId?.destination || bus.destination,
         origin: trip.routeId?.source || trip.routeId?.origin || bus.origin,
@@ -115,6 +119,7 @@ export async function getTripById(req, res, next) {
       success: true,
       data: {
         ...trip.toObject(),
+        busId: normalizeYatraBus(trip.busId),
         priceBreakdown: priceDetails,
       },
     });

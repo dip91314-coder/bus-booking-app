@@ -86,7 +86,7 @@ const Register = () => {
           </Link>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Create your account</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Book seats on verified buses and get <strong>₹100 Purple Wallet</strong> credit instantly.
+            Book YatraBus seats and get <strong>₹100 YatraBus Wallet</strong> credit instantly.
           </p>
         </div>
 

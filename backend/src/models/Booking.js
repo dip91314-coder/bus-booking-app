@@ -142,7 +142,14 @@ const BookingSchema = new mongoose.Schema(
   }
 );
 
-BookingSchema.pre('save', function (next) {
+BookingSchema.pre('validate', function (next) {
+  this.operator = 'YatraBus';
+  if (!/^YatraBus(?:\s|$)/i.test(this.busName || '')) {
+    this.busName = `YatraBus ${this.busType || 'Coach'}`;
+  } else {
+    this.busName = `YatraBus${this.busName.slice(8)}`;
+  }
+
   if (!this.pnr && this.bookingReference) {
     this.pnr = this.bookingReference;
   }

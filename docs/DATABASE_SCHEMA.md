@@ -176,7 +176,7 @@ Master inventory of buses managed by administrators, defining routes, schedules,
 | :--- | :--- | :--- | :--- |
 | `_id` | `ObjectId` | Primary Key, Auto-generated | Unique bus inventory identifier. |
 | `busNumber` | `String` | Required, Unique, Uppercase, Trimmed | Registration number (e.g., `"WB-04-A-1234"`). |
-| `busName` | `String` | Required, Trimmed, Length: 2–100 | Travel agency or bus name (e.g., `"Royal Cruiser"`). |
+| `busName` | `String` | Required, Trimmed, Length: 2–100 | YatraBus fleet vehicle label (e.g., `"YatraBus AC Sleeper"`). |
 | `busType` | `String` | Required, Enum: `['Seater', 'Sleeper', 'AC Seater', 'AC Sleeper']` | Physical layout and comfort category. |
 | `origin` | `String` | Required, Lowercase, Trimmed, Indexed | Origin city or boarding terminal (e.g., `"kolkata"`). |
 | `destination` | `String` | Required, Lowercase, Trimmed, Indexed | Destination city or dropping terminal (e.g., `"siliguri"`). |
@@ -603,7 +603,7 @@ module.exports = mongoose.model('Booking', bookingSchema);
 {
   "_id": { "$oid": "654a1b2c3d4e5f6789a00100" },
   "busNumber": "WB-04-E-5678",
-  "busName": "Greenline Express",
+  "busName": "YatraBus AC Sleeper",
   "busType": "AC Sleeper",
   "origin": "kolkata",
   "destination": "siliguri",

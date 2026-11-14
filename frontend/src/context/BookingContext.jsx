@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { MOCK_BUSES, INITIAL_USER_BOOKINGS, INITIAL_SAVED_TRAVELLERS } from '../data/mockData';
+import { normalizeYatraFleetItems } from '../utils/yatraFleet';
 import toast from 'react-hot-toast';
 
 const BookingContext = createContext(null);
@@ -9,7 +10,7 @@ export const BookingProvider = ({ children }) => {
   const [buses, setBuses] = useState(() => {
     try {
       const saved = localStorage.getItem('yatra_buses');
-      return saved ? JSON.parse(saved) : MOCK_BUSES;
+      return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : MOCK_BUSES;
     } catch {
       return MOCK_BUSES;
     }
@@ -35,7 +36,7 @@ export const BookingProvider = ({ children }) => {
   const [bookings, setBookings] = useState(() => {
     try {
       const saved = localStorage.getItem('yatra_bookings');
-      return saved ? JSON.parse(saved) : INITIAL_USER_BOOKINGS;
+      return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : INITIAL_USER_BOOKINGS;
     } catch {
       return INITIAL_USER_BOOKINGS;
     }
@@ -173,7 +174,10 @@ export const BookingProvider = ({ children }) => {
 
           return {
             ...bus,
-            availableSeatsCount: Math.max(0, (bus.availableSeatsCount || 15) - selectedSeats.length),
+            availableSeatsCount: Math.max(
+              0,
+              Number(bus.availableSeatsCount ?? bus.availableSeats ?? 15) - selectedSeats.length
+            ),
             seats: {
               ...bus.seats,
               lower: updatedLower,
