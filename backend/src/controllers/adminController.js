@@ -13,6 +13,10 @@ import { Staff } from '../models/Staff.js';
 import { Offer } from '../models/Offer.js';
 import { AdminNotification } from '../models/AdminNotification.js';
 import { PlatformSettings } from '../models/PlatformSettings.js';
+import { Trip } from '../models/Trip.js';
+import { Pricing } from '../models/Pricing.js';
+import { SeatReservation } from '../models/SeatReservation.js';
+import { Ticket } from '../models/Ticket.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
 
 const idOf = (document) => document._id.toString();
@@ -118,26 +122,40 @@ function formatBooking(booking) {
 
 export async function getDashboardMetrics(req, res, next) {
   try {
-    const [totalBookings, confirmedBookings, activeBuses, registeredUsers, recentBookings, revenueByRoute] =
-      await Promise.all([
-        Booking.countDocuments(),
-        Booking.find({ bookingStatus: 'confirmed' }).select('totalFare'),
-        Bus.countDocuments({ isActive: true }),
-        User.countDocuments({ role: 'user' }),
-        Booking.find().sort({ createdAt: -1 }).limit(10).populate('userId', 'name email phone'),
-        Booking.aggregate([
-          { $match: { bookingStatus: 'confirmed' } },
-          {
-            $group: {
-              _id: { $concat: ['$origin', ' ➔ ', '$destination'] },
-              totalRevenue: { $sum: '$totalFare' },
-              bookingsCount: { $sum: 1 },
-            },
+    const [
+      totalBookings,
+      confirmedBookings,
+      cancelledBookingsCount,
+      activeBuses,
+      totalRegisteredBuses,
+      totalRoutes,
+      totalScheduledTrips,
+      registeredUsers,
+      recentBookings,
+      revenueByRoute,
+    ] = await Promise.all([
+      Booking.countDocuments(),
+      Booking.find({ bookingStatus: 'confirmed' }).select('totalFare'),
+      Booking.countDocuments({ bookingStatus: 'cancelled' }),
+      Bus.countDocuments({ isActive: true }),
+      Bus.countDocuments(),
+      Route.countDocuments({ isActive: true }),
+      Trip.countDocuments({ status: { $in: ['scheduled', 'active'] } }),
+      User.countDocuments({ role: 'user' }),
+      Booking.find().sort({ createdAt: -1 }).limit(10).populate('userId', 'name email phone'),
+      Booking.aggregate([
+        { $match: { bookingStatus: 'confirmed' } },
+        {
+          $group: {
+            _id: { $concat: ['$origin', ' ➔ ', '$destination'] },
+            totalRevenue: { $sum: '$totalFare' },
+            bookingsCount: { $sum: 1 },
           },
-          { $sort: { totalRevenue: -1 } },
-          { $limit: 5 },
-        ]),
-      ]);
+        },
+        { $sort: { totalRevenue: -1 } },
+        { $limit: 5 },
+      ]),
+    ]);
 
     const totalRevenue = confirmedBookings.reduce((sum, booking) => sum + booking.totalFare, 0);
     const capacity = await Bus.aggregate([
@@ -153,13 +171,21 @@ export async function getDashboardMetrics(req, res, next) {
       data: {
         totalBookings,
         totalRevenue: `₹${totalRevenue.toLocaleString('en-IN')}`,
+        totalRevenueNumber: totalRevenue,
         activeBuses,
+        totalRegisteredBuses,
+        totalRoutes,
+        totalScheduledTrips,
+        totalConfirmedTickets: confirmedBookings.length,
+        totalCancelledBookings: cancelledBookingsCount,
+        totalRegisteredCustomers: registeredUsers,
         registeredUsers,
         occupancyRate: `${occupancy}%`,
         recentBookings: recentBookings.map(formatBooking),
+        recentBookingActivities: recentBookings.map(formatBooking),
         revenueByRoute: revenueByRoute.map((route) => ({
           route: route._id,
-          revenue: `₹${route.totalRevenue.toLocaleString('en-IN')}`,
+          revenue: route.totalRevenue,
           bookings: route.bookingsCount,
         })),
       },
@@ -973,6 +999,125 @@ export async function changeAdminPassword(req, res, next) {
     user.password = req.body.newPassword;
     await user.save();
     res.status(200).json({ success: true, message: 'Password updated successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminTrips(req, res, next) {
+  try {
+    const { busId, routeId, date, status } = req.query;
+    const filter = {};
+    if (busId && validId(busId)) filter.busId = busId;
+    if (routeId && validId(routeId)) filter.routeId = routeId;
+    if (date) filter.travelDate = date;
+    if (status) filter.status = status;
+
+    const trips = await Trip.find(filter)
+      .populate('busId', 'busName busNumber busType totalSeats deckType')
+      .populate('routeId', 'origin destination source departurePoint arrivalPoint')
+      .sort({ travelDate: -1, departureTime: 1 });
+
+    res.status(200).json({ success: true, count: trips.length, data: trips });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createAdminTrip(req, res, next) {
+  try {
+    const trip = await Trip.create(req.body);
+    const populated = await Trip.findById(trip._id).populate('busId routeId');
+    res.status(201).json({ success: true, data: populated });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAdminTrip(req, res, next) {
+  try {
+    if (!validId(req.params.id)) throw new NotFoundError('Trip not found.');
+    const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+      .populate('busId routeId');
+    requireDocument(trip, 'Trip');
+    res.status(200).json({ success: true, data: trip });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAdminTrip(req, res, next) {
+  try {
+    if (!validId(req.params.id)) throw new NotFoundError('Trip not found.');
+    const trip = await Trip.findByIdAndDelete(req.params.id);
+    requireDocument(trip, 'Trip');
+    res.status(200).json({ success: true, message: 'Trip deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminPricing(req, res, next) {
+  try {
+    const { busId, routeId, tripId } = req.query;
+    const filter = {};
+    if (busId && validId(busId)) filter.busId = busId;
+    if (routeId && validId(routeId)) filter.routeId = routeId;
+    if (tripId && validId(tripId)) filter.tripId = tripId;
+
+    const rules = await Pricing.find(filter)
+      .populate('busId', 'busName busNumber')
+      .populate('routeId', 'origin destination')
+      .populate('tripId', 'travelDate departureTime');
+
+    res.status(200).json({ success: true, count: rules.length, data: rules });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createAdminPricing(req, res, next) {
+  try {
+    const pricing = await Pricing.create(req.body);
+    res.status(201).json({ success: true, data: pricing });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAdminPricing(req, res, next) {
+  try {
+    if (!validId(req.params.id)) throw new NotFoundError('Pricing rule not found.');
+    const pricing = await Pricing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    requireDocument(pricing, 'Pricing rule');
+    res.status(200).json({ success: true, data: pricing });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAdminPricing(req, res, next) {
+  try {
+    if (!validId(req.params.id)) throw new NotFoundError('Pricing rule not found.');
+    const pricing = await Pricing.findByIdAndDelete(req.params.id);
+    requireDocument(pricing, 'Pricing rule');
+    res.status(200).json({ success: true, message: 'Pricing rule deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateBusSeatLayout(req, res, next) {
+  try {
+    if (!validId(req.params.id)) throw new NotFoundError('Bus not found.');
+    const { seatLayout, totalSeats } = req.body;
+    const updates = {};
+    if (seatLayout) updates.seatLayout = seatLayout;
+    if (totalSeats) updates.totalSeats = totalSeats;
+
+    const bus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
+    requireDocument(bus, 'Bus');
+    res.status(200).json({ success: true, data: bus });
   } catch (error) {
     next(error);
   }

@@ -45,6 +45,15 @@ import {
   getAdminSettings,
   updateAdminSettings,
   changeAdminPassword,
+  getAdminTrips,
+  createAdminTrip,
+  updateAdminTrip,
+  deleteAdminTrip,
+  getAdminPricing,
+  createAdminPricing,
+  updateAdminPricing,
+  deleteAdminPricing,
+  updateBusSeatLayout,
 } from '../controllers/adminController.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
@@ -82,7 +91,18 @@ router.get('/reports', getReports);
 router.get('/buses', getAdminBuses);
 router.post('/buses', validateBody(adminBusSchema), createAdminBus);
 router.put('/buses/:id', validateBody(adminBusUpdateSchema), updateAdminBus);
+router.put('/buses/:id/layout', updateBusSeatLayout);
 router.delete('/buses/:id', deleteAdminBus);
+
+router.get('/trips', getAdminTrips);
+router.post('/trips', createAdminTrip);
+router.put('/trips/:id', updateAdminTrip);
+router.delete('/trips/:id', deleteAdminTrip);
+
+router.get('/pricing', getAdminPricing);
+router.post('/pricing', createAdminPricing);
+router.put('/pricing/:id', updateAdminPricing);
+router.delete('/pricing/:id', deleteAdminPricing);
 
 router.get('/routes', getAdminRoutes);
 router.post('/routes', validateBody(adminRouteSchema), createAdminRoute);
