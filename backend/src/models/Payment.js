@@ -23,9 +23,30 @@ const PaymentSchema = new mongoose.Schema(
       type: String,
       default: 'INR',
     },
+    gateway: {
+      type: String,
+      enum: ['Razorpay', 'Mock', 'Stripe', 'Manual'],
+      default: 'Mock',
+      index: true,
+    },
+    gatewayOrderId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    gatewayPaymentId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      unique: true, // Idempotency: gateway payment ID must never be processed twice
+      index: true,
+    },
+    gatewaySignature: {
+      type: String,
+      trim: true,
+    },
     paymentMethod: {
       type: String,
-      enum: ['UPI', 'Card', 'NetBanking', 'Wallet'],
       default: 'UPI',
     },
     transactionReference: {
@@ -36,17 +57,23 @@ const PaymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['success', 'pending', 'failed', 'refunded'],
-      default: 'success',
+      enum: ['success', 'successful', 'pending', 'failed', 'refunded'],
+      default: 'pending',
       index: true,
     },
     refundStatus: {
       type: String,
-      enum: ['None', 'Requested', 'Processed'],
+      enum: ['None', 'Requested', 'Processed', 'refund_required'],
       default: 'None',
+      index: true,
+    },
+    rawWebhookPayload: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
   },
   {
@@ -54,5 +81,6 @@ const PaymentSchema = new mongoose.Schema(
   }
 );
 
-export const Payment =
-  mongoose.models.Payment || mongoose.model('Payment', PaymentSchema);
+PaymentSchema.index({ bookingId: 1, createdAt: -1 });
+
+export const Payment = mongoose.models.Payment || mongoose.model('Payment', PaymentSchema);
