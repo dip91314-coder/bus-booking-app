@@ -292,6 +292,34 @@ export const adminApi = {
     const res = await apiClient.put(`/admin/buses/${busId}/layout`, layoutData);
     return res.data?.data;
   },
+  generateRecurringTrips: async (data) => {
+    const res = await apiClient.post('/admin/trips/recurrence', data);
+    return res.data;
+  },
+  adjustPassengerWallet: async (id, amount, reason) => {
+    const res = await apiClient.patch(`/admin/passengers/${id}/wallet`, { amount, reason });
+    return res.data;
+  },
+  changeBookingSeat: async (id, oldSeatNumber, newSeatNumber) => {
+    const res = await apiClient.post(`/admin/bookings/${id}/change-seat`, { oldSeatNumber, newSeatNumber });
+    return res.data;
+  },
+  getAuditLogs: async (params) => {
+    const res = await apiClient.get('/admin/audit-logs', { params });
+    return res.data;
+  },
+  previewPricing: async (data) => {
+    const res = await apiClient.post('/admin/pricing/preview', data);
+    return res.data?.data;
+  },
+  uploadImage: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post('/admin/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
 };
 
 // Destination Endpoints
@@ -384,6 +412,38 @@ export const routeApi = {
       if (USE_MOCKS) return POPULAR_ROUTES;
       throw err;
     }
+  },
+};
+
+// Tour Packages & Circuits Endpoints
+export const packageApi = {
+  getPackages: async (params) => {
+    try {
+      const res = await apiClient.get('/packages', { params });
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
+  },
+  getPackage: async (slug) => {
+    const res = await apiClient.get(`/packages/${slug}`);
+    return res.data?.data;
+  },
+  getAdminPackages: async () => {
+    const res = await apiClient.get('/packages/admin/all');
+    return res.data?.data || [];
+  },
+  createPackage: async (data) => {
+    const res = await apiClient.post('/packages/admin', data);
+    return res.data?.data;
+  },
+  updatePackage: async (id, data) => {
+    const res = await apiClient.put(`/packages/admin/${id}`, data);
+    return res.data?.data;
+  },
+  deletePackage: async (id) => {
+    const res = await apiClient.delete(`/packages/admin/${id}`);
+    return res.data;
   },
 };
 

@@ -17,6 +17,8 @@ import { Trip } from '../models/Trip.js';
 import { Pricing } from '../models/Pricing.js';
 import { SeatReservation } from '../models/SeatReservation.js';
 import { Ticket } from '../models/Ticket.js';
+import { AuditLog } from '../models/AuditLog.js';
+import { TripNotification } from '../models/TripNotification.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { invalidate } from '../config/redis.js';
@@ -24,6 +26,23 @@ import { invalidate } from '../config/redis.js';
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
 const toObject = (document) => document.toObject({ virtuals: false });
+
+export async function recordAuditLog({ req, action, targetEntity, targetId = '', summary, diff = null }) {
+  try {
+    await AuditLog.create({
+      adminId: req?.user?.userId || null,
+      adminEmail: req?.user?.email || 'admin@yatrabus.com',
+      action,
+      targetEntity,
+      targetId: targetId ? targetId.toString() : '',
+      summary,
+      diff,
+      ipAddress: req?.ip || req?.socket?.remoteAddress || '',
+    });
+  } catch {
+    // Non-blocking
+  }
+}
 
 function requireDocument(document, label) {
   if (!document) throw new NotFoundError(`${label} not found.`);
@@ -472,10 +491,30 @@ export async function updateAdminBus(req, res, next) {
 export async function deleteAdminBus(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Bus not found.');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const futureBookingsCount = await Booking.countDocuments({
+      busId: req.params.id,
+      journeyDate: { $gte: today },
+      bookingStatus: 'confirmed',
+    });
+    if (futureBookingsCount > 0) {
+      throw new ValidationError(`Cannot delete bus: ${futureBookingsCount} future trips scheduled with existing bookings.`);
+    }
+
     const bus = await Bus.findByIdAndDelete(req.params.id);
     requireDocument(bus, 'Bus');
     await invalidate('bus:');
     await invalidate('trips:');
+
+    await recordAuditLog({
+      req,
+      action: 'DELETE_BUS',
+      targetEntity: 'Bus',
+      targetId: req.params.id,
+      summary: `Deleted bus ${bus.busNumber} (${bus.busName})`,
+    });
+
     res.status(200).json({ success: true, message: 'Bus removed successfully.' });
   } catch (error) {
     next(error);
@@ -708,6 +747,7 @@ export async function getAdminPassengers(req, res, next) {
           city: user.city || '',
           totalBookings: totals?.totalBookings || 0,
           totalSpent: totals?.totalSpent || 0,
+          walletBalance: user.walletBalance || 0,
           status: user.status || 'Active',
           joinedDate: user.createdAt,
         };
@@ -1137,10 +1177,47 @@ export async function createAdminTrip(req, res, next) {
 export async function updateAdminTrip(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Trip not found.');
+    const previousTrip = await Trip.findById(req.params.id);
+    requireDocument(previousTrip, 'Trip');
+
     const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate('busId routeId');
     requireDocument(trip, 'Trip');
     await invalidate('trips:');
+
+    const isCancelled = req.body.status === 'cancelled' && previousTrip.status !== 'cancelled';
+    const isDelayed = (req.body.status === 'delayed' && previousTrip.status !== 'delayed') ||
+      (req.body.departureTime && req.body.departureTime !== previousTrip.departureTime);
+
+    if (isCancelled || isDelayed) {
+      const bookings = await Booking.find({ tripId: trip._id, bookingStatus: 'confirmed' });
+      const notifPromises = bookings.map((b) =>
+        TripNotification.create({
+          tripId: trip._id,
+          bookingId: b._id,
+          userId: b.userId,
+          type: isCancelled ? 'CANCELLATION' : 'DELAY',
+          title: isCancelled
+            ? `Trip Cancelled: ${b.origin} to ${b.destination}`
+            : `Trip Delayed / Rescheduled: ${b.origin} to ${b.destination}`,
+          message: isCancelled
+            ? `Your scheduled journey on ${trip.travelDate} (PNR: ${b.pnr}) has been cancelled by operator.`
+            : `Your journey on ${trip.travelDate} has been rescheduled to depart at ${trip.departureTime}.`,
+          isRead: false,
+        })
+      );
+      await Promise.all(notifPromises).catch(() => {});
+    }
+
+    await recordAuditLog({
+      req,
+      action: 'UPDATE_TRIP',
+      targetEntity: 'Trip',
+      targetId: trip._id.toString(),
+      summary: `Updated trip ${trip._id} status to ${trip.status}`,
+      diff: req.body,
+    });
+
     res.status(200).json({
       success: true,
       data: { ...trip.toObject(), busId: normalizeYatraBus(trip.busId) },
@@ -1218,16 +1295,337 @@ export async function deleteAdminPricing(req, res, next) {
 export async function updateBusSeatLayout(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Bus not found.');
+    const bus = await Bus.findById(req.params.id);
+    requireDocument(bus, 'Bus');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const futureBookingsCount = await Booking.countDocuments({
+      busId: req.params.id,
+      journeyDate: { $gte: today },
+      bookingStatus: 'confirmed',
+    });
+    if (futureBookingsCount > 0) {
+      throw new ValidationError(`Cannot modify layout: ${futureBookingsCount} future trips scheduled with existing bookings.`);
+    }
+
     const { seatLayout, totalSeats } = req.body;
+    const capacity = totalSeats !== undefined ? Number(totalSeats) : bus.totalSeats;
+    if (seatLayout && Array.isArray(seatLayout)) {
+      if (seatLayout.length !== capacity) {
+        throw new ValidationError(`Layout seat count (${seatLayout.length}) must match total seat capacity (${capacity}).`);
+      }
+    }
+
     const updates = {};
     if (seatLayout) updates.seatLayout = seatLayout;
-    if (totalSeats) updates.totalSeats = totalSeats;
+    if (totalSeats) updates.totalSeats = capacity;
 
-    const bus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
-    requireDocument(bus, 'Bus');
+    const updatedBus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
+    requireDocument(updatedBus, 'Bus');
     await invalidate('bus:');
     await invalidate('trips:');
-    res.status(200).json({ success: true, data: normalizeYatraBus(bus) });
+
+    await recordAuditLog({
+      req,
+      action: 'UPDATE_BUS_LAYOUT',
+      targetEntity: 'Bus',
+      targetId: req.params.id,
+      summary: `Updated seat layout and capacity (${capacity} seats) for bus ${bus.busNumber}`,
+      diff: updates,
+    });
+
+    res.status(200).json({ success: true, data: normalizeYatraBus(updatedBus) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function generateRecurringTrips(req, res, next) {
+  try {
+    const { routeId, busId, departureTime, arrivalTime, recurrence, startDate, endDate, specificDates, baseFare } = req.body;
+    if (!validId(routeId)) throw new ValidationError('Valid routeId is required.');
+    if (!validId(busId)) throw new ValidationError('Valid busId is required.');
+    if (!departureTime || !arrivalTime) throw new ValidationError('departureTime and arrivalTime are required.');
+
+    const [route, bus] = await Promise.all([
+      Route.findById(routeId),
+      Bus.findById(busId),
+    ]);
+    requireDocument(route, 'Route');
+    requireDocument(bus, 'Bus');
+
+    const datesToGenerate = [];
+    if (recurrence === 'specific_dates' && Array.isArray(specificDates)) {
+      datesToGenerate.push(...specificDates);
+    } else if (startDate && endDate) {
+      let current = new Date(startDate);
+      const end = new Date(endDate);
+      while (current <= end) {
+        const dayOfWeek = current.getDay(); // 0 is Sun, 6 is Sat
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isWeekday = !isWeekend;
+        if (
+          recurrence === 'daily' ||
+          (recurrence === 'weekdays' && isWeekday) ||
+          (recurrence === 'weekends' && isWeekend)
+        ) {
+          datesToGenerate.push(current.toISOString().slice(0, 10));
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    } else {
+      throw new ValidationError('Valid date range or specific dates must be provided.');
+    }
+
+    if (datesToGenerate.length === 0) {
+      throw new ValidationError('No valid dates match the specified recurrence criteria.');
+    }
+
+    const createdTrips = [];
+    const conflicts = [];
+
+    for (const travelDate of datesToGenerate) {
+      // Check bus conflict: Same bus cannot depart twice at the exact same travelDate and departureTime
+      const existing = await Trip.findOne({ busId, travelDate, departureTime });
+      if (existing) {
+        conflicts.push({ travelDate, departureTime, busNumber: bus.busNumber });
+        continue;
+      }
+
+      const trip = await Trip.create({
+        busId,
+        routeId,
+        travelDate,
+        departureTime,
+        arrivalTime,
+        baseFare: baseFare || bus.fare || 500,
+        status: 'scheduled',
+        boardingPoints: route.boardingPoints || [],
+        droppingPoints: route.droppingPoints || [],
+      });
+      createdTrips.push(trip);
+    }
+
+    await invalidate('trips:');
+
+    await recordAuditLog({
+      req,
+      action: 'GENERATE_RECURRING_TRIPS',
+      targetEntity: 'Trip',
+      targetId: busId,
+      summary: `Generated ${createdTrips.length} recurring trips for bus ${bus.busNumber} on route ${route.origin} - ${route.destination} (${conflicts.length} conflicts skipped)`,
+      diff: { recurrence, datesCount: datesToGenerate.length, createdCount: createdTrips.length, conflictsCount: conflicts.length },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${createdTrips.length} trips successfully.${conflicts.length > 0 ? ` ${conflicts.length} trips skipped due to scheduling conflicts.` : ''}`,
+      count: createdTrips.length,
+      conflicts,
+      data: createdTrips,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function previewPricing(req, res, next) {
+  try {
+    const { routeId, busId, date, seatType = 'seater', position = 'lower', row = 1 } = req.body;
+    let basePrice = 500;
+    let pricingRule = null;
+
+    if (routeId && validId(routeId)) {
+      pricingRule = await Pricing.findOne({
+        routeId,
+        isActive: true,
+        $or: [{ seatType }, { seatType: 'all' }],
+      }).sort({ seatType: seatType === 'all' ? 1 : -1 });
+    }
+
+    if (!pricingRule && busId && validId(busId)) {
+      pricingRule = await Pricing.findOne({
+        busId,
+        isActive: true,
+        $or: [{ seatType }, { seatType: 'all' }],
+      });
+    }
+
+    if (pricingRule) {
+      basePrice = pricingRule.basePrice;
+    } else if (busId && validId(busId)) {
+      const bus = await Bus.findById(busId);
+      if (bus?.fare) basePrice = bus.fare;
+    }
+
+    const appliedMultipliers = {};
+    let multiplierTotal = 1.0;
+
+    if (date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      if (day === 0 || day === 5 || day === 6) {
+        const weekendMult = pricingRule?.weekendMultiplier || 1.2;
+        appliedMultipliers.weekend = weekendMult;
+        multiplierTotal *= weekendMult;
+      }
+    }
+
+    if (seatType === 'sleeper') {
+      const sleeperMult = pricingRule?.sleeperMultiplier || 1.2;
+      appliedMultipliers.sleeper = sleeperMult;
+      multiplierTotal *= sleeperMult;
+    }
+
+    if (position === 'lower') {
+      const lowerMult = pricingRule?.lowerBerthMultiplier || 1.1;
+      appliedMultipliers.lowerBerth = lowerMult;
+      multiplierTotal *= lowerMult;
+    }
+
+    if (Number(row) === 1) {
+      const frontMult = pricingRule?.frontRowMultiplier || 1.05;
+      appliedMultipliers.frontRow = frontMult;
+      multiplierTotal *= frontMult;
+    }
+
+    const subtotal = Math.round(basePrice * multiplierTotal);
+    const taxPercent = pricingRule?.taxPercent || 5;
+    const taxAmount = Math.round(subtotal * (taxPercent / 100));
+    const finalFare = subtotal + taxAmount;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        basePrice,
+        multiplierTotal: Number(multiplierTotal.toFixed(2)),
+        appliedMultipliers,
+        subtotal,
+        taxPercent,
+        taxAmount,
+        finalFare,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function adjustAdminPassengerWallet(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+    if (!validId(id)) throw new NotFoundError('Passenger not found.');
+    if (typeof amount !== 'number') throw new ValidationError('Valid numeric amount is required.');
+
+    const user = await User.findById(id);
+    requireDocument(user, 'User');
+    user.walletBalance = Math.max(0, (user.walletBalance || 0) + amount);
+    await user.save();
+
+    await recordAuditLog({
+      req,
+      action: 'ADJUST_WALLET',
+      targetEntity: 'User',
+      targetId: user._id.toString(),
+      summary: `Adjusted wallet by ₹${amount} for ${user.email} (Reason: ${reason || 'Admin adjustment'})`,
+      diff: { amount, reason, newBalance: user.walletBalance },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Wallet updated. New balance: ₹${user.walletBalance}`,
+      data: { id: user._id, walletBalance: user.walletBalance },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function changeAdminBookingSeat(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { oldSeatNumber, newSeatNumber } = req.body;
+    if (!oldSeatNumber || !newSeatNumber) throw new ValidationError('Both oldSeatNumber and newSeatNumber are required.');
+
+    const booking = await Booking.findOne(
+      validId(id) ? { $or: [{ _id: id }, { bookingReference: id.toUpperCase() }] } : { bookingReference: id.toUpperCase() }
+    );
+    requireDocument(booking, 'Booking');
+
+    if (booking.bookingStatus !== 'confirmed') {
+      throw new ValidationError('Only confirmed bookings can have seats reassigned.');
+    }
+
+    if (!booking.seats.includes(oldSeatNumber)) {
+      throw new ValidationError(`Seat ${oldSeatNumber} is not part of this booking.`);
+    }
+
+    if (booking.tripId) {
+      const occupied = await SeatReservation.findOne({
+        tripId: booking.tripId,
+        seatNumber: newSeatNumber.toUpperCase(),
+        status: { $in: ['locked', 'booked'] },
+      });
+      if (occupied) {
+        throw new ValidationError(`Seat ${newSeatNumber} is already reserved or booked on this trip.`);
+      }
+
+      await SeatReservation.findOneAndUpdate(
+        { tripId: booking.tripId, seatNumber: oldSeatNumber.toUpperCase() },
+        { seatNumber: newSeatNumber.toUpperCase() }
+      );
+    }
+
+    booking.seats = booking.seats.map((s) => (s === oldSeatNumber ? newSeatNumber.toUpperCase() : s));
+    booking.passengers = booking.passengers.map((p) => {
+      if (p.seatNumber === oldSeatNumber) {
+        p.seatNumber = newSeatNumber.toUpperCase();
+      }
+      return p;
+    });
+
+    await booking.save();
+
+    await recordAuditLog({
+      req,
+      action: 'CHANGE_BOOKING_SEAT',
+      targetEntity: 'Booking',
+      targetId: booking._id.toString(),
+      summary: `Changed seat from ${oldSeatNumber} to ${newSeatNumber} for PNR ${booking.pnr || booking.bookingReference}`,
+      diff: { oldSeatNumber, newSeatNumber },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Seat changed successfully to ${newSeatNumber.toUpperCase()}.`,
+      data: formatBooking(booking),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminAuditLogs(req, res, next) {
+  try {
+    const { action, targetEntity, limit = 50, page = 1 } = req.query;
+    const filter = {};
+    if (action) filter.action = action;
+    if (targetEntity) filter.targetEntity = targetEntity;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      AuditLog.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      total,
+      page: Number(page),
+      count: logs.length,
+      data: logs,
+    });
   } catch (error) {
     next(error);
   }

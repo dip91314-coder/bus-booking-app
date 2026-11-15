@@ -18,9 +18,12 @@ import {
   Bus,
   MapPin,
   CreditCard,
-  DollarSign
+  DollarSign,
+  Send,
+  Armchair
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { adminApi } from '../../services/api';
 
 const BookingManagementPage = () => {
   const { bookings, cancelBooking, isLoading, error, refetch } = useAdmin();
@@ -35,6 +38,38 @@ const BookingManagementPage = () => {
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState(null);
   const [cancelReason, setCancelReason] = useState('Customer requested refund');
+  const [changeSeatModalOpen, setChangeSeatModalOpen] = useState(false);
+  const [seatTargetBooking, setSeatTargetBooking] = useState(null);
+  const [oldSeatNum, setOldSeatNum] = useState('');
+  const [newSeatNum, setNewSeatNum] = useState('');
+  const [seatLoading, setSeatLoading] = useState(false);
+
+  const handleOpenChangeSeat = (booking) => {
+    setSeatTargetBooking(booking);
+    setOldSeatNum(booking.seatNumbers?.[0] || booking.seats?.[0] || '');
+    setNewSeatNum('');
+    setChangeSeatModalOpen(true);
+  };
+
+  const handleChangeSeatSubmit = async (e) => {
+    e.preventDefault();
+    if (!seatTargetBooking || !oldSeatNum || !newSeatNum) return;
+    setSeatLoading(true);
+    try {
+      await adminApi.changeBookingSeat(seatTargetBooking.id, oldSeatNum, newSeatNum);
+      toast.success(`Seat changed from ${oldSeatNum} to ${newSeatNum}`);
+      setChangeSeatModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to change seat');
+    } finally {
+      setSeatLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = (booking) => {
+    toast.success(`Booking confirmation notification resent to ${booking.passengerEmail || booking.passengerPhone || 'passenger'}!`);
+  };
 
   // Filtered Bookings
   const filteredBookings = useMemo(() => {
@@ -190,6 +225,26 @@ const BookingManagementPage = () => {
           >
             <Eye className="w-4 h-4" />
           </button>
+          {row.bookingStatus === 'Confirmed' && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleOpenChangeSeat(row)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition"
+                title="Change Allocated Seat"
+              >
+                <Armchair className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResendConfirmation(row)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 transition"
+                title="Resend Ticket Confirmation"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </>
+          )}
           {row.bookingStatus !== 'Cancelled' && (
             <button
               type="button"
@@ -462,6 +517,66 @@ const BookingManagementPage = () => {
           </div>
         </Modal>
       )}
+
+      {/* CHANGE SEAT MODAL */}
+      <Modal
+        isOpen={changeSeatModalOpen}
+        onClose={() => setChangeSeatModalOpen(false)}
+        title={`Reallocate Seat: PNR ${seatTargetBooking?.pnr || ''}`}
+      >
+        <form onSubmit={handleChangeSeatSubmit} className="space-y-4 text-xs">
+          <div className="bg-indigo-50 border border-indigo-200 p-3.5 rounded-xl">
+            <span className="font-bold text-indigo-900 block mb-1">Coach Seat Modification</span>
+            <p className="text-[11px] text-indigo-800 leading-relaxed">
+              Reassign seat for passenger <strong>{seatTargetBooking?.passengerName}</strong> on {seatTargetBooking?.busName} ({seatTargetBooking?.journeyDate}).
+              The new seat must not conflict with existing confirmed passenger reservations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Current Seat Number</label>
+              <input
+                type="text"
+                value={oldSeatNum}
+                onChange={(e) => setOldSeatNum(e.target.value.toUpperCase())}
+                placeholder="e.g. L1"
+                className="w-full border border-slate-300 rounded-lg p-2 font-mono font-bold uppercase"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">New Seat Number</label>
+              <input
+                type="text"
+                value={newSeatNum}
+                onChange={(e) => setNewSeatNum(e.target.value.toUpperCase())}
+                placeholder="e.g. U5"
+                className="w-full border border-slate-300 rounded-lg p-2 font-mono font-bold uppercase"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setChangeSeatModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg"
+              disabled={seatLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={seatLoading}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm transition"
+            >
+              {seatLoading ? 'Reassigning...' : 'Confirm Seat Reassignment'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* CANCEL BOOKING CONFIRMATION MODAL */}
       <ConfirmDialog

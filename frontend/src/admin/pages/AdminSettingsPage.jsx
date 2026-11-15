@@ -11,9 +11,12 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  AlertTriangle
+  AlertTriangle,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { adminApi } from '../../services/api';
 
 const AdminSettingsPage = () => {
   const { settings, updateSettings, changePassword } = useAdmin();
@@ -41,12 +44,18 @@ const AdminSettingsPage = () => {
   // General Settings Form
   const [generalForm, setGeneralForm] = useState({
     platformTitle: settings.platformTitle || 'YatraBus Logistics & Fleet Operations',
+    brandTagline: settings.brandTagline || "India's Premier Bus Transit Platform",
+    logoUrl: settings.logoUrl || '/logo.svg',
     currency: settings.currency || 'INR (₹)',
     taxGstRate: settings.taxGstRate ?? 5,
+    serviceChargeFlat: settings.serviceChargeFlat ?? 20,
+    cancelPolicyHours: settings.cancelPolicyHours ?? 6,
+    cancelRefundPercent: settings.cancelRefundPercent ?? 80,
     supportEmail: settings.supportEmail || 'support@yatrabus.in',
     supportHelpline: settings.supportHelpline || '1800-250-8737',
     maintenanceMode: settings.maintenanceMode || false
   });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Notification Preferences Form
   const [notifPreferences, setNotifPreferences] = useState({
@@ -65,8 +74,13 @@ const AdminSettingsPage = () => {
     });
     setGeneralForm({
       platformTitle: settings.platformTitle || 'YatraBus Logistics & Fleet Operations',
+      brandTagline: settings.brandTagline || "India's Premier Bus Transit Platform",
+      logoUrl: settings.logoUrl || '/logo.svg',
       currency: settings.currency || 'INR (₹)',
       taxGstRate: settings.taxGstRate ?? 5,
+      serviceChargeFlat: settings.serviceChargeFlat ?? 20,
+      cancelPolicyHours: settings.cancelPolicyHours ?? 6,
+      cancelRefundPercent: settings.cancelRefundPercent ?? 80,
       supportEmail: settings.supportEmail || 'support@yatrabus.in',
       supportHelpline: settings.supportHelpline || '1800-250-8737',
       maintenanceMode: settings.maintenanceMode || false
@@ -78,6 +92,23 @@ const AdminSettingsPage = () => {
       soundAlerts: settings.soundAlerts !== undefined ? settings.soundAlerts : false
     });
   }, [settings]);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const res = await adminApi.uploadImage(file);
+      if (res && res.url) {
+        setGeneralForm((prev) => ({ ...prev, logoUrl: res.url }));
+        toast.success('Brand logo uploaded successfully');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const handleProfileSubmit = (e) => {
     e.preventDefault();
@@ -419,6 +450,69 @@ const AdminSettingsPage = () => {
                   }
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
                 />
+              </div>
+
+              {/* Brand Logo & Upload */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  Brand Logo URL &amp; File Upload
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={generalForm.logoUrl}
+                    onChange={(e) => setGeneralForm({ ...generalForm, logoUrl: e.target.value })}
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 font-mono text-xs"
+                    placeholder="/logo.svg"
+                  />
+                  <label className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl font-bold cursor-pointer inline-flex items-center gap-1.5 shrink-0 text-slate-700">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{uploadingLogo ? 'Uploading...' : 'Upload'}</span>
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" disabled={uploadingLogo} />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  Brand Hero Tagline
+                </label>
+                <input
+                  type="text"
+                  value={generalForm.brandTagline}
+                  onChange={(e) => setGeneralForm({ ...generalForm, brandTagline: e.target.value })}
+                  placeholder="India's Premier Bus Transit Platform"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Cancellation Cutoff (Hours)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="72"
+                    value={generalForm.cancelPolicyHours}
+                    onChange={(e) => setGeneralForm({ ...generalForm, cancelPolicyHours: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Refund Percentage (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={generalForm.cancelRefundPercent}
+                    onChange={(e) => setGeneralForm({ ...generalForm, cancelRefundPercent: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold"
+                  />
+                </div>
               </div>
 
               {/* Maintenance Toggle */}

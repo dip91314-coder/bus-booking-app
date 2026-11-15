@@ -22,6 +22,8 @@ import {
   Destination,
   JournalEntry,
   SavedPassenger,
+  TripPackage,
+  AuditLog,
 } from '../models/index.js';
 import { logger } from '../config/logger.js';
 
@@ -54,6 +56,8 @@ export async function seedDatabase() {
       Destination.deleteMany({}),
       JournalEntry.deleteMany({}),
       SavedPassenger.deleteMany({}),
+      TripPackage.deleteMany({}),
+      AuditLog.deleteMany({}),
     ]);
 
     // 1. Create Users
@@ -486,8 +490,8 @@ export async function seedDatabase() {
       },
     ]);
 
-    // 5. Create Pricing Rules
-    logger.info('Creating pricing rules...');
+    // 5. Create Multi-Tier Pricing Rules
+    logger.info('Creating multi-tier pricing rules with weekend and seat-type multipliers...');
     for (const bus of buses) {
       await Pricing.create({
         busId: bus._id,
@@ -495,6 +499,13 @@ export async function seedDatabase() {
         basePrice: bus.fare,
         additionalCharges: 0,
         taxPercent: 5,
+        dayOfWeekMultiplier: 1.0,
+        weekendMultiplier: 1.2,
+        festiveMultiplier: 1.25,
+        lastMinuteMultiplier: 1.15,
+        sleeperMultiplier: 1.2,
+        lowerBerthMultiplier: 1.1,
+        frontRowMultiplier: 1.05,
       });
       if (bus.deckType === 'double') {
         await Pricing.create({
@@ -503,6 +514,13 @@ export async function seedDatabase() {
           basePrice: bus.fare + 100,
           additionalCharges: 50,
           taxPercent: 5,
+          dayOfWeekMultiplier: 1.0,
+          weekendMultiplier: 1.25,
+          festiveMultiplier: 1.3,
+          lastMinuteMultiplier: 1.2,
+          sleeperMultiplier: 1.2,
+          lowerBerthMultiplier: 1.1,
+          frontRowMultiplier: 1.05,
         });
       }
     }
@@ -1380,7 +1398,157 @@ export async function seedDatabase() {
       },
     ]);
 
-    // 14. Create Platform Settings
+    // 14. Create Short Trips & Weekend Circuits (TripPackages)
+    logger.info('Creating authentic Indian short-trip packages...');
+    await TripPackage.create([
+      {
+        title: 'Mahabaleshwar - Ganpatipule Scenic Coastal Circuit',
+        slug: 'pune-mahabaleshwar-ganpatipule',
+        category: 'Konkan',
+        durationDays: 3,
+        durationNights: 2,
+        packageType: 'Coastal Route',
+        pricePerPerson: 4550,
+        image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Pune ➔ Mahabaleshwar ➔ Ganpatipule',
+        departureCity: 'Pune',
+        destinationCity: 'Ganpatipule',
+        featured: true,
+        itinerary: [
+          { day: 1, title: 'Pune to Mahabaleshwar', description: 'Scenic Western Ghats drive, visit strawberry farms and Arthur Seat viewpoint.', meals: ['Breakfast', 'Dinner'] },
+          { day: 2, title: 'Mahabaleshwar to Ganpatipule', description: 'Konkan ghat descent, Prachin Konkan museum and sunset beach stroll.', meals: ['Breakfast', 'Dinner'] },
+          { day: 3, title: 'Ganpatipule to Pune', description: 'Morning Swayambhu Ganesh Mandir darshan and return journey.', meals: ['Breakfast'] },
+        ],
+      },
+      {
+        title: 'Haridwar & Rishikesh Divine Ganga Circuit',
+        slug: 'delhi-rishikesh-haridwar',
+        category: 'Pilgrim',
+        durationDays: 2,
+        durationNights: 1,
+        packageType: 'Jyotirlinga Tour',
+        pricePerPerson: 3450,
+        image: 'https://images.unsplash.com/photo-1609766857041-ed402ea8069a?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Delhi ➔ Haridwar ➔ Rishikesh',
+        departureCity: 'Delhi',
+        destinationCity: 'Rishikesh',
+        featured: true,
+        itinerary: [
+          { day: 1, title: 'Delhi to Haridwar', description: 'Early morning AC coach departure, check-in, visit Mansa Devi Temple and evening Har Ki Pauri Ganga Aarti.', meals: ['Lunch', 'Dinner'] },
+          { day: 2, title: 'Haridwar to Rishikesh & Delhi', description: 'Ram Jhula, Lakshman Jhula, Beatles Ashram visit and evening return to Delhi.', meals: ['Breakfast'] },
+        ],
+      },
+      {
+        title: 'Lonavala & Khandala Monsoon Escapes',
+        slug: 'mumbai-lonavala-khandala',
+        category: 'Monsoon',
+        durationDays: 1,
+        durationNights: 1,
+        packageType: 'Hill Retreat',
+        pricePerPerson: 1850,
+        image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Mumbai ➔ Lonavala ➔ Khandala',
+        departureCity: 'Mumbai',
+        destinationCity: 'Lonavala',
+        itinerary: [
+          { day: 1, title: 'Monsoon Misty Hill Tour', description: 'Drive via Mumbai-Pune Expressway, visit Tiger Point, Bhushi Dam cascades and Karla Caves.', meals: ['Breakfast', 'Snacks'] },
+        ],
+      },
+      {
+        title: 'Sundarbans Tiger Reserve & Delta Eco Trail',
+        slug: 'kolkata-sundarbans-mangroves',
+        category: 'Monsoon',
+        durationDays: 3,
+        durationNights: 2,
+        packageType: 'Rainforest Route',
+        pricePerPerson: 5200,
+        image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Kolkata ➔ Gadkhali ➔ Sundarbans',
+        departureCity: 'Kolkata',
+        destinationCity: 'Sundarbans',
+        itinerary: [
+          { day: 1, title: 'Kolkata to Delta Base', description: 'Coach pickup to Gadkhali port, motorized boat transfer to eco-resort in the mangroves.', meals: ['Lunch', 'Dinner'] },
+          { day: 2, title: 'Sajnekhali Watchtower & Creek Safari', description: 'Full day creek cruise inside mangrove reserve with wildlife spotting.', meals: ['Breakfast', 'Lunch', 'Dinner'] },
+          { day: 3, title: 'Village Walk & Return', description: 'Morning local honey harvesting trail and return coach to Kolkata.', meals: ['Breakfast'] },
+        ],
+      },
+      {
+        title: 'Royal Rajasthan & Taj Mahal Heritage Odyssey',
+        slug: 'delhi-agra-jaipur-golden-triangle',
+        category: 'Heritage',
+        durationDays: 4,
+        durationNights: 3,
+        packageType: 'Imperial Heritage',
+        pricePerPerson: 6800,
+        image: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Delhi ➔ Agra ➔ Jaipur',
+        departureCity: 'Delhi',
+        destinationCity: 'Jaipur',
+        featured: true,
+        itinerary: [
+          { day: 1, title: 'Delhi to Agra', description: 'Yamuna Expressway transfer, Taj Mahal guided sunset tour and Agra Fort.', meals: ['Lunch', 'Dinner'] },
+          { day: 2, title: 'Agra to Jaipur via Fatehpur Sikri', description: 'Visit ghost city Fatehpur Sikri and continue to Pink City Jaipur.', meals: ['Breakfast', 'Dinner'] },
+          { day: 3, title: 'Jaipur Forts & Palaces', description: 'Amber Fort elephant trail, Hawa Mahal photo-stop, City Palace tour.', meals: ['Breakfast'] },
+          { day: 4, title: 'Jaipur to Delhi Return', description: 'Morning shopping in Johari Bazaar and return coach to Delhi.', meals: ['Breakfast'] },
+        ],
+      },
+      {
+        title: 'Shirdi Sai & Trimbakeshwar Jyotirlinga Circuit',
+        slug: 'pune-trimbakeshwar-shirdi',
+        category: 'Pilgrim',
+        durationDays: 2,
+        durationNights: 1,
+        packageType: 'Temple Tour',
+        pricePerPerson: 2950,
+        image: 'https://images.unsplash.com/photo-1600100397608-f010f44383c2?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Pune ➔ Trimbakeshwar ➔ Shirdi',
+        departureCity: 'Pune',
+        destinationCity: 'Shirdi',
+        itinerary: [
+          { day: 1, title: 'Pune to Trimbakeshwar Jyotirlinga', description: 'Holy abhishekam at Trimbakeshwar Shiva temple, evening transfer to Shirdi.', meals: ['Lunch', 'Dinner'] },
+          { day: 2, title: 'Shirdi Sai Samadhi Darshan', description: 'VIP Kakad Aarti darshan, Dwarkamai visit, afternoon return coach to Pune.', meals: ['Breakfast'] },
+        ],
+      },
+      {
+        title: 'Goa Coastal Cruiser & Sun-Drenched Beaches',
+        slug: 'mumbai-goa-coastal-cruise',
+        category: 'Leisure',
+        durationDays: 4,
+        durationNights: 3,
+        packageType: 'Beach Vacation',
+        pricePerPerson: 6200,
+        image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Mumbai ➔ Pune ➔ Panaji',
+        departureCity: 'Mumbai',
+        destinationCity: 'Goa',
+        itinerary: [
+          { day: 1, title: 'Overnight Multi-Axle Volvo Journey', description: 'Comfortable sleeper ride from Mumbai across scenic Konkan terrain.', meals: ['Water', 'Snack'] },
+          { day: 2, title: 'North Goa Coastal Trail', description: 'Baga and Anjuna beach visits, Chapora Fort coastal sunset.', meals: ['Breakfast', 'Dinner'] },
+          { day: 3, title: 'Old Goa Heritage Churches', description: 'Basilica of Bom Jesus and Se Cathedral, Mandovi river sundown cruise.', meals: ['Breakfast'] },
+          { day: 4, title: 'Return Journey to Mumbai', description: 'Morning leisure on Miramar beach and return journey.', meals: ['Breakfast'] },
+        ],
+      },
+      {
+        title: 'Misty Darjeeling Hills & Tea Garden Escapade',
+        slug: 'kolkata-darjeeling-toy-train',
+        category: 'Leisure',
+        durationDays: 3,
+        durationNights: 2,
+        packageType: 'Mountain Trail',
+        pricePerPerson: 5800,
+        image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop&q=80',
+        routeDescription: 'Kolkata ➔ Siliguri ➔ Darjeeling',
+        departureCity: 'Kolkata',
+        destinationCity: 'Darjeeling',
+        itinerary: [
+          { day: 1, title: 'Siliguri to Darjeeling Foothill Climb', description: 'Scenic mountain ascent via Rohini tea slopes, check in to heritage hotel.', meals: ['Lunch', 'Dinner'] },
+          { day: 2, title: 'Tiger Hill Sunrise & Himalayan Mountaineering Institute', description: '4:00 AM Kanchenjunga sunrise view, Batasia Loop, Padmaja Naidu Himalayan Zoo.', meals: ['Breakfast', 'Dinner'] },
+          { day: 3, title: 'Darjeeling Mall Road & Return', description: 'Chowrasta walk, Glenary’s bakery breakfast, and return coach to Siliguri/Kolkata.', meals: ['Breakfast'] },
+        ],
+      },
+    ]);
+
+    // 15. Create Platform Settings
     logger.info('Creating platform configuration...');
     await PlatformSettings.create({
       key: 'platform',

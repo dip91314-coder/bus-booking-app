@@ -21,6 +21,7 @@ const UserDashboard = React.lazy(() => import('./pages/UserDashboard'));
 const About = React.lazy(() => import('./pages/About'));
 const Contact = React.lazy(() => import('./pages/Contact'));
 const Destinations = React.lazy(() => import('./pages/Destinations'));
+const ShortTrips = React.lazy(() => import('./pages/ShortTrips'));
 const RoutesPage = React.lazy(() => import('./pages/Routes'));
 const PopularTrips = React.lazy(() => import('./pages/PopularTrips'));
 const Help = React.lazy(() => import('./pages/Help'));
@@ -42,6 +43,10 @@ const ReviewManagementPage = React.lazy(() => import('./admin/pages/ReviewManage
 const ReportAnalyticsPage = React.lazy(() => import('./admin/pages/ReportAnalyticsPage'));
 const NotificationManagementPage = React.lazy(() => import('./admin/pages/NotificationManagementPage'));
 const AdminSettingsPage = React.lazy(() => import('./admin/pages/AdminSettingsPage'));
+const PricingManagementPage = React.lazy(() => import('./admin/pages/PricingManagementPage'));
+const DestinationManagementPage = React.lazy(() => import('./admin/pages/DestinationManagementPage'));
+const PackageManagementPage = React.lazy(() => import('./admin/pages/PackageManagementPage'));
+const AuditLogPage = React.lazy(() => import('./admin/pages/AuditLogPage'));
 
 function App() {
   return (
@@ -79,6 +84,7 @@ function App() {
                   <Route path="about" element={<About />} />
                   <Route path="contact" element={<Contact />} />
                   <Route path="destinations" element={<Destinations />} />
+                  <Route path="short-trips" element={<ShortTrips />} />
                   <Route path="routes" element={<PopularTrips />} />
                   <Route path="popular-trips" element={<PopularTrips />} />
                   <Route path="help" element={<Help />} />
@@ -101,6 +107,9 @@ function App() {
                   <Route path="buses" element={<BusManagementPage />} />
                   <Route path="routes" element={<RouteManagementPage />} />
                   <Route path="schedules" element={<ScheduleManagementPage />} />
+                  <Route path="pricing" element={<PricingManagementPage />} />
+                  <Route path="destinations" element={<DestinationManagementPage />} />
+                  <Route path="packages" element={<PackageManagementPage />} />
                   <Route path="bookings" element={<BookingManagementPage />} />
                   <Route path="passengers" element={<PassengerManagementPage />} />
                   <Route path="drivers" element={<DriverManagementPage />} />
@@ -110,6 +119,8 @@ function App() {
                   <Route path="reviews" element={<ReviewManagementPage />} />
                   <Route path="reports" element={<ReportAnalyticsPage />} />
                   <Route path="notifications" element={<NotificationManagementPage />} />
+                  <Route path="audit-logs" element={<AuditLogPage />} />
+                  <Route path="audit-log" element={<AuditLogPage />} />
                   <Route path="settings" element={<AdminSettingsPage />} />
                 </Route>
 

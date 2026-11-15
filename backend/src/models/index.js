@@ -22,3 +22,7 @@ export { BusOperator } from './BusOperator.js';
 export { Destination } from './Destination.js';
 export { JournalEntry } from './JournalEntry.js';
 export { SavedPassenger } from './SavedPassenger.js';
+export { AuditLog } from './AuditLog.js';
+export { TripNotification } from './TripNotification.js';
+export { TripPackage } from './TripPackage.js';
+

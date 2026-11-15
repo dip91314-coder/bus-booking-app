@@ -31,7 +31,12 @@ import {
   AlertTriangle,
   User,
   Sun,
-  Moon
+  Moon,
+  MapPin,
+  Compass,
+  DollarSign,
+  History,
+  Package
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -59,7 +64,15 @@ const AdminLayout = () => {
       items: [
         { path: '/admin/buses', label: 'Bus Management', icon: Bus },
         { path: '/admin/routes', label: 'Route Management', icon: Milestone },
-        { path: '/admin/schedules', label: 'Schedule Management', icon: CalendarClock }
+        { path: '/admin/schedules', label: 'Schedule Management', icon: CalendarClock },
+        { path: '/admin/pricing', label: 'Pricing Management', icon: DollarSign }
+      ]
+    },
+    {
+      label: 'EXPERIENCES & DESTINATIONS',
+      items: [
+        { path: '/admin/destinations', label: 'Destinations', icon: MapPin },
+        { path: '/admin/packages', label: 'Tour Packages', icon: Package }
       ]
     },
     {
@@ -89,6 +102,7 @@ const AdminLayout = () => {
           icon: Bell,
           badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null
         },
+        { path: '/admin/audit-logs', label: 'Audit Logs', icon: History },
         { path: '/admin/settings', label: 'Admin Settings', icon: Settings }
       ]
     }

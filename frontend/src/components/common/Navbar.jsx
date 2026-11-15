@@ -46,7 +46,8 @@ const Navbar = () => {
   const navLinks = [
     { label: 'Bus Tickets', path: '/buses' },
     { label: 'Popular Trips', path: '/popular-trips' },
-    { label: 'Short Trips', path: '/destinations' },
+    { label: 'Short Trips', path: '/short-trips' },
+    { label: 'Destinations', path: '/destinations' },
     { label: 'Contact Us', path: '/contact' }
   ];
 

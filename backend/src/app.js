@@ -5,11 +5,16 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { getRedisStatus } from './config/redis.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { pinoLogger } from './middleware/pinoLogger.js';
 import { requestId } from './middleware/requestId.js';
+import { authenticate } from './middleware/auth.js';
+import { PlatformSettings } from './models/PlatformSettings.js';
+import { TripNotification } from './models/TripNotification.js';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -25,6 +30,11 @@ import offerRoutes from './routes/offerRoutes.js';
 import destinationRoutes from './routes/destinationRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
 import savedPassengerRoutes from './routes/savedPassengerRoutes.js';
+import packageRoutes from './routes/packageRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.resolve(__dirname, '../uploads');
 
 export function createApp() {
   const app = express();
@@ -71,6 +81,9 @@ export function createApp() {
     app.use(pinoLogger);
   }
 
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(uploadsDir));
+
   // Health check
   app.get('/api/health', (req, res) => {
     const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -87,6 +100,50 @@ export function createApp() {
     });
   });
 
+  // Public settings endpoint
+  app.get('/api/settings', async (req, res, next) => {
+    try {
+      const settings = await PlatformSettings.findOne({ key: 'platform' });
+      res.status(200).json({
+        success: true,
+        data: settings?.values || {
+          siteName: 'YatraBus',
+          brandTagline: 'India\'s Premier Bus Transit Platform',
+          supportEmail: 'support@yatrabus.com',
+          supportPhone: '+91 98765 43210',
+          emergencyHelpline: '1800-200-9287',
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // User notifications endpoint
+  app.get('/api/notifications', authenticate, async (req, res, next) => {
+    try {
+      const notifs = await TripNotification.find({ userId: req.user.userId })
+        .sort({ createdAt: -1 })
+        .limit(50);
+      res.status(200).json({ success: true, count: notifs.length, data: notifs });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch('/api/notifications/:id/read', authenticate, async (req, res, next) => {
+    try {
+      const notif = await TripNotification.findOneAndUpdate(
+        { _id: req.params.id, userId: req.user.userId },
+        { isRead: true },
+        { new: true }
+      );
+      res.status(200).json({ success: true, data: notif });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // API Route mounting
   app.use('/api/auth', authRoutes);
   app.use('/api/buses', busRoutes);
@@ -101,6 +158,7 @@ export function createApp() {
   app.use('/api/destinations', destinationRoutes);
   app.use('/api/journal', journalRoutes);
   app.use('/api/users/saved-passengers', savedPassengerRoutes);
+  app.use('/api/packages', packageRoutes);
 
   // 404 handler for unknown routes
   app.use((req, res) => {

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { offerApi } from '../services/api';
+import { offerApi, packageApi } from '../services/api';
 
 const LeafletMap = React.lazy(() => import('../components/common/LeafletMap'));
 
@@ -31,6 +31,7 @@ const Home = () => {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
   const [apiOffers, setApiOffers] = useState([]);
+  const [apiPackages, setApiPackages] = useState([]);
   const [mapVisible, setMapVisible] = useState(false);
   const mapSectionRef = React.useRef(null);
 
@@ -43,6 +44,15 @@ const Home = () => {
         }
       })
       .catch(() => {});
+
+    packageApi.getPackages()
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setApiPackages(data);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -281,7 +291,25 @@ const Home = () => {
     ]
   };
 
-  const currentTrips = SHORT_TRIPS[activeTab] || SHORT_TRIPS.Konkan;
+  const currentTrips = React.useMemo(() => {
+    if (apiPackages.length > 0) {
+      const filtered = apiPackages.filter((p) => p.category === activeTab);
+      if (filtered.length > 0) {
+        return filtered.map((p) => ({
+          id: p._id || p.slug,
+          title: p.title,
+          duration: `${p.durationDays}D/${p.durationNights}N`,
+          type: p.packageType || 'Scenic Circuit',
+          fare: String(p.pricePerPerson),
+          image: p.image,
+          route: p.routeDescription,
+          departureCity: p.departureCity,
+          destinationCity: p.destinationCity,
+        }));
+      }
+    }
+    return SHORT_TRIPS[activeTab] || SHORT_TRIPS.Konkan;
+  }, [apiPackages, activeTab]);
 
   const PURPLE_TESTIMONIALS = [
     {
@@ -496,23 +524,32 @@ const Home = () => {
               </p>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Weekend trip categories">
-              {TRIP_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  aria-pressed={activeTab === tab}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 select-none ${
-                    activeTab === tab
-                      ? 'bg-[#5B21B6] text-white shadow-sm'
-                      : 'bg-white dark:bg-slate-800 text-[#475569] dark:text-slate-300 hover:bg-[#F1F5F9] dark:hover:bg-slate-700 hover:text-[#0F172A] dark:hover:text-white border border-[#E2E8F0] dark:border-slate-700'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+            {/* Filter Tabs & Link */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Weekend trip categories">
+                {TRIP_TABS.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    aria-pressed={activeTab === tab}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 select-none ${
+                      activeTab === tab
+                        ? 'bg-[#5B21B6] text-white shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-[#475569] dark:text-slate-300 hover:bg-[#F1F5F9] dark:hover:bg-slate-700 hover:text-[#0F172A] dark:hover:text-white border border-[#E2E8F0] dark:border-slate-700'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              <Link
+                to="/short-trips"
+                className="text-xs font-bold text-[#7E22CE] dark:text-purple-400 hover:underline inline-flex items-center gap-1 shrink-0 ml-1"
+              >
+                <span>View all circuits</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
 
