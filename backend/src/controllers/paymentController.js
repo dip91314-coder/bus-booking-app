@@ -26,15 +26,15 @@ export async function verifyPaymentHandler(req, res, next) {
   try {
     let { orderId, paymentId, signature, bookingId } = req.body;
 
+    if (!signature) {
+      throw new ValidationError('signature is required to verify payment.');
+    }
     if (!orderId && !bookingId) {
       throw new ValidationError('orderId or bookingId is required to verify payment.');
     }
 
     if (!paymentId) {
       paymentId = `pay_sim_${Date.now()}`;
-    }
-    if (!signature) {
-      signature = 'mock_signature';
     }
 
     const result = await confirmPayment({
