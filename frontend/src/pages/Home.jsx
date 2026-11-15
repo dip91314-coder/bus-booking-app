@@ -11,8 +11,6 @@ import {
   MapPin,
   Check,
   Quote,
-  Play,
-  X,
   ShieldCheck,
   Armchair,
   TicketCheck
@@ -31,7 +29,6 @@ const Home = () => {
   const [mapDest, setMapDest] = useState('Pune');
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
-  const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const mapSectionRef = React.useRef(null);
 
@@ -297,28 +294,36 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] text-[#0F172A] dark:text-slate-100 font-sans antialiased transition-colors">
       {/* 1. HERO + SEARCH SECTION */}
-      <section className="relative pt-10 pb-20 overflow-hidden min-h-[480px] flex items-center">
+      <section className="relative overflow-hidden min-h-[580px] sm:min-h-[640px] lg:min-h-[720px] flex flex-col justify-end pt-28 sm:pt-40 lg:pt-52 pb-10 sm:pb-14">
         <div className="absolute inset-0 z-0 overflow-hidden">
-          <video
-            src="/hero-video.mp4"
-            poster="/hero-bus.jpg"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            aria-hidden="true"
-            tabIndex={-1}
-            className="w-full h-full object-cover object-center"
-          />
-          {/* Deep Dark Overlay for crisp contrast matching design */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#070D1F]/90 via-[#0B132B]/80 to-[#1C0F38]/85 backdrop-blur-[0.5px]"></div>
+          {reduceMotion ? (
+            <img
+              src="/hero-bus.jpg"
+              alt="YatraBus fleet journey"
+              className="w-full h-full object-cover object-center"
+            />
+          ) : (
+            <video
+              src="/hero-video.mp4"
+              poster="/hero-bus.jpg"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="w-full h-full object-cover object-center"
+            />
+          )}
+          {/* Light bottom gradient only so the video stays clearly visible above and text remains readable */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#070D1F] via-[#070D1F]/50 to-transparent"></div>
           {/* Bottom gentle fade into page surface */}
-          <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white dark:from-[#0B0F19] to-transparent"></div>
+          <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-white dark:from-[#0B0F19] to-transparent"></div>
         </div>
 
         <motion.div
-          className="max-w-[1200px] mx-auto px-6 relative z-10 w-full"
+          className="max-w-[1200px] mx-auto px-4 sm:px-6 relative z-10 w-full"
           initial={reduceMotion ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeOut' }}
@@ -329,19 +334,11 @@ const Home = () => {
               <div className="inline-flex items-center gap-2 bg-[#F59E0B] text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
                 <Sparkles className="w-3.5 h-3.5" /> India's Trusted Bus Transit Platform
               </div>
-              <button
-                type="button"
-                onClick={() => setVideoModalOpen(true)}
-                className="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white backdrop-blur-md text-[11px] font-bold px-3 py-1 rounded-full border border-white/25 transition cursor-pointer"
-              >
-                <Play className="w-3 h-3 fill-white text-white" />
-                <span>Watch Story Video</span>
-              </button>
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-[44px] font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
+            <h1 className="text-3xl sm:text-4xl md:text-[44px] font-extrabold text-white tracking-tight leading-tight drop-shadow-md">
               Book Your YatraBus Journey
             </h1>
-            <p className="text-sm sm:text-base text-slate-200 mt-2 font-normal">
+            <p className="text-sm sm:text-base text-slate-200 mt-2 font-normal drop-shadow-sm">
               Book your seat directly with YatraBus, compare clear fares, and keep every trip detail together.
             </p>
           </div>
@@ -377,44 +374,6 @@ const Home = () => {
           </div>
         </motion.div>
       </section>
-
-      {/* Full Video Modal */}
-      {videoModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
-          onClick={() => setVideoModalOpen(false)}
-        >
-          <div
-            className="relative bg-slate-950 rounded-3xl overflow-hidden max-w-4xl w-full border border-slate-800 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/60 text-white">
-              <div className="flex items-center gap-2">
-                <Play className="w-4 h-4 text-amber-400 fill-amber-400" />
-                <h3 className="text-sm font-bold">YatraBus Journey Experience Video</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setVideoModalOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="aspect-video w-full bg-black">
-              <video
-                src="/hero-video.mp4"
-                controls
-                autoPlay
-                muted
-                playsInline
-                preload="none"
-                className="w-full h-full object-contain"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 2. BEST OFFERS FOR YOU */}
       <section className="py-14 bg-white dark:bg-[#0E1526] border-b border-[#E5E7EB] dark:border-slate-800 transition-colors">
