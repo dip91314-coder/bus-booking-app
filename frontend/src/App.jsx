@@ -6,6 +6,7 @@ import { BookingProvider } from './context/BookingContext';
 import { AdminProvider } from './admin/context/AdminContext';
 import MainLayout from './layouts/MainLayout';
 import { ProtectedRoute, AdminRoute } from './components/common/RouteGuards';
+import AppLoadingScreen from './components/common/AppLoadingScreen';
 import './App.css';
 
 const Home = React.lazy(() => import('./pages/Home'));
@@ -54,13 +55,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <BookingProvider>
-            <React.Suspense
-              fallback={
-                <div className="flex min-h-[40vh] items-center justify-center" role="status">
-                  <span className="text-sm font-medium text-slate-600">Loading page…</span>
-                </div>
-              }
-            >
+            <React.Suspense fallback={<AppLoadingScreen message="Connecting India's Journeys..." />}>
               <Routes>
                 <Route path="/" element={<MainLayout />}>
                   <Route index element={<Home />} />

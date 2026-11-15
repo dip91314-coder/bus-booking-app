@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { packageApi } from '../services/api';
+import { INITIAL_PACKAGES } from '../data/packagesData';
+import OptimizedImage from '../components/common/OptimizedImage';
+import { PackageCardSkeleton } from '../components/common/Skeletons';
 import {
   Compass,
   Calendar,
@@ -20,8 +23,8 @@ import {
 const CATEGORIES = ['All', 'Pilgrim', 'Konkan', 'Leisure', 'Monsoon', 'Heritage'];
 
 const ShortTrips = () => {
-  const [packages, setPackages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [packages, setPackages] = useState(INITIAL_PACKAGES);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchCity, setSearchCity] = useState('');
   const [activePackage, setActivePackage] = useState(null);
@@ -31,10 +34,12 @@ const ShortTrips = () => {
     setIsLoading(true);
     packageApi.getPackages()
       .then((data) => {
-        if (isMounted) setPackages(Array.isArray(data) ? data : []);
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setPackages(data);
+        }
       })
-      .catch(() => {
-        if (isMounted) setPackages([]);
+      .catch((err) => {
+        console.warn('Live API tour package fetch warning, using verified dataset:', err);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -95,10 +100,10 @@ const ShortTrips = () => {
               key={cat}
               type="button"
               onClick={() => setSelectedCategory(cat)}
-              className={`px-5 py-2.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
+              className={`px-5 py-2.5 rounded-full text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-primary text-white shadow-md shadow-primary/25'
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'bg-gradient-to-r from-purple-700 to-indigo-600 text-white shadow-md shadow-purple-500/25 scale-[1.02] border border-transparent'
+                  : 'bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-700 dark:hover:text-purple-300 hover:border-purple-300 active:scale-95'
               }`}
             >
               {cat}
@@ -107,16 +112,16 @@ const ShortTrips = () => {
         </div>
 
         {/* LOADING STATE */}
-        {isLoading && (
+        {isLoading && packages.length === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((n) => (
-              <div key={n} className="h-80 rounded-2xl bg-slate-200 dark:bg-slate-800 animate-pulse" />
+              <PackageCardSkeleton key={n} />
             ))}
           </div>
         )}
 
         {/* PACKAGE GRID */}
-        {!isLoading && filteredPackages.length > 0 && (
+        {filteredPackages.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {filteredPackages.map((pkg, idx) => (
               <motion.div
@@ -128,10 +133,10 @@ const ShortTrips = () => {
               >
                 <div>
                   <div className="relative h-48 overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={pkg.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800'}
                       alt={pkg.title}
-                      loading="lazy"
+                      containerClassName="w-full h-full"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
@@ -176,7 +181,7 @@ const ShortTrips = () => {
                   <button
                     type="button"
                     onClick={() => setActivePackage(pkg)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-purple-50 dark:bg-purple-950/40 text-primary dark:text-purple-300 hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
                   >
                     <span>View Itinerary</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -316,7 +321,7 @@ const ShortTrips = () => {
                 <Link
                   to={`/buses?from=${encodeURIComponent(activePackage.departureCity || 'Pune')}&to=${encodeURIComponent(activePackage.destinationCity || 'Ganpatipule')}&date=${today}`}
                   onClick={() => setActivePackage(null)}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl shadow-md shadow-primary/20 transition active:scale-95 text-xs"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-xs cursor-pointer"
                 >
                   <Bus className="w-4 h-4" />
                   <span>Book Bus for This Circuit</span>

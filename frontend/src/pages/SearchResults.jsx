@@ -6,6 +6,7 @@ import BusCard from '../components/bus/BusCard';
 import BusFilters from '../components/bus/BusFilters';
 import BusSearchForm from '../components/bus/BusSearchForm';
 import { getAvailableSeatCount, normalizeYatraFleetItems } from '../utils/yatraFleet';
+import { TripCardSkeleton } from '../components/common/Skeletons';
 import {
   Search,
   SlidersHorizontal,
@@ -370,7 +371,13 @@ const SearchResults = () => {
             )}
 
             {/* Bus Cards List */}
-            {filteredBuses.list.length > 0 ? (
+            {isLoadingTrips ? (
+              <div className="space-y-4">
+                <TripCardSkeleton />
+                <TripCardSkeleton />
+                <TripCardSkeleton />
+              </div>
+            ) : filteredBuses.list.length > 0 ? (
               <div className="space-y-4">
                 {filteredBuses.list.map((bus) => (
                   <BusCard key={bus.id} bus={bus} />

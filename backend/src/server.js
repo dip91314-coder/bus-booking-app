@@ -3,10 +3,12 @@ import { connectDB, disconnectDB } from './config/db.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { cleanupExpiredLocks } from './services/seatLockService.js';
+import { seedDefaults } from './scripts/seedDefaults.js';
 
 async function bootstrap() {
   try {
     await connectDB();
+    await seedDefaults();
 
     const app = createApp();
 

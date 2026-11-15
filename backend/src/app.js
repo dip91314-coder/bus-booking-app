@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import mongoSanitize from 'express-mongo-sanitize';
+import hpp from 'hpp';
 import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -47,7 +49,7 @@ export function createApp() {
     cors({
       origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     })
   );
@@ -72,6 +74,8 @@ export function createApp() {
     },
   }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+  app.use(mongoSanitize());
+  app.use(hpp());
   app.use(cookieParser());
   app.use(compression());
 

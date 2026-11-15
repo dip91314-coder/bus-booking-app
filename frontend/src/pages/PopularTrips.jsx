@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { POPULAR_TRIPS_DATA, TRAVEL_STATS, PROMO_DEALS } from '../data/popularTripsData';
 import { destinationApi, routeApi, offerApi } from '../services/api';
+import OptimizedImage from '../components/common/OptimizedImage';
 import toast from 'react-hot-toast';
 
 const PopularTrips = () => {
@@ -530,13 +531,12 @@ const PopularTrips = () => {
                   >
                     {/* Top Image Box */}
                     <div className="relative h-44 overflow-hidden">
-                      <img
+                      <OptimizedImage
                         src={dest.image}
                         alt={dest.name}
+                        fallbackSrc={dest.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'}
+                        containerClassName="w-full h-full"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.currentTarget.src = dest.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
-                        }}
                       />
 
                       {/* State Badge */}
@@ -640,13 +640,12 @@ const PopularTrips = () => {
                   className="bg-white dark:bg-[#111622] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 dark:border-slate-800 group cursor-pointer transition-all duration-300 flex flex-col justify-between"
                 >
                   <div className="relative h-44 overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={dest.image}
                       alt={dest.name}
+                      fallbackSrc={dest.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'}
+                      containerClassName="w-full h-full"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        e.currentTarget.src = dest.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
-                      }}
                     />
                     <div className="absolute top-3 left-3">
                       <span className="text-[10px] font-bold text-white bg-black/55 backdrop-blur-md px-2 py-0.5 rounded-full">

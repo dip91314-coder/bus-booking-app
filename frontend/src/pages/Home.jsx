@@ -30,13 +30,14 @@ import {
 import toast from 'react-hot-toast';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { offerApi, packageApi } from '../services/api';
+import OptimizedImage from '../components/common/OptimizedImage';
 
 const LeafletMap = React.lazy(() => import('../components/common/LeafletMap'));
 
 const Home = () => {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
-  const [activeTab, setActiveTab] = useState('Konkan');
+  const [activeTab, setActiveTab] = useState('All circuits');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [mapOrigin, setMapOrigin] = useState('Mumbai');
   const [mapDest, setMapDest] = useState('Pune');
@@ -148,13 +149,13 @@ const Home = () => {
     }
   ];
 
-  const TRIP_TABS = ['Pilgrim', 'Konkan', 'Leisure', 'Monsoon'];
+  const TRIP_TABS = ['All circuits', 'Pilgrim', 'Konkan', 'Leisure', 'Monsoon'];
 
   const SHORT_TRIPS = {
     Konkan: [
       {
         id: 'k1',
-        title: 'Mahabaleshwar - Ganpatipule',
+        title: 'Mahabaleshwar - Ganpatipule Coastal Circuit',
         duration: '3D/2N',
         type: 'Coastal Route',
         fare: '4,550',
@@ -163,149 +164,235 @@ const Home = () => {
       },
       {
         id: 'k2',
-        title: 'Harihareshwar - Diveagar',
+        title: 'Harihareshwar - Diveagar Beach Trail',
         duration: '2D/1N',
         type: 'Beach Circuit',
-        fare: '4,550',
+        fare: '4,250',
         image: 'https://images.unsplash.com/photo-1518457607834-6e8d80c183c5?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Diveagar'
+        route: 'Mumbai ➔ Diveagar ➔ Harihareshwar'
       },
       {
         id: 'k3',
-        title: 'Dapoli - Murud - Harnai',
+        title: 'Dapoli - Murud - Harnai Sea Forts',
         duration: '4D/3N',
         type: 'Heritage Shore',
         fare: '7,550',
         image: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop&q=80',
-        route: 'Pune ➔ Dapoli'
+        route: 'Pune ➔ Dapoli ➔ Murud'
       },
       {
         id: 'k4',
-        title: 'Chiplun - River Safari',
+        title: 'Chiplun Backwaters River Safari',
         duration: '2D/1N',
         type: 'Backwaters',
         fare: '4,550',
         image: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Chiplun'
+        route: 'Mumbai ➔ Chiplun ➔ Guhagar'
+      },
+      {
+        id: 'k5',
+        title: 'Alibaug - Kihim Coastal Forts',
+        duration: '2D/1N',
+        type: 'Island Getaway',
+        fare: '3,200',
+        image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
+        route: 'Mumbai ➔ Alibaug ➔ Kihim'
+      },
+      {
+        id: 'k6',
+        title: 'Tarkarli - Malvan Coral Beach Safari',
+        duration: '3D/2N',
+        type: 'Scuba & Coast',
+        fare: '5,900',
+        image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80',
+        route: 'Pune ➔ Malvan ➔ Tarkarli'
       }
     ],
     Pilgrim: [
       {
         id: 'p1',
-        title: 'Shirdi - Shani Shingnapur',
+        title: 'Shirdi Sai - Shani Shingnapur Darshan',
         duration: '2D/1N',
         type: 'Divine Darshan',
         fare: '3,200',
         image: 'https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Shirdi'
+        route: 'Mumbai ➔ Shirdi ➔ Shani Shingnapur'
       },
       {
         id: 'p2',
-        title: 'Trimbakeshwar - Nashik',
+        title: 'Trimbakeshwar - Nashik Panchavati',
         duration: '2D/1N',
         type: 'Jyotirlinga Tour',
         fare: '2,800',
         image: 'https://images.unsplash.com/photo-1609766857041-ed402ea8069a?w=800&auto=format&fit=crop&q=80',
-        route: 'Pune ➔ Nashik'
+        route: 'Pune ➔ Nashik ➔ Trimbakeshwar'
       },
       {
         id: 'p3',
-        title: 'Kolhapur Mahalaxmi',
+        title: 'Kolhapur Mahalaxmi & Jyotiba Hill',
         duration: '2D/1N',
-        type: 'Temple Tour',
+        type: 'Shaktipeeth Circuit',
         fare: '3,500',
         image: 'https://images.unsplash.com/photo-1600100397608-f010f44383c2?w=800&auto=format&fit=crop&q=80',
-        route: 'Pune ➔ Kolhapur'
+        route: 'Pune ➔ Kolhapur ➔ Jyotiba'
       },
       {
         id: 'p4',
-        title: 'Pandharpur Vithoba',
+        title: 'Pandharpur Vithoba & Alandi Wari',
         duration: '2D/1N',
         type: 'Holy Pilgrimage',
         fare: '2,900',
         image: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&auto=format&fit=crop&q=80',
-        route: 'Solapur ➔ Pandharpur'
+        route: 'Solapur ➔ Pandharpur ➔ Alandi'
+      },
+      {
+        id: 'p5',
+        title: 'Rishikesh - Haridwar Holy Ganga Aarti',
+        duration: '3D/2N',
+        type: 'Spiritual River Tour',
+        fare: '3,900',
+        image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&auto=format&fit=crop&q=80',
+        route: 'Delhi ➔ Haridwar ➔ Rishikesh'
+      },
+      {
+        id: 'p6',
+        title: 'Tirupati Balaji Express Darshan',
+        duration: '2D/1N',
+        type: 'Temple Darshan',
+        fare: '4,200',
+        image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&auto=format&fit=crop&q=80',
+        route: 'Bengaluru ➔ Tirupati'
       }
     ],
     Leisure: [
       {
         id: 'l1',
-        title: 'Lonavala & Khandala Escapes',
+        title: 'Lonavala & Khandala Western Escapes',
         duration: '1D/1N',
         type: 'Hill Retreat',
         fare: '1,800',
         image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Lonavala'
+        route: 'Mumbai ➔ Lonavala ➔ Khandala'
       },
       {
         id: 'l2',
-        title: 'Goa Coastal Cruiser',
+        title: 'Goa Coastal Cruiser & Sun Cruise',
         duration: '4D/3N',
         type: 'Beach Vacation',
         fare: '6,800',
         image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80',
-        route: 'Pune ➔ Panaji'
+        route: 'Pune ➔ Panaji ➔ Calangute'
       },
       {
         id: 'l3',
-        title: 'Alibaug Sunset Getaway',
+        title: 'Alibaug Sunset Getaway & Water Sports',
         duration: '2D/1N',
         type: 'Island Break',
         fare: '2,600',
         image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Alibaug'
+        route: 'Mumbai ➔ Alibaug ➔ Mandwa'
       },
       {
         id: 'l4',
-        title: 'Matheran Eco Forest',
+        title: 'Matheran Eco Forest & Panorama Point',
         duration: '2D/1N',
         type: 'Nature Trail',
         fare: '2,200',
         image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Neral'
+        route: 'Mumbai ➔ Neral ➔ Matheran'
+      },
+      {
+        id: 'l5',
+        title: 'Coorg Coffee Mist & Abbey Falls',
+        duration: '3D/2N',
+        type: 'Plantation Stay',
+        fare: '5,600',
+        image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=80',
+        route: 'Bengaluru ➔ Madikeri ➔ Coorg'
+      },
+      {
+        id: 'l6',
+        title: 'Udaipur Royal Lakes & City Palace',
+        duration: '3D/2N',
+        type: 'Palace Heritage',
+        fare: '5,950',
+        image: 'https://images.unsplash.com/photo-1570125909517-53cb21c89ff2?w=800&auto=format&fit=crop&q=80',
+        route: 'Jaipur ➔ Ajmer ➔ Udaipur'
       }
     ],
     Monsoon: [
       {
         id: 'm1',
-        title: 'Malshej Ghat Waterfalls',
+        title: 'Malshej Ghat Misty Waterfalls Circuit',
         duration: '1D/0N',
         type: 'Misty Pass',
         fare: '1,650',
         image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80',
-        route: 'Thane ➔ Malshej'
+        route: 'Thane ➔ Malshej ➔ Shivneri'
       },
       {
         id: 'm2',
-        title: 'Tamhini Ghat Valley Walk',
+        title: 'Tamhini Ghat Deep Valley Waterfall Walk',
         duration: '1D/0N',
         type: 'Waterfall Trek',
         fare: '1,500',
         image: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop&q=80',
-        route: 'Pune ➔ Tamhini'
+        route: 'Pune ➔ Mulshi ➔ Tamhini'
       },
       {
         id: 'm3',
-        title: 'Bhandardara Lake & Wilson Dam',
+        title: 'Bhandardara Lake & Wilson Dam Cascades',
         duration: '2D/1N',
         type: 'Lake Camping',
         fare: '3,100',
         image: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&auto=format&fit=crop&q=80',
-        route: 'Mumbai ➔ Igatpuri'
+        route: 'Mumbai ➔ Igatpuri ➔ Bhandardara'
       },
       {
         id: 'm4',
-        title: 'Amboli Ghat Mist Tour',
+        title: 'Amboli Ghat Mist Tour & Forest Springs',
         duration: '3D/2N',
         type: 'Rainforest Route',
         fare: '5,400',
         image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=80',
-        route: 'Kolhapur ➔ Amboli'
+        route: 'Kolhapur ➔ Sawantwadi ➔ Amboli'
+      },
+      {
+        id: 'm5',
+        title: 'Mahabaleshwar Lingmala Cascades',
+        duration: '2D/1N',
+        type: 'Valley Views',
+        fare: '3,450',
+        image: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=800&auto=format&fit=crop&q=80',
+        route: 'Pune ➔ Wai ➔ Mahabaleshwar'
+      },
+      {
+        id: 'm6',
+        title: 'Wayanad Chembra Mist Peak & Lake',
+        duration: '3D/2N',
+        type: 'Western Ghats',
+        fare: '5,800',
+        image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80',
+        route: 'Kozhikode ➔ Vythiri ➔ Wayanad'
       }
     ]
   };
 
   const currentTrips = React.useMemo(() => {
+    if (activeTab === 'All circuits') {
+      if (apiPackages.length > 0) {
+        return apiPackages.map((p) => ({
+          id: p._id || p.slug,
+          title: p.title,
+          duration: `${p.durationDays}D/${p.durationNights}N`,
+          type: p.packageType || 'Scenic Circuit',
+          fare: p.pricePerPerson.toLocaleString('en-IN'),
+          image: p.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+          route: p.routeDescription || `${p.departureCity} ➔ ${p.destinationCity}`
+        }));
+      }
+      return Object.values(SHORT_TRIPS).flat();
+    }
     if (apiPackages.length > 0) {
       const filtered = apiPackages.filter((p) => p.category === activeTab);
       if (filtered.length > 0) {
@@ -839,9 +926,10 @@ const Home = () => {
                 className="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111622] flex flex-col justify-between cursor-pointer"
               >
                 <div className="relative h-44 overflow-hidden">
-                  <img
+                  <OptimizedImage
                     src={dest.img}
                     alt={dest.name}
+                    containerClassName="w-full h-full"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute top-2.5 left-2.5">
@@ -895,10 +983,10 @@ const Home = () => {
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       activeTab === tab
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 scale-[1.02] border border-transparent'
+                        : 'bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-300 hover:border-blue-300 active:scale-95'
                     }`}
                   >
                     {tab}
@@ -907,9 +995,9 @@ const Home = () => {
               </div>
               <Link
                 to="/short-trips"
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                className="px-4 py-2 rounded-full text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white border border-blue-200 dark:border-blue-800 shadow-sm transition-all inline-flex items-center gap-1.5 active:scale-95"
               >
-                <span>All circuits</span>
+                <span>View Full Catalog</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -923,13 +1011,12 @@ const Home = () => {
               >
                 <div>
                   <div className="relative aspect-[16/10] w-full overflow-hidden">
-                    <img
+                    <OptimizedImage
                       src={trip.image}
                       alt={trip.title}
+                      fallbackSrc="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80"
+                      containerClassName="w-full h-full"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80';
-                      }}
                     />
                     <span className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold px-2 py-0.5 rounded-md">
                       {trip.duration}
@@ -963,9 +1050,10 @@ const Home = () => {
                       const destination = routeCities[routeCities.length - 1];
                       navigate(`/buses?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
                     }}
-                    className="px-3.5 py-1.5 text-xs font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition active:scale-95 cursor-pointer"
+                    className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                   >
-                    Book Now
+                    <span>Book Circuit</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -996,9 +1084,10 @@ const Home = () => {
                 className="bg-slate-50 dark:bg-[#111622] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all group flex flex-col justify-between"
               >
                 <div className="relative h-44 overflow-hidden">
-                  <img
+                  <OptimizedImage
                     src={fleet.img}
                     alt={fleet.title}
+                    containerClassName="w-full h-full"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-2.5 left-2.5 bg-blue-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
@@ -1225,71 +1314,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 10. MOBILE APP DOWNLOAD PROMO */}
-      <section className="py-14 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            <div className="md:col-span-7 space-y-4">
-              <span className="inline-block text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                TRAVEL ON THE GO
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-                Download the YatraBus Mobile App
-              </h2>
-              <p className="text-sm text-blue-200 leading-relaxed max-w-lg">
-                Enjoy 1-tap seat re-booking, instant trip notifications, live coach tracking, and exclusive app-only promo codes.
-              </p>
-
-              <div className="flex flex-wrap items-center gap-4 pt-2">
-                <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20">
-                  <div className="w-12 h-12 bg-white rounded-xl p-1 shrink-0 flex items-center justify-center">
-                    <QrCode className="w-10 h-10 text-slate-950" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold leading-tight">Scan QR to Install</p>
-                    <p className="text-[10px] text-blue-200">iOS & Android Compatible</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="px-4 py-2.5 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 cursor-pointer flex items-center gap-2 transition">
-                    <Smartphone className="w-5 h-5 text-blue-300" />
-                    <div className="text-left">
-                      <p className="text-[9px] uppercase font-bold text-slate-300 leading-none">Get it on</p>
-                      <p className="text-xs font-black text-white leading-tight">Google Play</p>
-                    </div>
-                  </div>
-                  <div className="px-4 py-2.5 rounded-xl bg-black/40 hover:bg-black/60 border border-white/20 cursor-pointer flex items-center gap-2 transition">
-                    <Smartphone className="w-5 h-5 text-blue-300" />
-                    <div className="text-left">
-                      <p className="text-[9px] uppercase font-bold text-slate-300 leading-none">Download on</p>
-                      <p className="text-xs font-black text-white leading-tight">App Store</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="md:col-span-5 flex justify-center">
-              <div className="relative w-64 h-[320px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/30 transform hover:scale-105 transition-transform duration-500">
-                <img
-                  src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=600&q=80"
-                  alt="YatraBus app interface mockup"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-5">
-                  <div>
-                    <span className="text-[10px] font-bold text-amber-300 uppercase">Seamless Navigation</span>
-                    <p className="text-sm font-bold text-white">Live Coach Radar & Seat Lock</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 11. FREQUENTLY ASKED QUESTIONS (FAQ) */}
+      {/* 10. FREQUENTLY ASKED QUESTIONS (FAQ) */}
       <section className="py-14 bg-white dark:bg-[#0E1526] border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8">

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { destinationApi } from '../services/api';
+import { INITIAL_DESTINATIONS } from '../data/destinationsData';
+import OptimizedImage from '../components/common/OptimizedImage';
+import { DestinationCardSkeleton } from '../components/common/Skeletons';
 import { MapPin, Search, ArrowRight, Sparkles, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 
 const Destinations = () => {
   const navigate = useNavigate();
-  const [destinations, setDestinations] = useState([]);
+  const [destinations, setDestinations] = useState(INITIAL_DESTINATIONS);
   const [filter, setFilter] = useState('');
   const [selectedTag, setSelectedTag] = useState('All');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchDestinations = async () => {
@@ -16,10 +19,11 @@ const Destinations = () => {
     setError(null);
     try {
       const data = await destinationApi.getDestinations();
-      setDestinations(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        setDestinations(data);
+      }
     } catch (err) {
-      console.warn('Failed to load destinations from API:', err);
-      setError('Unable to load destination catalog from the live database.');
+      console.warn('Live API destinations fetch warning, using verified dataset:', err);
     } finally {
       setIsLoading(false);
     }
@@ -79,10 +83,10 @@ const Destinations = () => {
                 key={tag}
                 type="button"
                 onClick={() => setSelectedTag(tag)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   selectedTag === tag
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'bg-white/10 text-blue-100 hover:bg-white/20'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md shadow-amber-400/30 scale-105 border border-amber-300'
+                    : 'bg-white/15 text-white hover:bg-white/25 hover:text-amber-200 border border-white/25 backdrop-blur-sm active:scale-95'
                 }`}
               >
                 {tag}
@@ -93,15 +97,10 @@ const Destinations = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
-        {isLoading ? (
+        {isLoading && destinations.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 animate-pulse">
-                <div className="h-56 bg-slate-200 dark:bg-slate-800 rounded-2xl w-full"></div>
-                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
-                <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-2/3"></div>
-                <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
-              </div>
+              <DestinationCardSkeleton key={i} />
             ))}
           </div>
         ) : error ? (
@@ -141,10 +140,10 @@ const Destinations = () => {
               >
                 <div>
                   <div className="h-56 w-full overflow-hidden relative">
-                    <img
+                    <OptimizedImage
                       src={dest.image}
                       alt={`${dest.name}, ${dest.state} - ${dest.title}`}
-                      loading="lazy"
+                      containerClassName="w-full h-full"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"></div>
@@ -209,7 +208,7 @@ const Destinations = () => {
                           )}&date=${today}`
                         );
                       }}
-                      className="bg-accent hover:bg-accent-hover text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>View Buses</span>
                       <ArrowRight className="w-3.5 h-3.5" />
