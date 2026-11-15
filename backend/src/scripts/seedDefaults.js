@@ -312,8 +312,16 @@ export const DEFAULT_PACKAGES = [
   },
 ];
 
+let defaultsSeeded = false;
+
 export async function seedDefaults() {
+  if (defaultsSeeded) return;
   try {
+    const { default: mongoose } = await import('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return;
+    }
+
     const destCount = await Destination.estimatedDocumentCount();
     if (destCount === 0) {
       logger.info('Auto-seeding default authentic Indian destinations...');
@@ -327,6 +335,7 @@ export async function seedDefaults() {
       await TripPackage.insertMany(DEFAULT_PACKAGES);
       logger.info(`Successfully seeded ${DEFAULT_PACKAGES.length} default tour packages.`);
     }
+    defaultsSeeded = true;
   } catch (error) {
     logger.warn({ error: error.message }, 'Non-fatal: Default seed auto-check encountered an issue.');
   }

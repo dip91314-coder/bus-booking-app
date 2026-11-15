@@ -8,6 +8,8 @@ import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
 import mongoose from 'mongoose';
 import path from 'path';
+import os from 'os';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { getRedisStatus } from './config/redis.js';
@@ -36,18 +38,37 @@ import packageRoutes from './routes/packageRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../uploads');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadsDir = isServerless
+  ? path.join(os.tmpdir(), 'uploads')
+  : path.resolve(__dirname, '../uploads');
 
 export function createApp() {
   const app = express();
+
+  // Trust proxy for Vercel and reverse proxies
+  app.set('trust proxy', 1);
 
   // Security Headers
   app.use(helmet());
 
   // CORS Configuration
+  const allowedOrigins = [
+    env.CLIENT_URL,
+    process.env.CORS_ORIGIN,
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+  ].filter(Boolean);
+
   app.use(
     cors({
-      origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (/^https:\/\/.*\.vercel\.app$/.test(origin)) return callback(null, true);
+        return callback(null, true);
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -60,6 +81,7 @@ export function createApp() {
     max: 500, // limit each IP to 500 requests per windowMs
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false, default: false },
     message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' },
   });
   app.use('/api/', limiter);
@@ -86,7 +108,27 @@ export function createApp() {
   }
 
   // Serve uploaded files statically
-  app.use('/uploads', express.static(uploadsDir));
+  try {
+    if (fs.existsSync(uploadsDir)) {
+      app.use('/uploads', express.static(uploadsDir));
+    }
+  } catch {
+    // Non-fatal if uploads dir is not accessible
+  }
+
+  // Root Welcome & API Status
+  app.get('/', (req, res) => {
+    const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    res.status(200).json({
+      status: 'online',
+      service: 'YatraBus Pan-India Backend API',
+      version: '1.0.0',
+      environment: env.NODE_ENV,
+      database: mongoStatus,
+      health: '/api/health',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   // Health check
   app.get('/api/health', (req, res) => {

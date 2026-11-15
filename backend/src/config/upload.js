@@ -1,14 +1,24 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const uploadsDir = path.resolve(__dirname, '../../uploads');
 
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// In serverless environments (e.g. Vercel), use os.tmpdir() because the app root is read-only
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const uploadsDir = isServerless 
+  ? path.join(os.tmpdir(), 'uploads') 
+  : path.resolve(__dirname, '../../uploads');
+
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (err) {
+  // Gracefully non-fatal in read-only serverless filesystems
 }
 
 const storage = multer.diskStorage({

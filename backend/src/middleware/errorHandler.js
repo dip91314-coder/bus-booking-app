@@ -67,6 +67,25 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
+  // Database Connection / Network Errors
+  if (
+    err.name === 'MongooseServerSelectionError' ||
+    err.name === 'MongoServerSelectionError' ||
+    err.name === 'MongoNetworkError' ||
+    err.name === 'MongoTimeoutError' ||
+    (err.name === 'MongooseError' && err.message?.includes('buffering timed out'))
+  ) {
+    logger.error({ err: err.message, requestId: req.id }, 'Database connectivity issue');
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Could not connect to MongoDB Atlas database. Please verify MONGO_URI in Vercel Environment Variables and check that 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.',
+        details: err.message,
+      },
+    });
+  }
+
   // 4. Fallback Internal Server Error
   logger.error({ err, requestId: req.id }, 'Unhandled Exception');
 

@@ -5,17 +5,30 @@ import { logger } from './config/logger.js';
 import { cleanupExpiredLocks } from './services/seatLockService.js';
 import { seedDefaults } from './scripts/seedDefaults.js';
 
-async function bootstrap() {
-  try {
-    await connectDB();
-    await seedDefaults();
+let app = null;
 
-    const app = createApp();
+export function getApp() {
+  if (!app) {
+    app = createApp();
+  }
+  return app;
+}
+
+export async function bootstrap() {
+  try {
+    if (env.MONGO_URI) {
+      await connectDB();
+      await seedDefaults();
+    } else {
+      logger.warn('MONGO_URI is not set. Starting in non-connected fallback mode.');
+    }
+
+    const application = getApp();
 
     // Background sweeper to expire abandoned seat locks every 60 seconds
     const lockSweeper = setInterval(cleanupExpiredLocks, 60 * 1000);
 
-    const server = app.listen(env.PORT, () => {
+    const server = application.listen(env.PORT, () => {
       logger.info(`YatraBus Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
       logger.info(`Health check: http://localhost:${env.PORT}/api/health`);
     });
@@ -32,10 +45,18 @@ async function bootstrap() {
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+    return server;
   } catch (error) {
     logger.fatal({ error }, 'Failed to initialize server application');
-    process.exit(1);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
   }
 }
 
-bootstrap();
+// Only auto-listen if running as a persistent Node server (not in serverless Lambda / Vercel)
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  bootstrap();
+}
+
+export default getApp();
