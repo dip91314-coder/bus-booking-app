@@ -140,6 +140,9 @@ export function createApp() {
     // Non-fatal if uploads dir is not accessible
   }
 
+  // Favicon handler to prevent 404s in logs
+  app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
   // Root Welcome & API Status
   app.get('/', (req, res) => {
     const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
