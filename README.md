@@ -1,50 +1,62 @@
 <div align="center">
 
-# 🚌 Bus Booking App
+# 🚌 YatraBus — Online Bus Ticket Booking System (OBTBS)
 
-### Online Bus Ticket Booking System
+### Enterprise-Grade, Trip-Centric Bus Transit & Tour Platform
 
-A simple, responsive bus ticket booking platform built as a collaborative college project using the **MERN stack**.
+A responsive, data-driven bus ticket reservation and tour booking platform built using the **MERN Stack** (MongoDB, Express, React, Node.js) with Tailwind CSS, Redis caching, and ACID transaction safety.
 
-[![Status](https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge)](#-project-roadmap)
-[![Team](https://img.shields.io/badge/team-8%20contributors-blue?style=for-the-badge)](#-contributors)
+[![Status](https://img.shields.io/badge/status-active%20%26%20production%20ready-brightgreen?style=for-the-badge)](#-features)
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-64%20passing-success?style=for-the-badge)](#-running-test-suites)
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-23%20passing-success?style=for-the-badge)](#-running-test-suites)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 
-**Search buses · Choose seats · Book tickets · Manage journeys**
+**Search trips · Choose seats · Book tickets · Short-trip circuits · Full admin fleet control**
 
 </div>
+
+---
+
+## 🔑 Demo & Admin Seed Credentials
+
+After seeding the database, log in with the pre-configured credentials:
+
+| Role | Email | Password | Access Level & Features |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@yatrabus.com` | `admin123` | Full Admin Dashboard, Fleet CRUD, Visual Seat Designer, Pricing Multipliers, Recurrence Generator, Audit Logs |
+| **Customer** | `user@yatrabus.com` | `user123` | Seat Booking, Pre-loaded ₹500 Wallet, Saved Passengers, Travel Journal, Digital & PDF Tickets |
+
+*(In production, custom passwords can be specified via `ADMIN_SEED_PASSWORD` in `backend/.env`).*
 
 ---
 
 ## 📌 Table of Contents
 
 - [About the Project](#-about-the-project)
-- [Project Goals](#-project-goals)
+- [Project Architecture & Goals](#-project-goals)
 - [Features](#-features)
 - [Technology Stack](#-technology-stack)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
+- [Quick Start Commands (Root)](#-quick-start-commands-root)
+- [Running Test Suites](#-running-test-suites)
 - [Environment Variables](#-environment-variables)
 - [Available Scripts](#-available-scripts)
 - [Deploy](#-deploy)
 - [Application Flow](#-application-flow)
 - [User Roles](#-user-roles)
-- [Contributors](#-contributors)
-- [Git & Contribution Guidelines](#-git--contribution-guidelines)
-- [Project Roadmap](#-project-roadmap)
 - [Documentation](#-documentation)
 - [License](#-license)
-- [Acknowledgements](#-acknowledgements)
 
 ---
 
 ## ✨ About the Project
 
-**Bus Booking App** is a web-based Online Bus Ticket Booking System developed as a college team project. It makes booking straightforward: users can search for buses, view journey details, select seats, add passenger information and manage their bookings.
+**YatraBus (OBTBS)** is a full-featured, database-driven Online Bus Ticket Booking System. The platform satisfies two primary modules:
+1. **Customer Portal**: Search scheduled trips across origin and destination hubs, inspect real-time seat occupancy maps, hold seats under an 8-minute atomic lock, apply validated promotional offers, complete online payments, and download official server-rendered PDF tickets.
+2. **Admin Command Center**: Visual interactive seat layout designer, batch recurring trip schedule generator, multi-tier dynamic pricing with live simulation, passenger wallet balance adjustments, booking seat reassignments, system audit logs, and analytics.
 
-The project also includes an administration area where authorised administrators can manage bus information and view bookings.
-
-> 🎓 This project is developed for academic and learning purposes. The initial release focuses on a reliable Minimum Viable Product (MVP), with optional enhancements planned after the core booking flow is stable.
+**Core Principle**: The database is the single source of truth. No customer-facing view renders hardcoded or mock content; all buses, schedules, routes, destinations, tour packages, coupons, and metrics are served dynamically from MongoDB and optimized with Redis.
 
 ## 🎯 Project Goals
 
@@ -55,54 +67,44 @@ The project also includes an administration area where authorised administrators
 - Prevent duplicate seat bookings through database-level constraints.
 - Deliver a working end-to-end project that every team member can understand and demonstrate.
 
-## 🚀 Features
+## 🚀 Platform Features
 
-### MVP Features
+### Customer Experience (End User)
+- 🔐 **Secure Authentication**: JWT-based authentication, user profile management, pre-loaded digital wallet.
+- 🔎 **Real-Time Bus & Trip Search**: Search scheduled trips across interstate corridors; filter by departure time, bus type, and operator.
+- 💺 **Interactive Seating Layout**: Lower and upper deck visual rendering, live 8-minute temporary seat hold countdown, ladies-only reserved seating indicators.
+- 👥 **Passenger Rostering**: Single-booking multi-passenger entry with saved frequent travellers.
+- 🏷️ **Dynamic Coupons & Discounts**: Real-time server validation of promotional codes (e.g., `YATRAFIRST`, `FESTIVE50`) with instant savings deduction.
+- 💳 **Online Payment Gateway**: Integrated simulated / Razorpay checkout with idempotent signature verification.
+- 📄 **Official PDF Ticket Generation**: Instant browser download of server-generated digital tickets using PDFKit.
+- 🗺️ **Short Trips & Weekend Circuits**: Browse authentic curated travel packages (`/short-trips`) with day-by-day itineraries and inclusions.
+- 🧭 **Curated Destination Guides**: Interactive showcase of top Indian destinations with highlights and regional pickup points.
+- 📔 **Personal Travel Dashboard**: Booking history, saved passenger roster management, and travel memory journal entries.
 
-- 🔐 User registration and login.
-- 🔎 Search buses by origin, destination and journey date.
-- 🚌 View bus details, timings, type and fare.
-- 💺 Interactive seat selection with available, selected and booked states.
-- 👥 Passenger details and saved travellers.
-- 🎫 Booking confirmation and ticket details.
-- 📚 View personal booking history.
-- 🛠️ Admin login and bus management (add, edit and delete).
-- 📋 Admin view of all bookings.
-- 📱 Responsive layouts for mobile, tablet and desktop.
-
-### Planned Enhancements
-
-- Booking cancellation.
-- Mock payment flow (test-only; no real payment processing).
-- Printable ticket.
-- Admin dashboard statistics.
-- Search filters and sorting.
-- Optional Redis caching after the MVP is stable.
-
-### Out of Scope for the Initial Release
-
-- Real payment gateway.
-- SMS or email notifications.
-- Native mobile application.
-- Live seat locking.
-- Multi-language support.
+### Admin Fleet & Operations Center
+- 📊 **Executive Analytics Dashboard**: Real-time KPI summaries for total fleet, active routes, bookings, and revenue metrics.
+- 🚌 **Fleet Management & Visual Seat Layout Designer**: Full bus CRUD with visual brush editor for seat types (regular, sleeper, ladies-only, blocked) and deck assignments.
+- 🛡️ **Safety Guard Locks**: Automatic protection preventing vehicle deletion or seat layout changes if future confirmed passenger bookings exist.
+- 📅 **Batch Trip Recurrence Generator**: Rapid automated scheduling of recurring daily/weekly bus departures with vehicle conflict prevention.
+- 📈 **Multi-Tier Dynamic Pricing**: Configuration of base fares with weekend, festive, last-minute, and berth location multipliers, featuring a live price simulator.
+- 🔄 **Operational Controls**: Live passenger seat reassignment with atomic lock transfer, booking cancellation, and manual passenger wallet balance adjustments.
+- 📋 **System Audit Logs**: Comprehensive chronological event logging tracking administrative modifications with before/after diffs and IP addresses.
+- 📁 **Media Asset Manager**: Secure multipart image uploads for buses, destinations, and circuit packages.
 
 ## 🧰 Technology Stack
 
-| Area            | Technology                         |
-| --------------- | ---------------------------------- |
-| Frontend        | React + Vite                       |
-| Styling         | Bootstrap 5 / CSS                  |
-| Routing         | React Router                       |
-| HTTP Client     | Axios                              |
-| Backend         | Node.js + Express.js               |
-| Database        | MongoDB + Mongoose                 |
-| Authentication  | JWT + bcryptjs                     |
-| Validation      | express-validator                  |
-| Optional Cache  | Redis + ioredis                    |
-| Version Control | Git + GitHub                       |
-| API Testing     | Postman                            |
-| Deployment      | Vercel (frontend) + Render (backend) |
+| Area | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Frontend Framework** | React 18 + Vite 6 | High-speed Single Page Application (SPA) |
+| **Styling & UI** | Tailwind CSS + Lucide Icons | Responsive, modern utility-first interface |
+| **Routing & State** | React Router 6 + Context API | Client-side routing and global auth/booking state |
+| **Backend Framework** | Node.js 20 + Express 4 | High-throughput REST API architecture |
+| **Database & ODM** | MongoDB 7 + Mongoose 8 | Document persistence with ACID transactions |
+| **Caching Layer** | Redis 7 + ioredis | Resilient read caching with auto-invalidation & graceful fallback |
+| **Concurrency Engine** | MongoDB Sessions + Unique Indexes | Guarantees zero duplicate seat locks under parallel load |
+| **Document Generation**| PDFKit | Server-side official PDF ticket rendering |
+| **Validation** | Zod | Strict request payload schema validation |
+| **Testing** | Node Test Runner / Supertest / Vitest | 64 backend tests & 23 frontend component tests |
 
 ## 📁 Project Structure
 
@@ -180,49 +182,40 @@ npm install
 
 ### 3. Configure backend environment & Seed Database
 
-Create `backend/.env` (see template below), then populate seed trips:
+Create `backend/.env` (see template below), then populate seed data:
 
 ```bash
-# Seed database with buses, physical layouts, routes, trips, pricing & tickets
-npm run seed
-
-# Or run migration on existing data:
-node src/scripts/migrate-to-trips.js
+# Seed database with 8 buses, visual layouts, 5 routes, 15+ trips, multi-tier pricing, 8+ promo coupons, 8 tour circuits & 6 destinations
+npm run seed --prefix backend
 ```
 
-### 4. Start the backend
+### 4. Quick Start Commands (From Repository Root)
+
+Run backend and frontend concurrently or in separate terminal tabs from the project root:
 
 ```bash
-npm run dev
+# Terminal 1: Start Express API server (port 5000)
+npm run dev --prefix backend
+
+# Terminal 2: Start Vite development server (port 5173)
+npm run dev --prefix frontend
 ```
 
-### 5. Install frontend dependencies
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-Open a second terminal:
+### 5. Running Test Suites
 
-```bash
-cd frontend
-npm install
-```
-
-### 6. Start the frontend
+Run the complete backend and frontend test suites and verify production builds:
 
 ```bash
-npm run dev
-```
+# 1. Run all 64 backend tests (covering models, atomic locking, Redis fallback, recurrence, pricing preview, and safety locks)
+npm test --prefix backend
 
-Open `http://localhost:5173` in your browser.
+# 2. Run all 23 frontend unit/component tests
+npm test --prefix frontend
 
-### 7. Run Test Suites
-
-Run all tests across backend and frontend:
-
-```bash
-# Backend Test Suite (32 tests covering models, transactions, concurrency, customer & admin APIs)
-cd backend && npm test
-
-# Frontend Test Suite & Build Verification
-cd frontend && npm test && npm run build
+# 3. Verify clean production Vite bundle compilation
+npm run build --prefix frontend
 ```
 
 ## 🔑 Environment Variables

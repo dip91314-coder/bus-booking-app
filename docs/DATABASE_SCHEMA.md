@@ -30,11 +30,18 @@ The database layer is built on **MongoDB** accessed via **Mongoose ODM** (v8+ / 
 erDiagram
     BUS ||--o{ TRIP : operates
     ROUTE ||--o{ TRIP : defines
+    ROUTE ||--o{ PRICING : applies_to
+    BUS ||--o{ PRICING : applies_to
     TRIP ||--o{ SEAT_RESERVATION : locks_or_books
     TRIP ||--o{ BOOKING : reserved_under
+    TRIP ||--o{ TRIP_NOTIFICATION : generates
     USER ||--o{ BOOKING : places
+    USER ||--o{ SAVED_PASSENGER : saves
+    USER ||--o{ TRIP_NOTIFICATION : receives
+    USER ||--o{ AUDIT_LOG : tracks_admin_action
     BOOKING ||--|| PAYMENT : settles
     BOOKING ||--|| TICKET : issues
+    ROUTE }o--|| DESTINATION : connects
 
     BUS {
         ObjectId _id PK
@@ -102,32 +109,66 @@ erDiagram
         objectArray passengerSnapshot
         date generatedAt
     }
-```
-        string origin
-        string destination
-        string departureTime
-        string arrivalTime
-        string journeyDuration
-        number fare
-        number totalSeats
-        array amenities
-        boolean isActive
-        date createdAt
-        date updatedAt
+
+    PRICING {
+        ObjectId _id PK
+        ObjectId busId FK
+        ObjectId routeId FK
+        number basePrice
+        number weekendMultiplier
+        number festiveMultiplier
+        number lastMinuteMultiplier
+        number sleeperMultiplier
     }
 
-    BOOKING {
+    TRIP_PACKAGE {
         ObjectId _id PK
-        string bookingReference UK
+        string slug UK
+        string title
+        string category
+        number pricePerPerson
+        string departureCity
+        string destinationCity
+        objectArray itinerary
+    }
+
+    DESTINATION {
+        ObjectId _id PK
+        string name UK
+        string state
+        string tag
+        number startingFare
+        string image
+    }
+
+    OFFER {
+        ObjectId _id PK
+        string code UK
+        string discountType
+        number value
+        number maxDiscount
+        number minAmount
+        boolean isActive
+    }
+
+    AUDIT_LOG {
+        ObjectId _id PK
+        ObjectId adminId FK
+        string action
+        string targetEntity
+        string targetId
+        string summary
+        object diff
+    }
+
+    TRIP_NOTIFICATION {
+        ObjectId _id PK
+        ObjectId tripId FK
         ObjectId userId FK
-        ObjectId busId FK
-        date journeyDate
-        array passengers
-        number totalFare
-        string bookingStatus
-        string paymentStatus
-        date createdAt
-        date updatedAt
+        string type
+        string title
+        string message
+        boolean isRead
     }
 ```
 
@@ -216,6 +257,190 @@ Stores confirmed reservations placed by users. Contains embedded subdocuments fo
 
 ---
 
+### 3.5 `trips` Collection
+
+Defines specific scheduled departures for a vehicle along an assigned route on a given travel date.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique trip identifier. |
+| `busId` | `ObjectId` | Required, Ref: `'Bus'`, Indexed | Foreign key linking trip to physical vehicle. |
+| `routeId` | `ObjectId` | Required, Ref: `'Route'`, Indexed | Foreign key linking trip to geographic route. |
+| `travelDate` | `String` | Required, Format: `YYYY-MM-DD`, Indexed | Calendar date of scheduled trip departure. |
+| `departureTime` | `String` | Required, Format: `HH:mm` | 24-hour departure time. |
+| `arrivalTime` | `String` | Required, Format: `HH:mm` | 24-hour estimated arrival time. |
+| `status` | `String` | Required, Enum: `['scheduled', 'active', 'completed', 'cancelled']`, Default: `'scheduled'` | Operational state of the trip. |
+| `boardingPoints` | `[SubDoc]` | Array of stop objects | Boarding locations with names and times. |
+| `droppingPoints` | `[SubDoc]` | Array of stop objects | Dropping locations with names and times. |
+| `createdAt` / `updatedAt` | `Date` | Auto-managed by Mongoose | Audit timestamps. |
+
+---
+
+### 3.6 `seatreservations` Collection
+
+Tracks real-time atomic seat locks (8-minute TTL) and confirmed bookings per trip, keyed strictly by `(tripId, seatNumber)`.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique reservation identifier. |
+| `tripId` | `ObjectId` | Required, Ref: `'Trip'`, Indexed | Associated scheduled trip. |
+| `busId` | `ObjectId` | Required, Ref: `'Bus'` | Associated physical bus. |
+| `seatNumber` | `String` | Required, Uppercase, Trimmed | Physical seat label (e.g., `"L1"`, `"U4"`). |
+| `status` | `String` | Required, Enum: `['locked', 'booked']` | Current state of seat. |
+| `userId` | `ObjectId` | Required, Ref: `'User'`, Indexed | User holding or booking the seat. |
+| `lockedAt` | `Date` | Timestamp of lock acquisition | Used to evaluate lock age. |
+| `lockExpiresAt` | `Date` | Indexed (TTL) | Expiration timestamp for temporary hold (now + 8 min). |
+| `bookingId` | `ObjectId` | Ref: `'Booking'`, Default: `null` | Reference to finalized booking once confirmed. |
+
+---
+
+### 3.7 `pricing` Collection
+
+Enforces multi-tier dynamic pricing with surge, weekend, festive, last-minute, and seat-position multipliers.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique pricing rule identifier. |
+| `busId` | `ObjectId` | Ref: `'Bus'`, Default: `null`, Indexed | Bus-specific pricing override. |
+| `routeId` | `ObjectId` | Ref: `'Route'`, Default: `null`, Indexed | Route-specific pricing override. |
+| `tripId` | `ObjectId` | Ref: `'Trip'`, Default: `null`, Indexed | Trip-specific pricing override. |
+| `seatType` | `String` | Enum: `['sleeper', 'seater', 'semi-sleeper', 'all']`, Default: `'all'` | Target seat category. |
+| `basePrice` | `Number` | Required, Min: 0 | Baseline fare in INR (₹). |
+| `additionalCharges` | `Number` | Default: 0, Min: 0 | Toll, terminal, or cleaning fees. |
+| `taxPercent` | `Number` | Default: 5, Min: 0 | Goods and Services Tax (GST) rate. |
+| `dayOfWeekMultiplier` | `Number` | Default: 1.0, Range: 0.5–3.0 | Weekday dynamic surge rate. |
+| `weekendMultiplier` | `Number` | Default: 1.2, Range: 0.5–3.0 | Friday/Saturday/Sunday peak multiplier. |
+| `festiveMultiplier` | `Number` | Default: 1.25, Range: 0.5–3.0 | Festival/holiday season multiplier. |
+| `lastMinuteMultiplier` | `Number` | Default: 1.15, Range: 0.5–3.0 | Surge applied when booking within 12 hours of departure. |
+| `sleeperMultiplier` | `Number` | Default: 1.2, Range: 0.5–3.0 | Premium for sleeper berths. |
+| `lowerBerthMultiplier` | `Number` | Default: 1.1, Range: 0.5–3.0 | Premium for convenient lower berths. |
+| `frontRowMultiplier` | `Number` | Default: 1.05, Range: 0.5–3.0 | Premium for front-row panoramic seats. |
+| `isActive` | `Boolean` | Default: `true`, Indexed | Rule active switch. |
+
+---
+
+### 3.8 `trippackages` Collection
+
+Curated weekend circuits, religious pilgrimages, and seasonal leisure packages with day-by-day itineraries.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique package identifier. |
+| `title` | `String` | Required, Trimmed | Tour circuit title (e.g., `"Digha & Mandarmani Coastal Retreat"`). |
+| `slug` | `String` | Required, Unique, Lowercase, Indexed | SEO URL slug. |
+| `category` | `String` | Required, Enum: `['Pilgrim', 'Konkan', 'Leisure', 'Monsoon', 'Heritage']`, Indexed | Circuit travel genre. |
+| `durationDays` | `Number` | Required, Min: 1 | Total days duration. |
+| `durationNights` | `Number` | Required, Min: 0 | Total nights duration. |
+| `packageType` | `String` | Required, Trimmed | Subtitle/badge label (e.g., `"Weekend Beach Circuit"`). |
+| `pricePerPerson` | `Number` | Required, Min: 0, Indexed | All-inclusive rate per traveller in INR. |
+| `departureCity` | `String` | Required, Trimmed, Indexed | Primary origin hub. |
+| `destinationCity` | `String` | Required, Trimmed, Indexed | Final turnaround destination. |
+| `image` | `String` | Required, URL | High-resolution cover photo. |
+| `routeDescription` | `String` | Required, Trimmed | Geographic itinerary trajectory. |
+| `itinerary` | `[SubDoc]` | Array of `{ day, title, description, meals }` | Comprehensive daily travel plan. |
+| `inclusions` | `[String]` | Array of strings | Included services (e.g. AC Bus, Hotel, Breakfast). |
+| `exclusions` | `[String]` | Array of strings | Excluded services (e.g. Lunch, Monument Fees). |
+| `availableDays` | `[String]` | Array of days | Departure weekdays (e.g. `['Friday', 'Saturday']`). |
+| `featured` | `Boolean` | Default: `false`, Indexed | Highlight flag for homepage carousels. |
+| `isActive` | `Boolean` | Default: `true`, Indexed | Visibility switch. |
+
+---
+
+### 3.9 `destinations` Collection
+
+Curated destination guides showcasing highlights, regional pickup hubs, and baseline bus fares.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique destination identifier. |
+| `name` | `String` | Required, Unique, Trimmed, Indexed | Destination city or town (e.g., `"Digha"`). |
+| `state` | `String` | Required, Trimmed, Indexed | Indian state or UT (e.g., `"West Bengal"`). |
+| `tag` | `String` | Enum: `['Hill Station', 'Heritage', 'Beach', 'Pilgrimage', 'Wildlife', 'City', 'Spiritual']`, Indexed | Destination theme. |
+| `title` | `String` | Required, Trimmed | Prominent marketing headline. |
+| `description` | `String` | Required, Trimmed | Narrative overview of the locale. |
+| `image` | `String` | Required, URL | Curated cover photography. |
+| `gallery` | `[String]` | Array of URLs | Additional photo gallery. |
+| `highlights` | `[String]` | Array of strings | Key sights and experiences. |
+| `popularPickups` | `[String]` | Array of strings | Common regional boarding terminals. |
+| `startingFare` | `Number` | Default: 450, Min: 0 | Lead bus transit price. |
+| `isActive` | `Boolean` | Default: `true`, Indexed | Publication toggle. |
+
+---
+
+### 3.10 `offers` Collection
+
+Promotional coupons, bank card rebates, and festive discounts validated on the server.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique coupon identifier. |
+| `code` | `String` | Required, Unique, Uppercase, Indexed | Coupon code (e.g., `"YATRAFIRST"`, `"FESTIVE50"`). |
+| `title` | `String` | Required, Trimmed | Promo campaign headline. |
+| `description` | `String` | Trimmed | Promo conditions and benefits summary. |
+| `discountType` | `String` | Enum: `['percent', 'flat']`, Default: `'percent'` | Calculation algorithm. |
+| `value` | `Number` | Required, Min: 0 | Discount percentage or flat INR value. |
+| `maxDiscount` | `Number` | Min: 0, Default: 0 | Upper discount limit (for percent type). |
+| `minAmount` | `Number` | Min: 0, Default: 0 | Minimum booking cart total required. |
+| `validFrom` / `validTo` | `String` | Format: `YYYY-MM-DD` | Active date window. |
+| `usageLimit` | `Number` | Min: 0, Default: 0 | Maximum allowable redeems (0 = unlimited). |
+| `usedCount` | `Number` | Min: 0, Default: 0 | Number of times redeemed so far. |
+| `applicableRoutes`| `[String]` | Array of route names | Whitelisted routes (empty = all routes). |
+| `isActive` | `Boolean` | Default: `true`, Indexed | Campaign switch. |
+| `badge` | `String` | Display badge label (e.g. `"POPULAR"`, `"FESTIVE"`) | UI badge. |
+
+---
+
+### 3.11 `auditlogs` Collection
+
+Chronological system audit trail recording every administrative modification with before/after diffs and IP addresses.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique log identifier. |
+| `adminId` | `ObjectId` | Ref: `'User'`, Default: `null`, Indexed | ID of the acting administrator. |
+| `adminEmail` | `String` | Trimmed, Indexed | Email address of the administrator. |
+| `action` | `String` | Required, Trimmed, Indexed | System action code (`CREATE_BUS`, `UPDATE_LAYOUT`, `ADJUST_WALLET`, etc.). |
+| `targetEntity` | `String` | Required, Trimmed, Indexed | Target collection name (`Bus`, `Trip`, `User`, `Booking`). |
+| `targetId` | `String` | Default: `""` | Target resource ObjectId string. |
+| `summary` | `String` | Required, Trimmed | Human-readable audit narrative. |
+| `diff` | `Mixed` | Default: `null` | JSON object containing change payload or before/after state. |
+| `ipAddress` | `String` | Default: `""` | Origin IP of request. |
+| `createdAt` | `Date` | Indexed (`-1`) | Timestamp of administrative event. |
+
+---
+
+### 3.12 `tripnotifications` Collection
+
+Customer delay and cancellation alerts dispatched automatically when an administrator modifies trip schedules.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique notification identifier. |
+| `tripId` | `ObjectId` | Required, Ref: `'Trip'`, Indexed | Impacted trip. |
+| `bookingId` | `ObjectId` | Ref: `'Booking'`, Default: `null`, Indexed | Customer's specific booking. |
+| `userId` | `ObjectId` | Required, Ref: `'User'`, Indexed | Passenger recipient. |
+| `type` | `String` | Enum: `['DELAY', 'CANCELLATION', 'SCHEDULE_CHANGE', 'GENERAL']` | Alert category. |
+| `title` | `String` | Required, Trimmed | Alert title. |
+| `message` | `String` | Required, Trimmed | Notification message body. |
+| `isRead` | `Boolean` | Default: `false`, Indexed | Read state indicator. |
+| `createdAt` | `Date` | Timestamp | Delivery timestamp. |
+
+---
+
+### 3.13 `platformsettings` Collection
+
+System-wide platform branding, operational rules, and service charges.
+
+| Field Name | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `_id` | `ObjectId` | Primary Key, Auto-generated | Unique record identifier. |
+| `key` | `String` | Required, Unique, Default: `'platform'` | Configuration key. |
+| `values` | `Mixed` | Required, Default: `{}` | JSON dictionary holding `siteName`, `brandTagline`, `logoUrl`, `cancelPolicyHours`, `cancelRefundPercent`, `serviceChargeFlat`. |
+
+---
+
+---
+
 ## 4. Indexing Strategy & Concurrency Enforcement
 
 ### 4.1 The Concurrency Index: Duplicate Seat Prevention
@@ -260,13 +485,27 @@ BookingSchema.index(
 | Collection | Indexed Fields | Type | Purpose / Query Optimization |
 | :--- | :--- | :--- | :--- |
 | `users` | `{ email: 1 }` | Unique | Fast credential lookup during login & unique email enforcement. |
-| `savedtravellers` | `{ userId: 1 }` | Single Field | Fast retrieval of user's saved passenger list. |
+| `savedpassengers` | `{ userId: 1 }` | Single Field | Fast retrieval of user's saved passenger roster. |
 | `buses` | `{ busNumber: 1 }` | Unique | Enforces vehicle registration number uniqueness. |
-| `buses` | `{ origin: 1, destination: 1, isActive: 1 }` | Compound | Fast bus schedule search queries on origin + destination. |
-| `bookings` | `{ bookingReference: 1 }` | Unique | Instant PNR ticket lookup. |
+| `routes` | `{ origin: 1, destination: 1 }` | Compound | Route lookup and distance/time matching. |
+| `trips` | `{ busId: 1, travelDate: 1, departureTime: 1 }` | **Compound Unique** | **Prevents vehicle double-scheduling conflicts across batch generators.** |
+| `trips` | `{ travelDate: 1, status: 1 }` | Compound | Fast public search by travel date and schedule filtering. |
+| `seatreservations` | `{ tripId: 1, seatNumber: 1 }` | **Compound Unique** | **Zero-concurrency race condition double-locking prevention (ACID transaction-guaranteed).** |
+| `seatreservations` | `{ lockExpiresAt: 1 }` | TTL | Automatic lock expiration after 8-minute TTL. |
+| `bookings` | `{ bookingReference: 1 }`, `{ pnr: 1 }` | Unique | Instant PNR ticket lookup. |
 | `bookings` | `{ userId: 1, createdAt: -1 }` | Compound | Speeds up "My Bookings" sorted chronologically. |
-| `bookings` | `{ busId: 1, journeyDate: 1 }` | Compound | Fast retrieval of occupied seats for interactive seat layout. |
-| `bookings` | `{ busId: 1, journeyDate: 1, "passengers.seatNumber": 1 }` | **Compound Unique (Partial)** | **Zero-concurrency race condition double-booking prevention.** |
+| `bookings` | `{ busId: 1, journeyDate: 1, bookingStatus: 1 }` | Compound | Safety check for future confirmed bookings before layout/bus modifications. |
+| `pricing` | `{ busId: 1, routeId: 1 }`, `{ isActive: 1 }` | Compound | High-speed multi-tier dynamic pricing resolution. |
+| `trippackages` | `{ slug: 1 }` | Unique | SEO package URL resolution. |
+| `trippackages` | `{ category: 1, isActive: 1 }` | Compound | Category filtering for weekend circuits. |
+| `trippackages` | `{ departureCity: 1, destinationCity: 1, isActive: 1 }` | Compound | Regional hub circuit search. |
+| `destinations` | `{ name: 1 }` | Unique | Curated destination slug & name lookups. |
+| `destinations` | `{ tag: 1, isActive: 1 }` | Compound | Destination thematic filtering. |
+| `offers` | `{ code: 1 }` | Unique | Instant coupon code lookup during checkout validation. |
+| `offers` | `{ isActive: 1, validTo: 1 }` | Compound | Active promotional campaign retrieval. |
+| `auditlogs` | `{ createdAt: -1 }` | Single Field | Chronological audit log feeds for administrator dashboard. |
+| `auditlogs` | `{ targetEntity: 1, action: 1 }` | Compound | Filtered audit inspection by resource and action. |
+| `tripnotifications`| `{ userId: 1, isRead: 1, createdAt: -1 }` | Compound | Customer unread transit alert feeds. |
 
 ---
 
@@ -448,123 +687,222 @@ module.exports = mongoose.model('Bus', busSchema);
 
 ### 5.4 `backend/models/Booking.js`
 ```javascript
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const passengerSubSchema = new mongoose.Schema(
   {
-    seatNumber: {
-      type: String,
-      required: [true, 'Seat number is required'],
-      uppercase: true,
-      trim: true
-    },
-    name: {
-      type: String,
-      required: [true, 'Passenger name is required'],
-      trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
-      maxlength: [50, 'Name cannot exceed 50 characters']
-    },
-    age: {
-      type: Number,
-      required: [true, 'Age is required'],
-      min: [1, 'Age must be at least 1'],
-      max: [120, 'Age cannot exceed 120']
-    },
-    gender: {
-      type: String,
-      required: [true, 'Gender is required'],
-      enum: {
-        values: ['male', 'female', 'other'],
-        message: '{VALUE} is not a valid gender'
-      }
-    }
+    seatNumber: { type: String, required: true, uppercase: true, trim: true },
+    name: { type: String, required: true, trim: true, minlength: 2, maxlength: 50 },
+    age: { type: Number, required: true, min: 1, max: 120 },
+    gender: { type: String, required: true, enum: ['male', 'female', 'other'] }
   },
   { _id: false }
 );
 
 const bookingSchema = new mongoose.Schema(
   {
-    bookingReference: {
-      type: String,
-      required: true,
-      unique: true,
-      uppercase: true,
-      trim: true
-    },
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'User ID is required'],
-      index: true
-    },
-    busId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Bus',
-      required: [true, 'Bus ID is required'],
-      index: true
-    },
-    journeyDate: {
-      type: Date,
-      required: [true, 'Journey date is required']
-    },
-    passengers: {
-      type: [passengerSubSchema],
-      required: [true, 'At least one passenger is required'],
-      validate: [
-        {
-          validator: function (val) {
-            return val && val.length > 0 && val.length <= 6;
-          },
-          message: 'A single booking must contain between 1 and 6 passengers.'
-        },
-        {
-          validator: function (val) {
-            const seats = val.map((p) => p.seatNumber);
-            return new Set(seats).size === seats.length;
-          },
-          message: 'Duplicate seat numbers detected within the same booking request.'
-        }
-      ]
-    },
-    totalFare: {
-      type: Number,
-      required: [true, 'Total fare is required'],
-      min: [1, 'Total fare must be greater than zero']
-    },
-    bookingStatus: {
-      type: String,
-      enum: ['confirmed', 'cancelled'],
-      default: 'confirmed'
-    },
-    paymentStatus: {
-      type: String,
-      enum: ['paid', 'unpaid', 'mock_paid'],
-      default: 'paid'
-    }
+    bookingReference: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    pnr: { type: String, uppercase: true, trim: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', index: true },
+    busId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bus', required: true, index: true },
+    journeyDate: { type: Date, required: true },
+    passengers: { type: [passengerSubSchema], required: true },
+    totalFare: { type: Number, required: true, min: 1 },
+    bookingStatus: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'expired'], default: 'confirmed' },
+    paymentStatus: { type: String, enum: ['unpaid', 'paid', 'refunded'], default: 'paid' }
   },
   { timestamps: true }
 );
 
-// Indexes
 bookingSchema.index({ userId: 1, createdAt: -1 });
-bookingSchema.index({ busId: 1, journeyDate: 1 });
+bookingSchema.index({ busId: 1, journeyDate: 1, bookingStatus: 1 });
 
-// Critical Unique Index for Double-Booking Prevention
-bookingSchema.index(
+export const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
+```
+
+### 5.5 `backend/models/TripPackage.js`
+```javascript
+import mongoose from 'mongoose';
+
+const ItineraryDaySchema = new mongoose.Schema(
   {
-    busId: 1,
-    journeyDate: 1,
-    'passengers.seatNumber': 1
+    day: { type: Number, required: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+    meals: { type: [String], default: [] },
   },
-  {
-    unique: true,
-    partialFilterExpression: { bookingStatus: 'confirmed' },
-    name: 'unique_bus_date_seat_confirmed'
-  }
+  { _id: false }
 );
 
-module.exports = mongoose.model('Booking', bookingSchema);
+const TripPackageSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, unique: true, trim: true, lowercase: true, index: true },
+    category: { type: String, enum: ['Pilgrim', 'Konkan', 'Leisure', 'Monsoon', 'Heritage'], required: true, index: true },
+    durationDays: { type: Number, required: true, min: 1 },
+    durationNights: { type: Number, required: true, min: 0 },
+    packageType: { type: String, required: true, trim: true, default: 'Scenic Circuit' },
+    pricePerPerson: { type: Number, required: true, min: 0, index: true },
+    image: { type: String, required: true, trim: true },
+    routeDescription: { type: String, required: true, trim: true },
+    departureCity: { type: String, required: true, trim: true, index: true },
+    destinationCity: { type: String, required: true, trim: true, index: true },
+    itinerary: { type: [ItineraryDaySchema], default: [] },
+    inclusions: { type: [String], default: ['AC Bus Travel', 'Accommodation', 'Complimentary Breakfast', 'Sightseeing Transfers'] },
+    exclusions: { type: [String], default: ['Personal Expenses', 'Monument Entry Fees', 'Lunch and Dinner'] },
+    availableDays: { type: [String], default: ['Friday', 'Saturday', 'Sunday'] },
+    featured: { type: Boolean, default: false, index: true },
+    isActive: { type: Boolean, default: true, index: true },
+  },
+  { timestamps: true }
+);
+
+TripPackageSchema.index({ category: 1, isActive: 1 });
+TripPackageSchema.index({ departureCity: 1, destinationCity: 1, isActive: 1 });
+
+export const TripPackage = mongoose.models.TripPackage || mongoose.model('TripPackage', TripPackageSchema);
+```
+
+### 5.6 `backend/models/AuditLog.js`
+```javascript
+import mongoose from 'mongoose';
+
+const AuditLogSchema = new mongoose.Schema(
+  {
+    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    adminEmail: { type: String, default: 'system@yatrabus.com', trim: true, index: true },
+    action: { type: String, required: true, trim: true, index: true },
+    targetEntity: { type: String, required: true, trim: true, index: true },
+    targetId: { type: String, default: '' },
+    summary: { type: String, required: true, trim: true },
+    diff: { type: mongoose.Schema.Types.Mixed, default: null },
+    ipAddress: { type: String, default: '' },
+  },
+  { timestamps: true }
+);
+
+AuditLogSchema.index({ createdAt: -1 });
+
+export const AuditLog = mongoose.models.AuditLog || mongoose.model('AuditLog', AuditLogSchema);
+```
+
+### 5.7 `backend/models/TripNotification.js`
+```javascript
+import mongoose from 'mongoose';
+
+const TripNotificationSchema = new mongoose.Schema(
+  {
+    tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', required: true, index: true },
+    bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', default: null, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, enum: ['DELAY', 'CANCELLATION', 'SCHEDULE_CHANGE', 'GENERAL'], default: 'GENERAL', index: true },
+    title: { type: String, required: true, trim: true },
+    message: { type: String, required: true, trim: true },
+    isRead: { type: Boolean, default: false, index: true },
+  },
+  { timestamps: true }
+);
+
+TripNotificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
+
+export const TripNotification = mongoose.models.TripNotification || mongoose.model('TripNotification', TripNotificationSchema);
+```
+
+### 5.8 `backend/models/Destination.js`
+```javascript
+import mongoose from 'mongoose';
+
+const DestinationSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, unique: true, trim: true, index: true },
+    state: { type: String, required: true, trim: true, index: true },
+    tag: { type: String, enum: ['Hill Station', 'Heritage', 'Beach', 'Pilgrimage', 'Wildlife', 'City', 'Spiritual'], default: 'Heritage', index: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+    image: { type: String, required: true, trim: true },
+    gallery: { type: [String], default: [] },
+    highlights: { type: [String], default: [] },
+    popularPickups: { type: [String], default: [] },
+    startingFare: { type: Number, default: 450, min: 0 },
+    isActive: { type: Boolean, default: true, index: true },
+    seoTitle: { type: String, default: '' },
+    seoDescription: { type: String, default: '' },
+  },
+  { timestamps: true }
+);
+
+export const Destination = mongoose.models.Destination || mongoose.model('Destination', DestinationSchema);
+```
+
+### 5.9 `backend/models/Pricing.js`
+```javascript
+import mongoose from 'mongoose';
+
+const PricingSchema = new mongoose.Schema(
+  {
+    busId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bus', default: null, index: true },
+    routeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', default: null, index: true },
+    tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null, index: true },
+    seatType: { type: String, enum: ['sleeper', 'seater', 'semi-sleeper', 'all'], default: 'all' },
+    basePrice: { type: Number, required: true, min: 0 },
+    additionalCharges: { type: Number, default: 0, min: 0 },
+    taxPercent: { type: Number, default: 5, min: 0 },
+    dayOfWeekMultiplier: { type: Number, default: 1.0, min: 0.5, max: 3.0 },
+    weekendMultiplier: { type: Number, default: 1.2, min: 0.5, max: 3.0 },
+    festiveMultiplier: { type: Number, default: 1.25, min: 0.5, max: 3.0 },
+    lastMinuteMultiplier: { type: Number, default: 1.15, min: 0.5, max: 3.0 },
+    sleeperMultiplier: { type: Number, default: 1.2, min: 0.5, max: 3.0 },
+    lowerBerthMultiplier: { type: Number, default: 1.1, min: 0.5, max: 3.0 },
+    frontRowMultiplier: { type: Number, default: 1.05, min: 0.5, max: 3.0 },
+    isActive: { type: Boolean, default: true, index: true },
+  },
+  { timestamps: true }
+);
+
+export const Pricing = mongoose.models.Pricing || mongoose.model('Pricing', PricingSchema);
+```
+
+### 5.10 `backend/models/Offer.js`
+```javascript
+import mongoose from 'mongoose';
+
+const OfferSchema = new mongoose.Schema(
+  {
+    code: { type: String, required: true, unique: true, trim: true, uppercase: true, index: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, trim: true, default: '' },
+    discountType: { type: String, enum: ['percent', 'flat'], default: 'percent' },
+    value: { type: Number, required: true, min: 0 },
+    maxDiscount: { type: Number, min: 0, default: 0 },
+    minAmount: { type: Number, min: 0, default: 0 },
+    validFrom: { type: String, default: null },
+    validTo: { type: String, default: null },
+    usageLimit: { type: Number, min: 0, default: 0 },
+    usedCount: { type: Number, min: 0, default: 0 },
+    applicableRoutes: { type: [String], default: [] },
+    isActive: { type: Boolean, default: true, index: true },
+    badge: { type: String, default: '' },
+  },
+  { timestamps: true }
+);
+
+export const Offer = mongoose.models.Offer || mongoose.model('Offer', OfferSchema);
+```
+
+### 5.11 `backend/models/PlatformSettings.js`
+```javascript
+import mongoose from 'mongoose';
+
+const PlatformSettingsSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, unique: true, default: 'platform' },
+    values: { type: mongoose.Schema.Types.Mixed, required: true, default: {} },
+  },
+  { timestamps: true }
+);
+
+export const PlatformSettings = mongoose.models.PlatformSettings || mongoose.model('PlatformSettings', PlatformSettingsSchema);
 ```
 
 ---
@@ -786,20 +1124,34 @@ npm run seed
 
 ### Initial Data Requirements:
 1. **Default Administrator**:
-   - `email`: `admin@busbooking.com`
-   - `password`: `Admin@1234` (hashed via `bcrypt.hash("Admin@1234", 10)`)
+   - `email`: `admin@yatrabus.com`
+   - `password`: `admin123` (or `Admin@1234` / `ADMIN_SEED_PASSWORD` in production, hashed with bcrypt)
    - `role`: `admin`
+   - `walletBalance`: 0
 2. **Default Sample User**:
-   - `email`: `user@busbooking.com`
-   - `password`: `User@1234`
+   - `email`: `user@yatrabus.com`
+   - `password`: `user123`
    - `role`: `user`
-3. **Core Routes & Buses**:
-   - Kolkata ⇄ Siliguri (Seater & AC Sleeper)
-   - Mumbai ⇄ Pune (AC Seater)
-   - Bangalore ⇄ Chennai (AC Sleeper)
-   - Delhi ⇄ Jaipur (AC Seater)
-4. **Pre-seeded Confirmed Bookings**:
-   - Ensure a sample booking exists for tomorrow's date on Kolkata ⇄ Siliguri occupying seats `"A1"` and `"A2"`, allowing team members to immediately test occupied seat rendering and collision handling on the UI.
+   - `walletBalance`: 500
+3. **Core Fleet & Routes**:
+   - 8 Registered buses with full seating layouts (AC Sleeper 2+1, Multi-Axle Volvo 2+2, BharatBenz Comfort)
+   - 5 High-traffic interstate routes:
+     - Kolkata ⇄ Siliguri (580 km)
+     - Mumbai ⇄ Pune (150 km)
+     - Delhi ⇄ Jaipur (280 km)
+     - Bangalore ⇄ Chennai (350 km)
+     - Kolkata ⇄ Digha (185 km)
+4. **Pre-seeded Trips & Confirmed Bookings**:
+   - 15+ Scheduled trips across current and future dates.
+   - Confirmed bookings on active corridors demonstrating occupied seat rendering, booked passenger snapshots, and digital ticket issuance.
+5. **Authentic Tour Packages & Weekend Circuits**:
+   - 8 Seeded circuits covering Leisure, Pilgrim, Konkan, Monsoon, and Heritage categories.
+6. **Curated Indian Destinations**:
+   - 6 Seeded destinations (Digha, Darjeeling, Puri, Jaipur, Goa, Manali) with high-res cover photos and starting fares.
+7. **Multi-Tier Dynamic Pricing Rules**:
+   - Weekend (1.2x), Festive (1.25x), Last-minute (1.15x), Sleeper (1.2x), Lower berth (1.1x), Front row (1.05x).
+8. **Active Promotional Coupons**:
+   - 8+ Offers (`YATRAFIRST`, `FESTIVE50`, `KOLKATA100`, `DELHIJAIPUR`, `WEEKEND20`, `RUPAY100`, etc.).
 
 ---
 
