@@ -84,9 +84,15 @@ if (isEnabled()) {
 }
 
 export function getRedisStatus() {
-  if (!isEnabled()) return 'disabled';
-  if (redisClient && redisClient.status === 'ready') return 'connected';
+  if (!isEnabled() && !redisClient) return 'disabled';
+  if (redisClient && (redisClient.status === 'ready' || redisClient.status === 'connected')) return 'connected';
   return redisStatus;
+}
+
+export function setRedisClientForTesting(client) {
+  redisClient = client;
+  redisStatus = client ? (client.status || 'connected') : 'disabled';
+  hasWarnedFallback = false;
 }
 
 export function getRedisClient() {
@@ -98,7 +104,8 @@ export async function getOrSet(key, ttlSeconds = 300, loader) {
     throw new Error('Loader function must be provided to getOrSet');
   }
 
-  if (!redisClient || redisClient.status !== 'ready') {
+  const isReady = redisClient && (redisClient.status === 'ready' || redisClient.status === 'connected');
+  if (!isReady) {
     return await loader();
   }
 
@@ -120,7 +127,7 @@ export async function getOrSet(key, ttlSeconds = 300, loader) {
 
   const result = await loader();
 
-  if (result !== undefined && redisClient && redisClient.status === 'ready') {
+  if (result !== undefined && redisClient && (redisClient.status === 'ready' || redisClient.status === 'connected')) {
     try {
       const payload = typeof result === 'string' ? result : JSON.stringify(result);
       await redisClient.set(key, payload, 'EX', ttlSeconds);
@@ -133,7 +140,8 @@ export async function getOrSet(key, ttlSeconds = 300, loader) {
 }
 
 export async function invalidate(prefix) {
-  if (!redisClient || redisClient.status !== 'ready') {
+  const isReady = redisClient && (redisClient.status === 'ready' || redisClient.status === 'connected');
+  if (!isReady) {
     return;
   }
 

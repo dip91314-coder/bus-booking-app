@@ -1,6 +1,7 @@
 import { Bus } from '../models/Bus.js';
 import { NotFoundError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
+import { getOrSet, invalidate } from '../config/redis.js';
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -40,15 +41,17 @@ export async function getBuses(req, res, next) {
 export async function getBusById(req, res, next) {
   try {
     const { id } = req.params;
-    const bus = await Bus.findById(id);
-
-    if (!bus) {
-      throw new NotFoundError(`Bus with ID ${id} not found.`);
-    }
+    const busData = await getOrSet(`bus:${id}`, 300, async () => {
+      const bus = await Bus.findById(id);
+      if (!bus) {
+        throw new NotFoundError(`Bus with ID ${id} not found.`);
+      }
+      return normalizeYatraBus(bus);
+    });
 
     res.status(200).json({
       success: true,
-      data: normalizeYatraBus(bus),
+      data: busData,
     });
   } catch (error) {
     next(error);
@@ -58,6 +61,8 @@ export async function getBusById(req, res, next) {
 export async function createBus(req, res, next) {
   try {
     const bus = await Bus.create(normalizeYatraBus(req.body));
+    await invalidate('bus:');
+    await invalidate('trips:');
 
     res.status(201).json({
       success: true,
@@ -86,6 +91,9 @@ export async function updateBus(req, res, next) {
       throw new NotFoundError(`Bus with ID ${id} not found.`);
     }
 
+    await invalidate('bus:');
+    await invalidate('trips:');
+
     res.status(200).json({
       success: true,
       message: 'Bus details updated successfully',
@@ -104,6 +112,9 @@ export async function deleteBus(req, res, next) {
     if (!bus) {
       throw new NotFoundError(`Bus with ID ${id} not found.`);
     }
+
+    await invalidate('bus:');
+    await invalidate('trips:');
 
     res.status(200).json({
       success: true,

@@ -4,7 +4,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 import { env } from './config/env.js';
+import { getRedisStatus } from './config/redis.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { pinoLogger } from './middleware/pinoLogger.js';
 import { requestId } from './middleware/requestId.js';
@@ -68,11 +70,17 @@ export function createApp() {
 
   // Health check
   app.get('/api/health', (req, res) => {
-    res.status(200).json({
-      status: 'healthy',
+    const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    const redisStatus = getRedisStatus();
+    const isHealthy = mongoStatus === 'connected';
+
+    res.status(isHealthy ? 200 : 503).json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
       service: 'YatraBus Pan-India Backend API',
       timestamp: new Date().toISOString(),
       environment: env.NODE_ENV,
+      mongo: mongoStatus,
+      redis: redisStatus,
     });
   });
 

@@ -19,6 +19,7 @@ import { SeatReservation } from '../models/SeatReservation.js';
 import { Ticket } from '../models/Ticket.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
+import { invalidate } from '../config/redis.js';
 
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
@@ -386,6 +387,8 @@ export async function createAdminBus(req, res, next) {
       ...parseBusInput(req.body),
       availableSeatsCount: req.body.capacity,
     });
+    await invalidate('bus:');
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: formatBus(bus) });
   } catch (error) {
     next(error);
@@ -410,6 +413,8 @@ export async function updateAdminBus(req, res, next) {
       new: true,
       runValidators: true,
     });
+    await invalidate('bus:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: formatBus(requireDocument(bus, 'Bus')) });
   } catch (error) {
     next(error);
@@ -421,6 +426,8 @@ export async function deleteAdminBus(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Bus not found.');
     const bus = await Bus.findByIdAndDelete(req.params.id);
     requireDocument(bus, 'Bus');
+    await invalidate('bus:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Bus removed successfully.' });
   } catch (error) {
     next(error);
@@ -439,6 +446,8 @@ export async function getAdminRoutes(req, res, next) {
 export async function createAdminRoute(req, res, next) {
   try {
     const route = await Route.create(parseRouteInput(req.body));
+    await invalidate('routes:');
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: formatRoute(route) });
   } catch (error) {
     next(error);
@@ -452,6 +461,8 @@ export async function updateAdminRoute(req, res, next) {
       new: true,
       runValidators: true,
     });
+    await invalidate('routes:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: formatRoute(requireDocument(route, 'Route')) });
   } catch (error) {
     next(error);
@@ -463,6 +474,8 @@ export async function deleteAdminRoute(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Route not found.');
     const route = await Route.findByIdAndDelete(req.params.id);
     requireDocument(route, 'Route');
+    await invalidate('routes:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Route removed successfully.' });
   } catch (error) {
     next(error);
@@ -520,6 +533,7 @@ export async function createAdminSchedule(req, res, next) {
       { path: 'busId', select: 'busNumber busName' },
       { path: 'routeId', select: 'origin destination' },
     ]);
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: formatSchedule(schedule) });
   } catch (error) {
     next(error);
@@ -541,6 +555,7 @@ export async function updateAdminSchedule(req, res, next) {
     })
       .populate('busId', 'busNumber busName')
       .populate('routeId', 'origin destination');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: formatSchedule(requireDocument(schedule, 'Schedule')) });
   } catch (error) {
     next(error);
@@ -552,6 +567,7 @@ export async function deleteAdminSchedule(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Schedule not found.');
     const schedule = await BusSchedule.findByIdAndDelete(req.params.id);
     requireDocument(schedule, 'Schedule');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Schedule deleted successfully.' });
   } catch (error) {
     next(error);
@@ -850,6 +866,7 @@ export async function getAdminOffers(req, res, next) {
 export async function createAdminOffer(req, res, next) {
   try {
     const offer = await Offer.create(req.body);
+    await invalidate('offers:');
     res.status(201).json({ success: true, data: { ...toObject(offer), id: idOf(offer) } });
   } catch (error) {
     next(error);
@@ -860,6 +877,7 @@ export async function updateAdminOffer(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Offer not found.');
     const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    await invalidate('offers:');
     res.status(200).json({ success: true, data: { ...toObject(requireDocument(offer, 'Offer')), id: idOf(offer) } });
   } catch (error) {
     next(error);
@@ -871,6 +889,7 @@ export async function deleteAdminOffer(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Offer not found.');
     const offer = await Offer.findByIdAndDelete(req.params.id);
     requireDocument(offer, 'Offer');
+    await invalidate('offers:');
     res.status(200).json({ success: true, message: 'Offer deleted successfully.' });
   } catch (error) {
     next(error);
@@ -1057,6 +1076,7 @@ export async function createAdminTrip(req, res, next) {
   try {
     const trip = await Trip.create(req.body);
     const populated = await Trip.findById(trip._id).populate('busId routeId');
+    await invalidate('trips:');
     res.status(201).json({
       success: true,
       data: { ...populated.toObject(), busId: normalizeYatraBus(populated.busId) },
@@ -1072,6 +1092,7 @@ export async function updateAdminTrip(req, res, next) {
     const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate('busId routeId');
     requireDocument(trip, 'Trip');
+    await invalidate('trips:');
     res.status(200).json({
       success: true,
       data: { ...trip.toObject(), busId: normalizeYatraBus(trip.busId) },
@@ -1086,6 +1107,7 @@ export async function deleteAdminTrip(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Trip not found.');
     const trip = await Trip.findByIdAndDelete(req.params.id);
     requireDocument(trip, 'Trip');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Trip deleted successfully.' });
   } catch (error) {
     next(error);
@@ -1114,6 +1136,7 @@ export async function getAdminPricing(req, res, next) {
 export async function createAdminPricing(req, res, next) {
   try {
     const pricing = await Pricing.create(req.body);
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: pricing });
   } catch (error) {
     next(error);
@@ -1125,6 +1148,7 @@ export async function updateAdminPricing(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Pricing rule not found.');
     const pricing = await Pricing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     requireDocument(pricing, 'Pricing rule');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: pricing });
   } catch (error) {
     next(error);
@@ -1136,6 +1160,7 @@ export async function deleteAdminPricing(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Pricing rule not found.');
     const pricing = await Pricing.findByIdAndDelete(req.params.id);
     requireDocument(pricing, 'Pricing rule');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Pricing rule deleted successfully.' });
   } catch (error) {
     next(error);
@@ -1152,6 +1177,8 @@ export async function updateBusSeatLayout(req, res, next) {
 
     const bus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
     requireDocument(bus, 'Bus');
+    await invalidate('bus:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: normalizeYatraBus(bus) });
   } catch (error) {
     next(error);
