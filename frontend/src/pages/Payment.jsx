@@ -56,10 +56,15 @@ const Payment = () => {
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      toast.error('Please log in to complete your booking.');
+      navigate('/login', { state: { from: '/booking/payment' } });
+      return;
+    }
     if (!selectedBus || selectedSeats.length === 0) {
       navigate('/buses');
     }
-  }, [selectedBus, selectedSeats]);
+  }, [selectedBus, selectedSeats, user]);
 
   const baseFare = selectedSeats.reduce((acc, curr) => acc + (curr.price || selectedBus?.fare || 0), 0);
   const taxAmount = Math.round(baseFare * 0.05); // 5% tax
@@ -120,6 +125,11 @@ const Payment = () => {
 
   const handleSimulatePayment = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (!user) {
+      toast.error('Please log in to complete your booking.');
+      navigate('/login', { state: { from: '/booking/payment' } });
+      return;
+    }
     setIsProcessing(true);
     setProcessingStep('Connecting to secure banking gateway...');
 
@@ -161,8 +171,8 @@ const Payment = () => {
                     age: 25,
                     gender: 'male'
                   })),
-            contactEmail: user?.email || 'rahul@yatra.com',
-            contactPhone: user?.phone || '9876543210'
+            contactEmail: user?.email || '',
+            contactPhone: user?.phone || ''
           };
 
           const bRes = await bookingApi.createBooking(bookingPayload);
@@ -185,15 +195,21 @@ const Payment = () => {
             }
           }
         } catch (apiErr) {
-          console.warn('Backend API booking failed, falling back to local confirmation:', apiErr?.message);
+          if (apiErr.response?.status === 401) {
+            setIsProcessing(false);
+            toast.error('Session expired. Please log in to complete your booking.');
+            navigate('/login', { state: { from: '/booking/payment' } });
+            return;
+          }
+          console.warn('Backend API booking notice:', apiErr?.message);
         }
       }
 
       setProcessingStep('Finalizing reservation & generating PNR...');
       const confirmed = confirmBooking({
         paymentMethod: resolvedMethod,
-        contactEmail: user?.email || 'rahul@yatra.com',
-        contactPhone: user?.phone || '9876543210'
+        contactEmail: user?.email || '',
+        contactPhone: user?.phone || ''
       });
 
       const finalPnr = serverBooking?.pnr || confirmed?.pnr || `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;

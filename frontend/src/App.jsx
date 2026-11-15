@@ -63,9 +63,9 @@ function App() {
                   <Route path="search" element={<SearchResults />} />
                   <Route path="bus/:id/seats" element={<SeatSelection />} />
                   <Route path="booking/seats/:id" element={<SeatSelection />} />
-                  <Route path="booking/passengers" element={<PassengerDetails />} />
-                  <Route path="booking/payment" element={<Payment />} />
-                  <Route path="booking/confirmation/:id" element={<Confirmation />} />
+                  <Route path="booking/passengers" element={<ProtectedRoute><PassengerDetails /></ProtectedRoute>} />
+                  <Route path="booking/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+                  <Route path="booking/confirmation/:id" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
                   <Route path="ticket/:id" element={<Confirmation />} />
 
                   <Route path="login" element={<Login />} />
