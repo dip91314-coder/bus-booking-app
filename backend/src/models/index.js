@@ -19,3 +19,6 @@ export { Staff } from './Staff.js';
 export { PlatformSettings } from './PlatformSettings.js';
 export { AdminNotification } from './AdminNotification.js';
 export { BusOperator } from './BusOperator.js';
+export { Destination } from './Destination.js';
+export { JournalEntry } from './JournalEntry.js';
+export { SavedPassenger } from './SavedPassenger.js';

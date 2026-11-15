@@ -25,8 +25,8 @@ const SearchResults = () => {
   const navigate = useNavigate();
   const { buses, searchParams, setSearchParams } = useBooking();
 
-  const originQuery = urlParams.get('origin') || searchParams.origin || 'Kolkata';
-  const destQuery = urlParams.get('destination') || searchParams.destination || 'Siliguri';
+  const originQuery = urlParams.get('from') || urlParams.get('origin') || searchParams.origin || 'Kolkata';
+  const destQuery = urlParams.get('to') || urlParams.get('destination') || searchParams.destination || 'Siliguri';
   const dateQuery = urlParams.get('date') || searchParams.journeyDate || new Date().toISOString().split('T')[0];
 
   const [liveTrips, setLiveTrips] = useState(null);
@@ -38,6 +38,12 @@ const SearchResults = () => {
   const [availableOnly, setAvailableOnly] = useState(false);
   const [availabilityUpdatedAt, setAvailabilityUpdatedAt] = useState(null);
   const liveRefreshEnabled = useRef(false);
+
+  const dynamicMaxPrice = useMemo(() => {
+    const sourcePool = liveTrips && liveTrips.length > 0 ? liveTrips : buses;
+    const fares = sourcePool.map((b) => b.fare || 0).filter((f) => f > 0);
+    return fares.length > 0 ? Math.max(...fares) : 2500;
+  }, [liveTrips, buses]);
 
   const refreshTrips = useCallback(async ({ showLoading = true } = {}) => {
     if (showLoading) setIsLoadingTrips(true);
@@ -248,6 +254,7 @@ const SearchResults = () => {
               filters={filters}
               setFilters={setFilters}
               onReset={handleResetFilters}
+              maxPrice={dynamicMaxPrice}
             />
           </div>
 
@@ -268,6 +275,7 @@ const SearchResults = () => {
                   filters={filters}
                   setFilters={setFilters}
                   onReset={handleResetFilters}
+                  maxPrice={dynamicMaxPrice}
                 />
               </div>
             </div>

@@ -375,7 +375,55 @@ export async function getReports(req, res, next) {
 export async function getAdminBuses(req, res, next) {
   try {
     const buses = await Bus.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: buses.length, data: buses.map(formatBus) });
+    const busIds = buses.map((b) => b._id);
+
+    const [trips, pricings] = await Promise.all([
+      Trip.find({ busId: { $in: busIds } }).populate('routeId').select('busId routeId baseFare'),
+      Pricing.find({ busId: { $in: busIds } }).select('busId basePrice'),
+    ]);
+
+    const busRoutesMap = new Map();
+    const tripFareMap = new Map();
+    for (const trip of trips) {
+      const bId = trip.busId?.toString();
+      if (!bId) continue;
+      if (!busRoutesMap.has(bId)) busRoutesMap.set(bId, new Set());
+      if (trip.routeId) {
+        const origin = trip.routeId.origin || trip.routeId.source;
+        const dest = trip.routeId.destination;
+        if (origin && dest) {
+          busRoutesMap.get(bId).add(`${origin} ➔ ${dest}`);
+        }
+      }
+      if (trip.baseFare && !tripFareMap.has(bId)) {
+        tripFareMap.set(bId, trip.baseFare);
+      }
+    }
+
+    const pricingMap = new Map();
+    for (const p of pricings) {
+      if (p.busId && !pricingMap.has(p.busId.toString())) {
+        pricingMap.set(p.busId.toString(), p.basePrice);
+      }
+    }
+
+    const formattedBuses = buses.map((bus) => {
+      const base = formatBus(bus);
+      const bId = bus._id.toString();
+      const assigned = busRoutesMap.has(bId) ? Array.from(busRoutesMap.get(bId)) : [];
+      if (assigned.length === 0 && bus.origin && bus.destination) {
+        assigned.push(`${bus.origin} ➔ ${bus.destination}`);
+      }
+      const baseFare = pricingMap.get(bId) || tripFareMap.get(bId) || bus.fare;
+      return {
+        ...base,
+        assignedRoutes: assigned,
+        fare: baseFare,
+        baseFare,
+      };
+    });
+
+    res.status(200).json({ success: true, count: formattedBuses.length, data: formattedBuses });
   } catch (error) {
     next(error);
   }

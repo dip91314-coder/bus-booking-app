@@ -18,7 +18,7 @@ import {
 import toast from 'react-hot-toast';
 
 const RouteManagementPage = () => {
-  const { routes, addRoute, updateRoute, deleteRoute } = useAdmin();
+  const { routes, addRoute, updateRoute, deleteRoute, isLoading, error, refetch } = useAdmin();
 
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -272,6 +272,9 @@ const RouteManagementPage = () => {
       <DataTable
         columns={columns}
         data={routes}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search by city, highway, route ID..."
         searchKeys={['source', 'destination', 'highway', 'id']}
         exportFileName="interstate_routes"

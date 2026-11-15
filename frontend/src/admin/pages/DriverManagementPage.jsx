@@ -20,7 +20,7 @@ import {
 import toast from 'react-hot-toast';
 
 const DriverManagementPage = () => {
-  const { drivers, buses, addDriver, updateDriver, deleteDriver } = useAdmin();
+  const { drivers, buses, addDriver, updateDriver, deleteDriver, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -297,6 +297,9 @@ const DriverManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredDrivers}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search driver name, phone, license, bus..."
         searchKeys={['name', 'phone', 'licenseNumber', 'assignedBus', 'id']}
         exportFileName="driver_fleet_roster"

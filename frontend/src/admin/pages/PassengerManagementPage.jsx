@@ -20,7 +20,7 @@ import {
 import toast from 'react-hot-toast';
 
 const PassengerManagementPage = () => {
-  const { passengers, updatePassenger, togglePassengerStatus, bookings } = useAdmin();
+  const { passengers, updatePassenger, togglePassengerStatus, bookings, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -258,6 +258,9 @@ const PassengerManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredPassengers}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search passenger name, email, phone, city..."
         searchKeys={['name', 'email', 'phone', 'city', 'id']}
         exportFileName="passenger_directory"

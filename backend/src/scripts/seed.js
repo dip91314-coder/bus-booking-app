@@ -19,6 +19,9 @@ import {
   PlatformSettings,
   Cancellation,
   Seat,
+  Destination,
+  JournalEntry,
+  SavedPassenger,
 } from '../models/index.js';
 import { logger } from '../config/logger.js';
 
@@ -48,6 +51,9 @@ export async function seedDatabase() {
       PlatformSettings.deleteMany({}),
       Cancellation.deleteMany({}),
       Seat.deleteMany({}),
+      Destination.deleteMany({}),
+      JournalEntry.deleteMany({}),
+      SavedPassenger.deleteMany({}),
     ]);
 
     // 1. Create Users
@@ -57,6 +63,16 @@ export async function seedDatabase() {
       (process.env.NODE_ENV !== 'production' ? 'admin123' : crypto.randomBytes(12).toString('hex'));
 
     const adminUser = await User.create({
+      name: 'Vikram Das',
+      email: 'admin@yatrabus.com',
+      password: adminPassword,
+      phone: '9811223344',
+      role: 'admin',
+      city: 'Kolkata',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=120&q=80',
+    });
+
+    await User.create({
       name: 'Vikram Das',
       email: 'admin@bharatbus.com',
       password: adminPassword,
@@ -1194,12 +1210,187 @@ export async function seedDatabase() {
       },
     ]);
 
-    // 12. Create Platform Settings
+    // 12. Create Saved Passengers & Travel Journal
+    logger.info('Creating saved passengers and journal entries...');
+    await SavedPassenger.create([
+      { userId: user1._id, name: 'Rahul Sen', age: 26, gender: 'male', phone: '9876543210', berthPreference: 'lower' },
+      { userId: user1._id, name: 'Priya Sen', age: 24, gender: 'female', phone: '9876543211', berthPreference: 'lower' },
+      { userId: user1._id, name: 'Animesh Sen', age: 58, gender: 'male', phone: '9876543212', berthPreference: 'lower' },
+    ]);
+
+    await JournalEntry.create([
+      {
+        userId: user1._id,
+        title: 'Sunset over Digha Beach',
+        location: 'Digha, West Bengal',
+        story: 'Arrived on the YatraBus morning express from Esplanade. The roar of the Bay of Bengal waves and gentle coastal breeze made for an unforgettable weekend escape.',
+        image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80',
+        prints: [
+          {
+            src: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=600&q=80',
+            caption: 'Old Digha Sea Wall',
+            x: 14,
+            y: 20,
+            w: 26,
+            rotate: -3,
+            tape: true,
+          },
+        ],
+        notes: [
+          {
+            x: 54,
+            y: 16,
+            w: 36,
+            title: 'Coastal Reflections',
+            body: 'Esplanade to Digha in just 4 hours on WB-01-1234. Smooth roads and clean reclining seats made all the difference.',
+            rotate: 1,
+            style: 'card',
+          },
+        ],
+      },
+      {
+        userId: user1._id,
+        title: 'Misty Dawn at Siliguri Foothills',
+        location: 'Siliguri, West Bengal',
+        story: 'Woke up as our YatraBus Diamond Sleeper entered the tea gardens of North Bengal. Fresh mountain air and panoramic sights towards the hills.',
+        image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1600&q=80',
+        prints: [
+          {
+            src: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
+            caption: 'Tea Gardens of Terai',
+            x: 12,
+            y: 22,
+            w: 28,
+            rotate: 2,
+            tape: true,
+          },
+        ],
+        notes: [
+          {
+            x: 52,
+            y: 18,
+            w: 38,
+            title: 'Gateway to the North East',
+            body: 'Super comfy overnight sleeper bus journey. Arrived well-rested and on schedule at Tenzing Norgay bus terminal.',
+            rotate: -1,
+            style: 'card',
+          },
+        ],
+      },
+    ]);
+
+    // 13. Create Realistic Authentic Indian Destinations
+    logger.info('Creating authentic Indian destination directory...');
+    await Destination.create([
+      {
+        name: 'Varanasi',
+        state: 'Uttar Pradesh',
+        tag: 'Spiritual',
+        title: 'The Eternal Spiritual Capital on the Sacred Ganga',
+        description: 'Experience ancient evening Ganga aartis, labyrinthine heritage alleys, and tranquil dawn boat rides along legendary ghats.',
+        image: 'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Dashashwamedh Ghat Aarti', 'Kashi Vishwanath Corridor', 'Sarnath Buddhist Stupa', 'Assi Ghat Morning Ragas'],
+        popularPickups: ['Delhi', 'Kolkata', 'Patna', 'Lucknow'],
+        startingFare: 650,
+        isActive: true,
+      },
+      {
+        name: 'Jaipur',
+        state: 'Rajasthan',
+        tag: 'Heritage',
+        title: 'The Historic Pink City of Forts and Royal Palaces',
+        description: 'Explore the majestic Amber Fort, the terracotta façade of Hawa Mahal, bustling Johari Bazaar, and authentic Rajasthani hospitality.',
+        image: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Amber Palace & Fort', 'Hawa Mahal Palace of Winds', 'City Palace', 'Nahargarh Fort Sunset'],
+        popularPickups: ['Delhi', 'Gurugram', 'Agra', 'Ahmedabad'],
+        startingFare: 550,
+        isActive: true,
+      },
+      {
+        name: 'Manali',
+        state: 'Himachal Pradesh',
+        tag: 'Hill Station',
+        title: 'Snow-Capped Himalayan Vistas & Cedar Forest Valleys',
+        description: 'Nestled on the banks of Beas river, Manali offers adventure sports in Solang Valley, pine-scented Old Manali cafes, and Atal Tunnel views.',
+        image: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Solang Valley Snow Point', 'Hadimba Devi Temple', 'Rohtang Pass Viewpoint', 'Jogini Waterfall Trek'],
+        popularPickups: ['Delhi', 'Chandigarh', 'Shimla'],
+        startingFare: 1350,
+        isActive: true,
+      },
+      {
+        name: 'Digha',
+        state: 'West Bengal',
+        tag: 'Beach',
+        title: 'Bengal Premier Coastal Retreat along the Bay of Bengal',
+        description: 'Famed for wide flat beaches, scenic casuarina groves, fresh coastal seafood markets, and gentle surf perfect for seaside relaxation.',
+        image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['New Digha Sea Beach', 'Marine Aquarium & Research Centre', 'Udaipur Beach Border Walk', 'Lord Shiva Chandaneswar Temple'],
+        popularPickups: ['Kolkata', 'Howrah', 'Kharagpur'],
+        startingFare: 350,
+        isActive: true,
+      },
+      {
+        name: 'Darjeeling',
+        state: 'West Bengal',
+        tag: 'Hill Station',
+        title: 'The Queen of Hills with Majestic Kanchenjunga Vistas',
+        description: 'Emerald hillside tea estates, the UNESCO Himalayan Railway, Tiger Hill sunrise over Mount Kanchenjunga, and vibrant colonial-era architecture.',
+        image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Tiger Hill Sunrise', 'Batasia Loop Railway', 'Happy Valley Tea Estate', 'Himalayan Mountaineering Institute'],
+        popularPickups: ['Siliguri', 'Kolkata'],
+        startingFare: 890,
+        isActive: true,
+      },
+      {
+        name: 'Agra',
+        state: 'Uttar Pradesh',
+        tag: 'Heritage',
+        title: 'City of the Immortal Taj Mahal & Mughal Splendour',
+        description: 'Stand before the white marble wonder of the world, visit the grand ramparts of Agra Fort, and stroll the courtyards of Fatehpur Sikri.',
+        image: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Taj Mahal Wonder of the World', 'Agra Red Fort', 'Mehtab Bagh Yamuna Sunset', 'Fatehpur Sikri Imperial Complex'],
+        popularPickups: ['Delhi', 'Jaipur', 'Lucknow'],
+        startingFare: 450,
+        isActive: true,
+      },
+      {
+        name: 'Puri',
+        state: 'Odisha',
+        tag: 'Pilgrimage',
+        title: 'Sacred Coastal Haven of Lord Jagannath',
+        description: 'One of the Char Dham pilgrimage sites, renowned for the sacred Jagannath Temple, golden surf beaches, and magnificent sand art.',
+        image: 'https://images.unsplash.com/photo-1609743522653-52354461eb27?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Jagannath Temple Darshan', 'Golden Sand Sea Beach', 'Konark Sun Temple Excursion', 'Chilika Lake Dolphin Sanctuary'],
+        popularPickups: ['Kolkata', 'Bhubaneswar', 'Visakhapatnam'],
+        startingFare: 750,
+        isActive: true,
+      },
+      {
+        name: 'Goa',
+        state: 'Goa',
+        tag: 'Beach',
+        title: 'Sun-Drenched Coastal Paradise & Portuguese Heritage',
+        description: 'Palm-fringed golden shorelines, whitewashed colonial churches, vibrant beach shacks, and scenic Western Ghats river cruises.',
+        image: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1000&q=80',
+        highlights: ['Palolem & Baga Beaches', 'Basilica of Bom Jesus', 'Dudhsagar Waterfalls', 'Fort Aguada Coastal Bastion'],
+        popularPickups: ['Mumbai', 'Pune', 'Bengaluru', 'Hyderabad'],
+        startingFare: 850,
+        isActive: true,
+      },
+    ]);
+
+    // 14. Create Platform Settings
     logger.info('Creating platform configuration...');
     await PlatformSettings.create({
       key: 'platform',
       values: {
-        platformName: 'OBTBS YatraBus',
+        platformName: 'YatraBus',
+        companyName: 'YatraBus India Private Limited',
+        brandName: 'YatraBus',
+        platformTitle: 'YatraBus Enterprise Fleet & Operations',
+        adminName: 'Vikram Das',
+        adminEmail: 'admin@yatrabus.com',
         supportEmail: 'support@yatrabus.in',
         supportPhone: '1800-250-8737',
         convenienceFeePercent: 0,

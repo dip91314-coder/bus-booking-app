@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate, Link } from 'react-router-do
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import ApiHealthBadge from '../../components/common/ApiHealthBadge';
 import {
   LayoutDashboard,
   Bus,
@@ -138,7 +139,7 @@ const AdminLayout = () => {
               <div className="flex flex-col truncate">
                 <div className="flex items-center gap-1.5">
                   <span className="font-black text-sm tracking-tight text-white">
-                    BharatBus
+                    {settings?.brandName || 'YatraBus'}
                   </span>
                   <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-400/30">
                     Ops
@@ -289,7 +290,7 @@ const AdminLayout = () => {
 
             {/* Breadcrumb location */}
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold">
-              <span className="text-slate-400">BharatBus Control</span>
+              <span className="text-slate-400">YatraBus Operations</span>
               <span className="text-slate-300 dark:text-slate-600">/</span>
               <span className="text-blue-600 dark:text-blue-400 font-bold capitalize">
                 {location.pathname.replace('/admin', '').replace('/', '') || 'Dashboard'}
@@ -477,23 +478,16 @@ const AdminLayout = () => {
         </header>
 
         {/* PAGE CONTENT OUTLET */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 pt-6 sm:pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           <Outlet />
         </main>
 
         {/* ADMIN FOOTER */}
         <footer className="px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0E1526] text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 transition-colors">
           <span>
-            © {new Date().getFullYear()} <strong>BharatBus Enterprise Operations</strong>. All rights reserved.
+            © {new Date().getFullYear()} <strong>{settings?.companyName || 'YatraBus India Private Limited'}</strong>. All rights reserved.
           </span>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              API Server Online
-            </span>
-            <span className="text-slate-300 dark:text-slate-700">|</span>
-            <span className="font-mono text-slate-400">v2.4.0-stable</span>
-          </div>
+          <ApiHealthBadge showVersion={true} />
         </footer>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Filter, RotateCcw, Clock, Star } from 'lucide-react';
 
-const BusFilters = ({ filters, setFilters, onReset }) => {
+const BusFilters = ({ filters, setFilters, onReset, minPrice = 300, maxPrice = 2500 }) => {
   const handleCheckboxChange = (category, value) => {
     setFilters((prev) => {
       const currentList = prev[category] || [];
@@ -12,6 +12,9 @@ const BusFilters = ({ filters, setFilters, onReset }) => {
       };
     });
   };
+
+  const sliderMax = Math.max(maxPrice, 1000);
+  const currentMaxPrice = filters.maxPrice ?? sliderMax;
 
   return (
     <div className="bg-white rounded-2xl shadow-card border border-gray-100 p-5 space-y-6">
@@ -94,23 +97,23 @@ const BusFilters = ({ filters, setFilters, onReset }) => {
             Max Price
           </h4>
           <span className="text-xs font-extrabold text-primary">
-            ₹{filters.maxPrice || 2500}
+            ₹{currentMaxPrice}
           </span>
         </div>
         <input
           type="range"
-          min="300"
-          max="2500"
+          min={minPrice}
+          max={sliderMax}
           step="50"
-          value={filters.maxPrice || 2500}
+          value={currentMaxPrice}
           onChange={(e) =>
             setFilters((prev) => ({ ...prev, maxPrice: Number(e.target.value) }))
           }
           className="w-full accent-primary h-1.5 bg-gray-200 rounded-lg cursor-pointer"
         />
         <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-          <span>₹300</span>
-          <span>₹2,500</span>
+          <span>₹{minPrice}</span>
+          <span>₹{sliderMax.toLocaleString()}</span>
         </div>
       </div>
 

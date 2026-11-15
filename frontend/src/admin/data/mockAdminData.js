@@ -720,7 +720,7 @@ export const INITIAL_STAFF = [
   {
     id: 'STF-301',
     name: 'Vikram Das',
-    email: 'admin@bharatbus.com',
+    email: 'admin@yatrabus.com',
     phone: '+91 9811223344',
     role: 'Super Admin',
     branch: 'National HQ - New Delhi',
@@ -1002,13 +1002,13 @@ export const INITIAL_NOTIFICATIONS = [
 
 export const INITIAL_SETTINGS = {
   adminName: 'Vikram Das',
-  adminEmail: 'admin@bharatbus.com',
+  adminEmail: 'admin@yatrabus.com',
   adminPhone: '+91 9811223344',
   adminRole: 'Super Admin',
-  platformTitle: 'BharatBus Logistics & Fleet Operations',
+  platformTitle: 'YatraBus Logistics & Fleet Operations',
   currency: 'INR (₹)',
   taxGstRate: 5,
-  supportEmail: 'support@bharatbus.com',
+  supportEmail: 'support@yatrabus.in',
   supportHelpline: '1800-200-9988',
   maintenanceMode: false,
   emailNotifications: true,

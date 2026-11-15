@@ -24,7 +24,7 @@ const AdminSettingsPage = () => {
   // Profile Form
   const [profileForm, setProfileForm] = useState({
     adminName: settings.adminName || 'Vikram Das',
-    adminEmail: settings.adminEmail || 'admin@bharatbus.com',
+    adminEmail: settings.adminEmail || 'admin@yatrabus.com',
     adminPhone: settings.adminPhone || '+91 9811223344',
     adminRole: settings.adminRole || 'Super Admin'
   });
@@ -40,11 +40,11 @@ const AdminSettingsPage = () => {
 
   // General Settings Form
   const [generalForm, setGeneralForm] = useState({
-    platformTitle: settings.platformTitle || 'BharatBus Logistics & Fleet Operations',
+    platformTitle: settings.platformTitle || 'YatraBus Logistics & Fleet Operations',
     currency: settings.currency || 'INR (₹)',
     taxGstRate: settings.taxGstRate ?? 5,
-    supportEmail: settings.supportEmail || 'support@bharatbus.com',
-    supportHelpline: settings.supportHelpline || '1800-200-9988',
+    supportEmail: settings.supportEmail || 'support@yatrabus.in',
+    supportHelpline: settings.supportHelpline || '1800-250-8737',
     maintenanceMode: settings.maintenanceMode || false
   });
 
@@ -59,16 +59,16 @@ const AdminSettingsPage = () => {
   useEffect(() => {
     setProfileForm({
       adminName: settings.adminName || 'Vikram Das',
-      adminEmail: settings.adminEmail || 'admin@bharatbus.com',
+      adminEmail: settings.adminEmail || 'admin@yatrabus.com',
       adminPhone: settings.adminPhone || '+91 9811223344',
       adminRole: settings.adminRole || 'Super Admin'
     });
     setGeneralForm({
-      platformTitle: settings.platformTitle || 'BharatBus Logistics & Fleet Operations',
+      platformTitle: settings.platformTitle || 'YatraBus Logistics & Fleet Operations',
       currency: settings.currency || 'INR (₹)',
       taxGstRate: settings.taxGstRate ?? 5,
-      supportEmail: settings.supportEmail || 'support@bharatbus.com',
-      supportHelpline: settings.supportHelpline || '1800-200-9988',
+      supportEmail: settings.supportEmail || 'support@yatrabus.in',
+      supportHelpline: settings.supportHelpline || '1800-250-8737',
       maintenanceMode: settings.maintenanceMode || false
     });
     setNotifPreferences({

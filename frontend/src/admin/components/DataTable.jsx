@@ -10,13 +10,18 @@ import {
   ArrowDown,
   Download,
   Filter,
-  Inbox
+  Inbox,
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DataTable = ({
   columns = [],
   data = [],
+  isLoading = false,
+  error = null,
+  onRetry = null,
   searchPlaceholder = 'Search records...',
   searchKeys = [],
   filterSlot = null,
@@ -250,7 +255,41 @@ const DataTable = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
-            {paginatedData.length > 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, rIdx) => (
+                <tr key={`skeleton-${rIdx}`} className="animate-pulse">
+                  {columns.map((col, cIdx) => (
+                    <td key={`skel-col-${cIdx}`} className="py-3.5 px-4">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-3/4"></div>
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : error ? (
+              <tr>
+                <td colSpan={columns.length} className="py-12 text-center text-slate-400 dark:text-slate-500">
+                  <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Failed to load data</span>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {typeof error === 'string' ? error : 'An error occurred while fetching records.'}
+                    </p>
+                    {onRetry && (
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark transition flex items-center gap-1.5 shadow-sm"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Retry</span>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : paginatedData.length > 0 ? (
               paginatedData.map((row, rowIdx) => (
                 <tr
                   key={row.id || row._id || rowIdx}

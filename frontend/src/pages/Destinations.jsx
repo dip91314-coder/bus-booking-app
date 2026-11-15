@@ -1,35 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FEATURED_DESTINATIONS, POPULAR_CITIES } from '../data/mockData';
-import { MapPin, Search, ArrowRight, Compass, Sparkles } from 'lucide-react';
+import { destinationApi } from '../services/api';
+import { MapPin, Search, ArrowRight, Sparkles, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 
 const Destinations = () => {
   const navigate = useNavigate();
+  const [destinations, setDestinations] = useState([]);
   const [filter, setFilter] = useState('');
+  const [selectedTag, setSelectedTag] = useState('All');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filtered = FEATURED_DESTINATIONS.filter(
-    (d) =>
-      d.name.toLowerCase().includes(filter.toLowerCase()) ||
-      d.state.toLowerCase().includes(filter.toLowerCase()) ||
-      d.title.toLowerCase().includes(filter.toLowerCase())
-  );
+  const fetchDestinations = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await destinationApi.getDestinations();
+      setDestinations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn('Failed to load destinations from API:', err);
+      setError('Unable to load destination catalog from the live database.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDestinations();
+  }, []);
+
+  const tags = ['All', 'Heritage', 'Hill Station', 'Beach', 'Spiritual', 'Pilgrimage'];
+
+  const filtered = destinations.filter((d) => {
+    const matchesText =
+      (d.name || '').toLowerCase().includes(filter.toLowerCase()) ||
+      (d.state || '').toLowerCase().includes(filter.toLowerCase()) ||
+      (d.title || '').toLowerCase().includes(filter.toLowerCase()) ||
+      (d.description || '').toLowerCase().includes(filter.toLowerCase());
+    const matchesTag = selectedTag === 'All' || d.tag === selectedTag;
+    return matchesText && matchesTag;
+  });
+
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-slate-800 dark:text-slate-100 transition-colors">
-      {/* Hero */}
-      <div className="bg-gradient-to-r from-[#071A4D] via-[#0C247A] to-primary text-white py-16 px-4 sm:px-6 lg:px-8 text-center shadow-lg">
-        <div className="max-w-3xl mx-auto space-y-3">
-          <span className="text-xs font-bold uppercase tracking-widest text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
-            Destination Directory
+      {/* Hero with proper top breathing space */}
+      <div className="bg-gradient-to-r from-[#071A4D] via-[#0C247A] to-primary text-white pt-14 sm:pt-16 pb-16 px-4 sm:px-6 lg:px-8 text-center shadow-lg relative">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-amber-300 bg-amber-400/10 px-3.5 py-1 rounded-full border border-amber-400/30">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Verified Bus Destinations</span>
           </span>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
             Discover Incredible India by Bus
           </h1>
-          <p className="text-sm sm:text-base text-blue-100 max-w-xl mx-auto">
-            Explore YatraBus routes from misty Himalayan valleys and golden desert citadels to sacred ghats and coastal beaches. Every ticket is for a YatraBus coach.
+          <p className="text-sm sm:text-base text-blue-100 max-w-xl mx-auto leading-relaxed">
+            Explore direct intercity routes connecting legendary heritage citadels, serene coastal shores, misty Himalayan passes, and sacred river ghats.
           </p>
 
-          <div className="max-w-md mx-auto pt-4">
+          <div className="max-w-md mx-auto pt-2">
             <div className="relative">
               <Search className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -41,71 +71,158 @@ const Destinations = () => {
               />
             </div>
           </div>
+
+          {/* Tag Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setSelectedTag(tag)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                  selectedTag === tag
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'bg-white/10 text-blue-100 hover:bg-white/20'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filtered.map((dest, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded-3xl shadow-card hover:shadow-elevated border border-gray-100 overflow-hidden group transition-all duration-300 flex flex-col justify-between"
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 animate-pulse">
+                <div className="h-56 bg-slate-200 dark:bg-slate-800 rounded-2xl w-full"></div>
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div>
+                <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-2/3"></div>
+                <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-3xl p-8 text-center max-w-lg mx-auto">
+            <AlertCircle className="w-8 h-8 text-rose-600 mx-auto mb-2" />
+            <h3 className="text-base font-bold text-rose-900 dark:text-rose-200">Unable to Load Destinations</h3>
+            <p className="text-xs text-rose-700 dark:text-rose-300 mt-1">{error}</p>
+            <button
+              type="button"
+              onClick={fetchDestinations}
+              className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition inline-flex items-center gap-1.5"
             >
-              <div>
-                <div className="h-56 w-full overflow-hidden relative">
-                  <img
-                    src={dest.image}
-                    alt={dest.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-4 left-4 right-4 text-white">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded">
-                      {dest.state}
-                    </span>
-                    <h3 className="text-2xl font-black mt-1">{dest.name}</h3>
-                    <p className="text-xs text-gray-200">{dest.title}</p>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-slate-500">
+            <p className="text-sm font-semibold">No destinations found matching your query.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setFilter('');
+                setSelectedTag('All');
+              }}
+              className="mt-3 text-xs font-bold text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filtered.map((dest) => (
+              <div
+                key={dest._id || dest.id}
+                className="bg-white dark:bg-[#111622] rounded-3xl shadow-card hover:shadow-elevated border border-slate-100 dark:border-slate-800 overflow-hidden group transition-all duration-300 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-56 w-full overflow-hidden relative">
+                    <img
+                      src={dest.image}
+                      alt={`${dest.name}, ${dest.state} - ${dest.title}`}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"></div>
+                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded border border-amber-300/30">
+                          {dest.state}
+                        </span>
+                        {dest.tag && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200 bg-blue-900/60 backdrop-blur-sm px-2 py-0.5 rounded">
+                            {dest.tag}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-2xl font-black text-white">{dest.name}</h3>
+                      <p className="text-xs text-gray-200 line-clamp-1">{dest.title}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-3">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+                      {dest.description}
+                    </p>
+
+                    {dest.highlights && dest.highlights.length > 0 && (
+                      <div className="pt-2 flex flex-wrap gap-1.5">
+                        {dest.highlights.slice(0, 3).map((h, i) => (
+                          <span
+                            key={i}
+                            className="inline-block text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md"
+                          >
+                            ✓ {h}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {dest.popularPickups && dest.popularPickups.length > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="truncate">Connected from {dest.popularPickups.join(', ')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="p-6 space-y-3">
-                  <p className="text-xs text-gray-600 leading-relaxed">{dest.description}</p>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <MapPin className="w-4 h-4 text-primary" />
-                    <span>Connected from Kolkata, Delhi, Mumbai, Bengaluru</span>
+                <div className="p-6 pt-0">
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Starting Fare</span>
+                      <span className="text-base font-black text-primary dark:text-purple-400 font-sans">
+                        ₹{dest.startingFare || 450}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultOrigin = dest.popularPickups?.[0] || 'Kolkata';
+                        navigate(
+                          `/buses?from=${encodeURIComponent(defaultOrigin)}&to=${encodeURIComponent(
+                            dest.name
+                          )}&date=${today}`
+                        );
+                      }}
+                      className="bg-accent hover:bg-accent-hover text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5"
+                    >
+                      <span>View Buses</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
-
-              <div className="p-6 pt-0">
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-gray-400 block font-medium">Starting Fare</span>
-                    <span className="text-base font-black text-primary font-sans">{dest.minFare}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        `/buses?destination=${encodeURIComponent(dest.name)}&origin=Kolkata&date=${
-                          new Date().toISOString().split('T')[0]
-                        }`
-                      )
-                    }
-                    className="bg-accent hover:bg-accent-hover text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1.5"
-                  >
-                    <span>View Buses</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default Destinations;
-

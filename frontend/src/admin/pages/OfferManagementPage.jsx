@@ -19,7 +19,7 @@ import {
 import toast from 'react-hot-toast';
 
 const OfferManagementPage = () => {
-  const { offers, addOffer, updateOffer, toggleOfferStatus, deleteOffer } = useAdmin();
+  const { offers, addOffer, updateOffer, toggleOfferStatus, deleteOffer, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -327,6 +327,9 @@ const OfferManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredOffers}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search coupon code, campaign title..."
         searchKeys={['code', 'title', 'description', 'id']}
         exportFileName="promotional_coupons"

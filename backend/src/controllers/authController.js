@@ -66,7 +66,7 @@ export async function login(req, res, next) {
     // Keep demo-account provisioning out of production.
     if (!user) {
       if (process.env.NODE_ENV !== 'production' && (
-        (lowerEmail === 'admin@bharatbus.com' || lowerEmail === 'admin@example.com') &&
+        (lowerEmail === 'admin@yatrabus.com' || lowerEmail === 'admin@yatrabus.in' || lowerEmail === 'admin@bharatbus.com' || lowerEmail === 'admin@example.com') &&
         (password === 'admin123' || password === 'admin')
       )) {
         user = await User.create({

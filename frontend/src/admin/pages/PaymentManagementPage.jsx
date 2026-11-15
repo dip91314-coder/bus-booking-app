@@ -19,7 +19,7 @@ import {
 import toast from 'react-hot-toast';
 
 const PaymentManagementPage = () => {
-  const { payments, processRefund } = useAdmin();
+  const { payments, processRefund, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [methodFilter, setMethodFilter] = useState('ALL');
@@ -294,6 +294,9 @@ const PaymentManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredPayments}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search txn ID, PNR, passenger, reference..."
         searchKeys={['id', 'bookingId', 'passengerName', 'providerReference', 'paymentMethod']}
         exportFileName="payment_transactions_audit"

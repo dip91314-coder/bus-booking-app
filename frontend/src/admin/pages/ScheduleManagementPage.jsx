@@ -18,7 +18,7 @@ import {
 import toast from 'react-hot-toast';
 
 const ScheduleManagementPage = () => {
-  const { schedules, buses, routes, addSchedule, updateSchedule, deleteSchedule } = useAdmin();
+  const { schedules, buses, routes, addSchedule, updateSchedule, deleteSchedule, isLoading, error, refetch } = useAdmin();
 
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -306,6 +306,9 @@ const ScheduleManagementPage = () => {
       <DataTable
         columns={columns}
         data={schedules}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search by schedule ID, bus name, city..."
         searchKeys={['id', 'busName', 'busNumber', 'source', 'destination', 'journeyDate']}
         exportFileName="bus_trip_schedules"

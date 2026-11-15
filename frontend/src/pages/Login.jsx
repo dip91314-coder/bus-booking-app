@@ -56,7 +56,7 @@ const Login = () => {
     let targetPassword = '';
     if (type === 'agent') {
       setLoginType('agent');
-      targetEmail = 'admin@bharatbus.com';
+      targetEmail = 'admin@yatrabus.com';
       targetPassword = 'admin123';
     } else {
       setLoginType('user');
@@ -154,7 +154,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={loginType === 'agent' ? 'admin@bharatbus.com' : 'name@example.com'}
+                placeholder={loginType === 'agent' ? 'admin@yatrabus.com' : 'name@example.com'}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
               />
             </div>

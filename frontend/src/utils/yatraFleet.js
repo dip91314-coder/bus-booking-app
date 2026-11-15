@@ -6,14 +6,18 @@ const getFleetLabel = (busType) => {
 export const normalizeYatraFleetItem = (item) => {
   if (!item || typeof item !== 'object') return item;
 
-  const busName = typeof item.busName === 'string' && /^YatraBus(?:\s|$)/.test(item.busName)
-    ? item.busName
-    : getFleetLabel(item.busType);
+  const isLegacy = item.operator === 'Legacy Operator' || item.operator === 'BharatBus';
+  const operator = isLegacy ? 'YatraBus' : (item.operator || 'YatraBus');
+  const busName = (isLegacy && item.busName === 'Legacy Fleet Coach')
+    ? getFleetLabel(item.busType)
+    : (typeof item.busName === 'string' && /^YatraBus(?:\s|$)/.test(item.busName)
+        ? item.busName
+        : (item.busName || getFleetLabel(item.busType)));
 
   return {
     ...item,
-    operator: 'YatraBus',
-    ...(item.busName ? { busName } : {})
+    operator,
+    ...(busName ? { busName } : {})
   };
 };
 

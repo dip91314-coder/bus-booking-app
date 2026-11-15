@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { MOCK_BUSES, INITIAL_USER_BOOKINGS, INITIAL_SAVED_TRAVELLERS } from '../data/mockData';
 import { normalizeYatraFleetItems } from '../utils/yatraFleet';
+import { bookingApi, savedPassengerApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 const BookingContext = createContext(null);
@@ -56,6 +57,38 @@ export const BookingProvider = ({ children }) => {
       return INITIAL_SAVED_TRAVELLERS;
     }
   });
+
+  // Load real user bookings and saved passengers from API
+  const refreshUserBookings = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('yatrabus_token') : null;
+    if (!token) return;
+    try {
+      const liveBookings = await bookingApi.getMyBookings();
+      if (Array.isArray(liveBookings)) {
+        setBookings(normalizeYatraFleetItems(liveBookings));
+      }
+    } catch (err) {
+      console.warn('Could not load user bookings from API:', err?.message);
+    }
+  }, []);
+
+  const refreshSavedPassengers = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('yatrabus_token') : null;
+    if (!token) return;
+    try {
+      const list = await savedPassengerApi.getSavedPassengers();
+      if (Array.isArray(list) && list.length > 0) {
+        setSavedTravellers(list.map((p) => ({ ...p, id: p._id || p.id })));
+      }
+    } catch (err) {
+      console.warn('Could not load saved passengers from API:', err?.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUserBookings();
+    refreshSavedPassengers();
+  }, [refreshUserBookings, refreshSavedPassengers]);
 
   // Sync to local storage
   useEffect(() => {
@@ -209,17 +242,36 @@ export const BookingProvider = ({ children }) => {
   };
 
   // Saved Travellers
-  const addSavedTraveller = (traveller) => {
-    const newTraveller = {
-      ...traveller,
-      id: `st-${Date.now()}`
-    };
-    setSavedTravellers((prev) => [newTraveller, ...prev]);
-    toast.success(`${traveller.name} added to Saved Travellers.`);
+  const addSavedTraveller = async (traveller) => {
+    try {
+      const created = await savedPassengerApi.createPassenger(traveller);
+      const newTraveller = created ? { ...created, id: created._id || created.id } : {
+        ...traveller,
+        id: `st-${Date.now()}`
+      };
+      setSavedTravellers((prev) => [newTraveller, ...prev]);
+      toast.success(`${traveller.name} added to Saved Travellers.`);
+      return newTraveller;
+    } catch {
+      const fallback = {
+        ...traveller,
+        id: `st-${Date.now()}`
+      };
+      setSavedTravellers((prev) => [fallback, ...prev]);
+      toast.success(`${traveller.name} added to Saved Travellers.`);
+      return fallback;
+    }
   };
 
-  const deleteSavedTraveller = (id) => {
-    setSavedTravellers((prev) => prev.filter((t) => t.id !== id));
+  const deleteSavedTraveller = async (id) => {
+    try {
+      if (id && !String(id).startsWith('st-')) {
+        await savedPassengerApi.deletePassenger(id);
+      }
+    } catch (err) {
+      console.warn('Could not delete passenger on server:', err?.message);
+    }
+    setSavedTravellers((prev) => prev.filter((t) => t.id !== id && t._id !== id));
     toast.success('Traveller removed from saved list.');
   };
 

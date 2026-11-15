@@ -43,7 +43,7 @@ const BUS_TYPES_LIST = [
 ];
 
 const BusManagementPage = () => {
-  const { buses, addBus, updateBus, deleteBus } = useAdmin();
+  const { buses, addBus, updateBus, deleteBus, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [typeFilter, setTypeFilter] = useState('ALL');
@@ -185,7 +185,7 @@ const BusManagementPage = () => {
     });
   };
 
-  // Table Columns
+  // Table Columns matching Bus model & Pricing
   const columns = [
     {
       key: 'busNumber',
@@ -199,7 +199,7 @@ const BusManagementPage = () => {
     },
     {
       key: 'busName',
-      label: 'YatraBus Fleet & Bus Name',
+      label: 'Name',
       render: (row) => (
         <div>
           <span className="font-bold text-slate-900 block">{row.operator}</span>
@@ -209,24 +209,26 @@ const BusManagementPage = () => {
     },
     {
       key: 'busType',
-      label: 'Type & Cooling',
+      label: 'Type',
       render: (row) => (
-        <div className="space-y-1">
-          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
-            {row.busType}
-          </span>
-          <div>
-            <span
-              className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-extrabold ${
-                row.isAc
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'bg-orange-50 text-orange-700 border border-orange-200'
-              }`}
-            >
-              {row.isAc ? '❄️ AC Coach' : 'Non-AC'}
-            </span>
-          </div>
-        </div>
+        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
+          {row.busType}
+        </span>
+      )
+    },
+    {
+      key: 'isAc',
+      label: 'AC/Non-AC',
+      render: (row) => (
+        <span
+          className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold ${
+            row.isAc
+              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+              : 'bg-orange-50 text-orange-700 border border-orange-200'
+          }`}
+        >
+          {row.isAc ? '❄️ AC Coach' : 'Non-AC'}
+        </span>
       )
     },
     {
@@ -235,33 +237,46 @@ const BusManagementPage = () => {
       render: (row) => (
         <div className="flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-slate-400" />
-          <span className="font-bold text-slate-800">{row.capacity} Seats</span>
+          <span className="font-bold text-slate-800">{row.capacity || row.totalSeats} Seats</span>
         </div>
       )
     },
     {
-      key: 'origin',
-      label: 'Default Corridor',
-      render: (row) => (
-        <div className="text-slate-700 font-medium">
-          <span>{row.origin}</span>
-          <span className="text-slate-400 mx-1">➔</span>
-          <span>{row.destination}</span>
-        </div>
-      )
+      key: 'assignedRoutes',
+      label: 'Assigned Route(s)',
+      render: (row) => {
+        const routesList = row.assignedRoutes && row.assignedRoutes.length > 0
+          ? row.assignedRoutes
+          : row.origin && row.destination
+          ? [`${row.origin} ➔ ${row.destination}`]
+          : [];
+        return (
+          <div className="space-y-0.5 max-w-[180px]">
+            {routesList.length > 0 ? (
+              routesList.map((r, i) => (
+                <span key={i} className="block text-slate-700 font-medium text-xs truncate" title={r}>
+                  {r}
+                </span>
+              ))
+            ) : (
+              <span className="text-slate-400 italic text-xs">Unassigned</span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'fare',
-      label: 'Base Fare',
+      label: 'Base Fare (Pricing)',
       render: (row) => (
         <span className="font-mono font-black text-slate-900 text-sm">
-          ₹{row.fare}
+          ₹{row.fare || row.baseFare || row.basePrice || '—'}
         </span>
       )
     },
     {
       key: 'status',
-      label: 'Availability',
+      label: 'Status',
       render: (row) => (
         <span
           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -316,7 +331,7 @@ const BusManagementPage = () => {
   ];
 
   return (
-    <div className="space-y-6 animate__animated animate__fadeIn">
+    <div className="space-y-6">
       {/* Title & Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -398,6 +413,9 @@ const BusManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredBuses}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search by bus number, fleet label, or city..."
         searchKeys={['busNumber', 'busName', 'operator', 'origin', 'destination', 'busType']}
         exportFileName="bus_fleet_inventory"

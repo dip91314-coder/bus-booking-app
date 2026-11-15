@@ -26,7 +26,7 @@ const ROLES_LIST = [
 ];
 
 const StaffManagementPage = () => {
-  const { staff, addStaff, updateStaff, deleteStaff } = useAdmin();
+  const { staff, addStaff, updateStaff, deleteStaff, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [roleFilter, setRoleFilter] = useState('ALL');
@@ -303,6 +303,9 @@ const StaffManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredStaff}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search staff by name, email, phone, role, hub..."
         searchKeys={['name', 'email', 'phone', 'role', 'branch', 'id']}
         exportFileName="operational_staff_directory"

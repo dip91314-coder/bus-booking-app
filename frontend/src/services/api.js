@@ -233,16 +233,20 @@ export const adminApi = {
       'trips',
       'pricing',
     ];
+    const errors = {};
     const values = await Promise.all(
       resources.map(async (resource) => {
         try {
           return await adminRequestData(apiClient.get(adminResourcePath(resource)));
-        } catch {
-          return [];
+        } catch (err) {
+          errors[resource] = err?.response?.data?.message || err?.message || 'Failed to fetch';
+          return null;
         }
       })
     );
-    return Object.fromEntries(resources.map((resource, index) => [resource, values[index]]));
+    const result = Object.fromEntries(resources.map((resource, index) => [resource, values[index]]));
+    result._errors = errors;
+    return result;
   },
   createResource: async (resource, data) =>
     adminRequestData(apiClient.post(adminResourcePath(resource), data)),
@@ -287,6 +291,70 @@ export const adminApi = {
   updateBusLayout: async (busId, layoutData) => {
     const res = await apiClient.put(`/admin/buses/${busId}/layout`, layoutData);
     return res.data?.data;
+  },
+};
+
+// Destination Endpoints
+export const destinationApi = {
+  getDestinations: async (params) => {
+    const res = await apiClient.get('/destinations', { params });
+    return res.data?.data || [];
+  },
+  getDestination: async (id) => {
+    const res = await apiClient.get(`/destinations/${id}`);
+    return res.data?.data;
+  },
+  createDestination: async (data) => {
+    const res = await apiClient.post('/destinations', data);
+    return res.data?.data;
+  },
+  updateDestination: async (id, data) => {
+    const res = await apiClient.put(`/destinations/${id}`, data);
+    return res.data?.data;
+  },
+  deleteDestination: async (id) => {
+    const res = await apiClient.delete(`/destinations/${id}`);
+    return res.data?.data;
+  },
+};
+
+// Travel Journal Endpoints
+export const journalApi = {
+  getMyJournal: async () => {
+    const res = await apiClient.get('/journal');
+    return res.data?.data || [];
+  },
+  createJournalEntry: async (data) => {
+    const res = await apiClient.post('/journal', data);
+    return res.data?.data;
+  },
+  deleteJournalEntry: async (id) => {
+    const res = await apiClient.delete(`/journal/${id}`);
+    return res.data?.data;
+  },
+};
+
+// Saved Passengers Endpoints
+export const savedPassengerApi = {
+  getSavedPassengers: async () => {
+    const res = await apiClient.get('/users/saved-passengers');
+    return res.data?.data || [];
+  },
+  createSavedPassenger: async (data) => {
+    const res = await apiClient.post('/users/saved-passengers', data);
+    return res.data?.data;
+  },
+  deleteSavedPassenger: async (id) => {
+    const res = await apiClient.delete(`/users/saved-passengers/${id}`);
+    return res.data?.data;
+  },
+};
+
+// Health API
+export const healthApi = {
+  getHealth: async () => {
+    const res = await apiClient.get('/health');
+    return res.data;
   },
 };
 
