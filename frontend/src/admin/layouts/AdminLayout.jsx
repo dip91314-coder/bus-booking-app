@@ -36,7 +36,8 @@ import {
   Compass,
   DollarSign,
   History,
-  Package
+  Package,
+  Plus
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -50,6 +51,7 @@ const AdminLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
   // Grouped Navigation Modules
   const navSections = [
@@ -314,6 +316,79 @@ const AdminLayout = () => {
 
           {/* Right Header Tools */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Action Add Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setQuickCreateOpen(!quickCreateOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+                title="Quick Add Resource"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span className="hidden sm:inline">Add / Create</span>
+              </button>
+
+              {quickCreateOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#111622] rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-2 z-50 animate__animated animate__fadeIn animate__faster space-y-1"
+                  onClick={() => setQuickCreateOpen(false)}
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                    Quick Operations
+                  </div>
+                  <Link
+                    to="/admin/buses?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition"
+                  >
+                    <Bus className="w-4 h-4 text-blue-500" />
+                    <span>Add New Bus</span>
+                  </Link>
+                  <Link
+                    to="/admin/schedules?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition"
+                  >
+                    <CalendarClock className="w-4 h-4 text-indigo-500" />
+                    <span>Schedule Trip</span>
+                  </Link>
+                  <Link
+                    to="/admin/destinations?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition"
+                  >
+                    <MapPin className="w-4 h-4 text-emerald-500" />
+                    <span>Add Destination</span>
+                  </Link>
+                  <Link
+                    to="/admin/packages?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 dark:hover:text-purple-400 rounded-xl transition"
+                  >
+                    <Package className="w-4 h-4 text-purple-500" />
+                    <span>Add Tour Package</span>
+                  </Link>
+                  <Link
+                    to="/admin/offers?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-600 dark:hover:text-amber-400 rounded-xl transition"
+                  >
+                    <Percent className="w-4 h-4 text-amber-500" />
+                    <span>Create Promo Offer</span>
+                  </Link>
+                  <Link
+                    to="/admin/routes?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/60 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl transition"
+                  >
+                    <Milestone className="w-4 h-4 text-sky-500" />
+                    <span>Create Route</span>
+                  </Link>
+                  <Link
+                    to="/admin/pricing?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl transition"
+                  >
+                    <DollarSign className="w-4 h-4 text-rose-500" />
+                    <span>Set Dynamic Pricing</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
             {/* Customer Site Shortcut */}
             <Link
               to="/"

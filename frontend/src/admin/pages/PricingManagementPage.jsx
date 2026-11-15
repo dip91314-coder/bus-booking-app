@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
@@ -74,9 +75,17 @@ const PricingManagementPage = () => {
     }
   };
 
+  const location = useLocation();
   useEffect(() => {
     fetchPricingRules();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new' || params.get('create') === 'true') {
+      handleOpenAdd();
+    }
+  }, [location.search]);
 
   // Update preview automatically when inputs change
   useEffect(() => {

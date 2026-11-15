@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
@@ -89,6 +90,16 @@ const BusManagementPage = () => {
 
   const [formData, setFormData] = useState(defaultFormState);
   const [formErrors, setFormErrors] = useState({});
+
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new' || params.get('create') === 'true') {
+      setFormData(defaultFormState);
+      setFormErrors({});
+      setAddModalOpen(true);
+    }
+  }, [location.search]);
 
   // Filtered Buses
   const filteredBuses = useMemo(() => {

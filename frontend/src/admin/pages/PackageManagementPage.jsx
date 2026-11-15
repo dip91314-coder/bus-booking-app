@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -68,9 +69,17 @@ const PackageManagementPage = () => {
     }
   };
 
+  const location = useLocation();
   useEffect(() => {
     fetchPackages();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new' || params.get('create') === 'true') {
+      handleOpenAdd();
+    }
+  }, [location.search]);
 
   const handleOpenAdd = () => {
     setFormData(defaultForm);

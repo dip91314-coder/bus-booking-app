@@ -15,10 +15,15 @@ import {
   Plus,
   ShieldCheck,
   Calendar,
+  CalendarClock,
   Eye,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  MapPin,
+  Package,
+  Percent,
+  Sparkles
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -87,21 +92,128 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        {/* Quick Shortcut Buttons */}
+        {/* Quick Shortcut Buttons in Page Header */}
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            to="/admin/buses"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm transition"
+            to="/admin/buses?action=new"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Bus</span>
           </Link>
           <Link
-            to="/admin/schedules"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition"
+            to="/admin/schedules?action=new"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition active:scale-95 cursor-pointer"
           >
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <span>Create Schedule</span>
+            <CalendarClock className="w-4 h-4" />
+            <span>Schedule Trip</span>
+          </Link>
+          <Link
+            to="/admin/destinations?action=new"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition active:scale-95 cursor-pointer"
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Add Destination</span>
+          </Link>
+          <Link
+            to="/admin/packages?action=new"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-sm transition active:scale-95 cursor-pointer"
+          >
+            <Package className="w-4 h-4 text-purple-500" />
+            <span>Add Package</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Primary Quick Action Hub Banner */}
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg border border-blue-800/40">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 text-blue-200 border border-white/10 mb-1">
+              <Sparkles className="w-3 h-3 text-amber-300" /> Administrative Quick-Action Console
+            </div>
+            <h2 className="text-base font-bold text-white">Direct Management Shortcuts</h2>
+            <p className="text-xs text-blue-200/80 mt-0.5">Rapidly provision fleet resources, itineraries, destinations, and pricing policies</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <Link
+            to="/admin/buses?action=new"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all group cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-500/30 flex items-center justify-center text-blue-300 group-hover:scale-110 transition-transform">
+              <Bus className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate text-white">+ Add Bus</p>
+              <p className="text-[10px] text-blue-200/70 truncate">Fleet register</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/schedules?action=new"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all group cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/30 flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform">
+              <CalendarClock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate text-white">+ Schedule Trip</p>
+              <p className="text-[10px] text-blue-200/70 truncate">Departures</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/destinations?action=new"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all group cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/30 flex items-center justify-center text-emerald-300 group-hover:scale-110 transition-transform">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate text-white">+ Destination</p>
+              <p className="text-[10px] text-blue-200/70 truncate">Scenic locales</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/packages?action=new"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all group cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg bg-purple-500/30 flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform">
+              <Package className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate text-white">+ Tour Package</p>
+              <p className="text-[10px] text-blue-200/70 truncate">Circuits & stays</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/offers?action=new"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all group cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-500/30 flex items-center justify-center text-amber-300 group-hover:scale-110 transition-transform">
+              <Percent className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate text-white">+ Promo Offer</p>
+              <p className="text-[10px] text-blue-200/70 truncate">Discounts & codes</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/pricing?action=new"
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 backdrop-blur-sm transition-all group cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg bg-rose-500/30 flex items-center justify-center text-rose-300 group-hover:scale-110 transition-transform">
+              <DollarSign className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate text-white">+ Pricing Rule</p>
+              <p className="text-[10px] text-blue-200/70 truncate">Multi-tier surge</p>
+            </div>
           </Link>
         </div>
       </div>
