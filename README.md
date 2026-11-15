@@ -26,6 +26,7 @@ A simple, responsive bus ticket booking platform built as a collaborative colleg
 - [Getting Started](#-getting-started)
 - [Environment Variables](#-environment-variables)
 - [Available Scripts](#-available-scripts)
+- [Deploy](#-deploy)
 - [Application Flow](#-application-flow)
 - [User Roles](#-user-roles)
 - [Contributors](#-contributors)
@@ -271,6 +272,85 @@ Confirm these exist in the relevant `package.json` before using them.
 | `npm run dev`     | Start Vite development server.       |
 | `npm run build`   | Build frontend for production.       |
 | `npm run preview` | Preview the production build locally.|
+
+## 🚀 Deploy
+
+### Option 1: Docker Compose (Full Stack with 1 Command)
+
+The project includes production-ready Dockerfiles (`backend/Dockerfile`, `frontend/Dockerfile` with multi-stage Nginx) and a `docker-compose.yml` that provisions:
+- **MongoDB 7.0** with single-node replica set (`rs0`) for ACID transactions support
+- **Redis 7.0 Alpine** for caching and concurrency lock gates
+- **Backend Node.js API** (port 5000)
+- **Frontend Nginx SPA** (port 80)
+
+```bash
+# 1. Build and start all services in detached mode
+docker compose up -d --build
+
+# 2. Check health status of all running containers
+docker compose ps
+
+# 3. Seed demo routes, buses, schedules, and promo coupons once
+docker compose exec backend npm run seed
+```
+
+- **Frontend App**: [http://localhost](http://localhost)
+- **Backend API & Health**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
+
+To shut down containers and preserve data volumes:
+```bash
+docker compose down
+```
+
+---
+
+### Option 2: Production Hosted Cloud Deployment
+
+You can deploy the stack across managed cloud services with zero server maintenance:
+
+#### 1. Database: MongoDB Atlas
+1. Create a free shared cluster (M0) on [MongoDB Atlas](https://www.mongodb.com/atlas).
+2. Create a database user and allow your API's IP address (or `0.0.0.0/0`).
+3. Obtain the connection URI (e.g. `mongodb+srv://<user>:<password>@cluster0.mongodb.net/busbooking?retryWrites=true&w=majority`).
+> [!NOTE]
+> MongoDB Atlas clusters run as replica sets by default, supporting atomic multi-document transactions seamlessly.
+
+#### 2. Cache: Upstash Redis or Redis Cloud
+1. Create a database on [Upstash](https://upstash.com/) or [Redis Cloud](https://redis.io/try-free/).
+2. Copy the connection URL (`rediss://default:<password>@<host>:<port>`).
+
+#### 3. Backend API: Render or Railway
+1. Connect your GitHub repository to [Render](https://render.com/) or [Railway](https://railway.app/).
+2. Set root directory to `backend`, Build Command `npm install`, Start Command `node src/server.js`.
+3. Configure Environment Variables:
+
+| Variable | Description | Example / Recommended Value |
+|---|---|---|
+| `PORT` | API listen port | `5000` |
+| `NODE_ENV` | Environment mode | `production` |
+| `MONGO_URI` | MongoDB Atlas URI | `mongodb+srv://...` |
+| `REDIS_URL` | Upstash / Redis Cloud URL | `rediss://...` |
+| `REDIS_ENABLED` | Enable Redis optimization | `true` |
+| `JWT_SECRET` | 32+ char secret for JWT access tokens | `generate-secure-random-key` |
+| `JWT_REFRESH_SECRET` | 32+ char secret for refresh tokens | `generate-secure-random-key` |
+| `CLIENT_URL` | Hosted frontend origin URL | `https://yatrabus.vercel.app` |
+| `CORS_ORIGIN` | Allowed CORS origin | `https://yatrabus.vercel.app` |
+| `LOCK_MINUTES` | Hold expiration time in minutes | `8` |
+| `ADMIN_SEED_PASSWORD` | Strong password for admin in production | `CustomStrongPassword#2026` |
+
+#### 4. Frontend Web App: Vercel or Netlify
+1. Connect your repository to [Vercel](https://vercel.com/) or [Netlify](https://www.netlify.com/).
+2. Root directory: `frontend`. Build command: `npm run build`. Output directory: `dist`.
+3. Configure Environment Variables:
+
+| Variable | Description | Example |
+|---|---|---|
+| `VITE_API_BASE_URL` | Public backend URL | `https://api-yatrabus.onrender.com/api` |
+| `VITE_API_URL` | Public backend URL alias | `https://api-yatrabus.onrender.com/api` |
+| `VITE_USE_MOCKS` | Use local mock data fallback | `false` |
+
+> [!TIP]
+> In production, the admin password is never seeded with the default password: if `ADMIN_SEED_PASSWORD` is not explicitly set in the environment, a cryptographically secure random password is generated to prevent unauthorized access.
 
 ## 🔄 Application Flow
 
