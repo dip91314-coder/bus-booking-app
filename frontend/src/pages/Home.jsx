@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { offerApi } from '../services/api';
 
 const LeafletMap = React.lazy(() => import('../components/common/LeafletMap'));
 
@@ -29,8 +30,23 @@ const Home = () => {
   const [mapDest, setMapDest] = useState('Pune');
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState('');
+  const [apiOffers, setApiOffers] = useState([]);
   const [mapVisible, setMapVisible] = useState(false);
   const mapSectionRef = React.useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    offerApi.getOffers()
+      .then((data) => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setApiOffers(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const section = mapSectionRef.current;
@@ -397,57 +413,65 @@ const Home = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {OFFERS.map((offer, idx) => (
-              <motion.article
-                key={idx}
-                initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                whileHover={reduceMotion ? undefined : { y: -4 }}
-                transition={{ duration: reduceMotion ? 0 : 0.25, delay: reduceMotion ? 0 : idx * 0.07 }}
-                className="group relative rounded-[20px] overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-purple-100 dark:border-purple-900/40 flex flex-col justify-between h-44"
-              >
-                {/* Background Image */}
-                <img
-                  src={offer.img}
-                  alt={offer.route}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                {/* Vibrant Gradient Overlay */}
-                <div className={`absolute inset-0 bg-gradient-to-t ${offer.bgGradient} opacity-90 group-hover:opacity-95 transition-opacity`}></div>
+            {(apiOffers.length > 0 ? apiOffers : OFFERS).slice(0, 6).map((offer, idx) => {
+              const offerImg = offer.img || 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=600&auto=format&fit=crop&q=80';
+              const offerBgGradient = offer.bgGradient || (idx % 2 === 0 ? 'from-[#1746C8] via-[#1E1B4B] to-[#2A0845]' : 'from-[#854D0E] via-[#3B0764] to-[#2A0845]');
+              const offerTag = offer.tag || (offer.discountType === 'percent' ? `${offer.value}% OFF` : `FLAT ₹${offer.value} SAVER`);
+              const offerRoute = offer.description || (offer.applicableRoutes?.length ? offer.applicableRoutes.join(', ') : (offer.route || 'All Routes'));
+              const offerBadge = offer.badge || `Use Code : ${offer.code}`;
 
-                {/* Content Overlay matching reference exactly */}
-                <div className="relative z-10 p-5 flex flex-col justify-between h-full text-white">
-                  <div>
-                    <span className="inline-block text-[10px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full mb-2 border border-white/20">
-                      {offer.tag}
-                    </span>
-                    <h3 className="text-2xl font-black leading-tight text-white tracking-tight">
-                      {offer.title}
-                    </h3>
-                    <p className="text-xs font-semibold text-purple-100 mt-1">
-                      {offer.route}
-                    </p>
-                  </div>
+              return (
+                <motion.article
+                  key={offer._id || offer.code || idx}
+                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  whileHover={reduceMotion ? undefined : { y: -4 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.25, delay: reduceMotion ? 0 : idx * 0.07 }}
+                  className="group relative rounded-[20px] overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-purple-100 dark:border-purple-900/40 flex flex-col justify-between h-44"
+                >
+                  {/* Background Image */}
+                  <img
+                    src={offerImg}
+                    alt={offerRoute}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  {/* Vibrant Gradient Overlay */}
+                  <div className={`absolute inset-0 bg-gradient-to-t ${offerBgGradient} opacity-90 group-hover:opacity-95 transition-opacity`}></div>
 
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyCode(offer.code)}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#1E1B4B]/80 hover:bg-[#1E1B4B] border border-white/20 px-3.5 py-1.5 rounded-[10px] text-white transition active:scale-95 shadow-sm"
-                    >
-                      <Tag className="w-3.5 h-3.5 text-amber-300" />
-                      <span>{offer.badge}</span>
-                      {copiedCode === offer.code && (
-                        <Check className="w-3.5 h-3.5 text-emerald-400 ml-1" />
-                      )}
-                    </button>
+                  {/* Content Overlay matching reference exactly */}
+                  <div className="relative z-10 p-5 flex flex-col justify-between h-full text-white">
+                    <div>
+                      <span className="inline-block text-[10px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full mb-2 border border-white/20">
+                        {offerTag}
+                      </span>
+                      <h3 className="text-2xl font-black leading-tight text-white tracking-tight">
+                        {offer.title}
+                      </h3>
+                      <p className="text-xs font-semibold text-purple-100 mt-1 line-clamp-1">
+                        {offerRoute}
+                      </p>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(offer.code)}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#1E1B4B]/80 hover:bg-[#1E1B4B] border border-white/20 px-3.5 py-1.5 rounded-[10px] text-white transition active:scale-95 shadow-sm"
+                      >
+                        <Tag className="w-3.5 h-3.5 text-amber-300" />
+                        <span>{offerBadge}</span>
+                        {copiedCode === offer.code && (
+                          <Check className="w-3.5 h-3.5 text-emerald-400 ml-1" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.article>
-            ))}
+                </motion.article>
+              );
+            })}
           </div>
         </div>
       </section>

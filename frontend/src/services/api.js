@@ -290,6 +290,22 @@ export const adminApi = {
   },
 };
 
+// Offer / Promo Endpoints
+export const offerApi = {
+  getOffers: async () => {
+    try {
+      const res = await apiClient.get('/offers');
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
+  },
+  validateOffer: async (data) => {
+    const res = await apiClient.post('/offers/validate', data);
+    return res.data;
+  },
+};
+
 // Route Endpoints
 export const routeApi = {
   getRoutes: async () => {

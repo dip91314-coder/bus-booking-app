@@ -19,6 +19,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import tripRoutes from './routes/tripRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
+import offerRoutes from './routes/offerRoutes.js';
 
 export function createApp() {
   const app = express();
@@ -85,6 +86,7 @@ export function createApp() {
   app.use('/api/trips', tripRoutes);
   app.use('/api/payments', paymentRoutes);
   app.use('/api/tickets', ticketRoutes);
+  app.use('/api/offers', offerRoutes);
 
   // 404 handler for unknown routes
   app.use((req, res) => {
