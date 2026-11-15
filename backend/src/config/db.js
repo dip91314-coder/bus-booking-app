@@ -14,8 +14,22 @@ export async function connectDB() {
       logger.info({ attempt, maxRetries: MAX_RETRIES }, 'Connecting to MongoDB...');
       await mongoose.connect(env.MONGO_URI, {
         serverSelectionTimeoutMS: 5000,
+        autoIndex: true,
       });
       logger.info('✅ Successfully connected to MongoDB');
+
+      // Guarantee unique indexes are synced in the database
+      try {
+        const { SeatReservation, Booking, Trip } = await import('../models/index.js');
+        await Promise.all([
+          SeatReservation.syncIndexes(),
+          Booking.syncIndexes(),
+          Trip.syncIndexes(),
+        ]);
+        logger.info('✅ Database indexes synchronized');
+      } catch (idxErr) {
+        logger.warn({ err: idxErr?.message }, 'Index synchronization warning');
+      }
       return;
     } catch (error) {
       logger.error({ error, attempt }, '❌ MongoDB connection attempt failed');
