@@ -16,8 +16,9 @@ export function getApp() {
 
 export async function bootstrap() {
   try {
-    if (env.MONGO_URI) {
-      await connectDB();
+    const mongoUri = env.MONGO_URI || env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGODB_URI;
+    if (mongoUri) {
+      await connectDB(mongoUri);
       await seedDefaults();
     } else {
       logger.warn('MONGO_URI is not set. Starting in non-connected fallback mode.');

@@ -10,15 +10,16 @@ let dbPromise = null;
 async function ensureDatabaseConnected() {
   if (!dbPromise) {
     dbPromise = (async () => {
-      if (env.MONGO_URI) {
+      const uri = env.MONGO_URI || env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGODB_URI;
+      if (uri) {
         try {
-          await connectDB();
+          await connectDB(uri);
           await seedDefaults();
         } catch (err) {
           logger.error({ err: err?.message }, 'Serverless MongoDB connection warning');
         }
       } else {
-        logger.warn('MONGO_URI is not set in Vercel Environment Variables.');
+        logger.warn('MONGO_URI / MONGODB_URI is not set in Vercel Environment Variables.');
       }
     })();
   }

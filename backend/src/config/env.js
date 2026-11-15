@@ -4,11 +4,13 @@ import { z } from 'zod';
 dotenv.config();
 
 const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const resolvedMongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || '';
 
 const envSchema = z.object({
   PORT: z.string().default('5000').transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  MONGO_URI: z.string().default(process.env.MONGO_URI || ''),
+  MONGO_URI: z.string().default(resolvedMongoUri),
+  MONGODB_URI: z.string().default(resolvedMongoUri),
   JWT_SECRET: z.string().min(16).default(process.env.JWT_SECRET || 'yatrabus_jwt_access_fallback_secret_key_32bytes'),
   JWT_REFRESH_SECRET: z.string().min(16).default(process.env.JWT_REFRESH_SECRET || 'jwt_refresh_secret_fallback_key_32bytes'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
@@ -29,14 +31,15 @@ if (!parsed.success) {
   }
 }
 
-if (!process.env.MONGO_URI && !parsed.data?.MONGO_URI) {
-  console.warn('⚠️  Warning: MONGO_URI is not set. Please set MONGO_URI in your environment or Vercel settings.');
+if (!resolvedMongoUri) {
+  console.warn('⚠️  Warning: MONGO_URI / MONGODB_URI is not set. Please set MONGO_URI or MONGODB_URI in your environment or Vercel settings.');
 }
 
 export const env = parsed.success ? parsed.data : {
   PORT: parseInt(process.env.PORT || '5000', 10),
   NODE_ENV: process.env.NODE_ENV || 'production',
-  MONGO_URI: process.env.MONGO_URI || '',
+  MONGO_URI: resolvedMongoUri,
+  MONGODB_URI: resolvedMongoUri,
   JWT_SECRET: process.env.JWT_SECRET || 'yatrabus_jwt_access_fallback_secret_key_32bytes',
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'jwt_refresh_secret_fallback_key_32bytes',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',

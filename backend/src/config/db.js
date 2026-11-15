@@ -24,9 +24,9 @@ export async function connectDB(uri) {
     }
   }
 
-  const connectionUri = uri || env.MONGO_URI;
+  const connectionUri = uri || env.MONGO_URI || env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGODB_URI;
   if (!connectionUri) {
-    logger.warn('MONGO_URI is not defined. Skipping database connection.');
+    logger.warn('MONGO_URI / MONGODB_URI is not defined. Skipping database connection.');
     return null;
   }
 
