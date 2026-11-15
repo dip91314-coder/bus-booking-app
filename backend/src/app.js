@@ -49,6 +49,30 @@ export function createApp() {
   // Trust proxy for Vercel and reverse proxies
   app.set('trust proxy', 1);
 
+  // Serverless lazy DB initialization
+  let dbInitPromise = null;
+  app.use(async (_req, _res, next) => {
+    if (!dbInitPromise) {
+      dbInitPromise = (async () => {
+        const uri = env.MONGO_URI || env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGODB_URI;
+        if (uri) {
+          try {
+            const { connectDB } = await import('./config/db.js');
+            const { seedDefaults } = await import('./scripts/seedDefaults.js');
+            await connectDB(uri);
+            await seedDefaults();
+          } catch (err) {
+            console.error('Lazy DB connection notice:', err?.message);
+          }
+        }
+      })();
+    }
+    if (dbInitPromise) {
+      await dbInitPromise;
+    }
+    next();
+  });
+
   // Security Headers
   app.use(helmet());
 
@@ -219,3 +243,6 @@ export function createApp() {
 
   return app;
 }
+
+const defaultApp = createApp();
+export default defaultApp;
