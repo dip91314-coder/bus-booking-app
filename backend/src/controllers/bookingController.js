@@ -94,6 +94,8 @@ export async function createBooking(req, res, next) {
 
     let newBooking;
     try {
+      // DEPRECATED LEGACY FLOW: Creates a PENDING booking first; payment must be verified separately.
+      // The tripId-based flow above is the primary supported path.
       newBooking = await Booking.create({
         bookingReference: pnr,
         userId,
@@ -115,8 +117,8 @@ export async function createBooking(req, res, next) {
           seatNumber: String(passenger.seatNumber).toUpperCase().trim(),
         })),
         totalFare,
-        bookingStatus: 'confirmed',
-        paymentStatus: 'paid',
+        bookingStatus: 'pending',
+        paymentStatus: 'pending',
         paymentMethod: paymentMethod || 'Simulated Payment',
         contactEmail,
         contactPhone,
@@ -133,6 +135,7 @@ export async function createBooking(req, res, next) {
 
     let payment;
     try {
+      // Create pending payment record for this legacy booking
       payment = await Payment.create({
         bookingId: newBooking._id,
         userId,
@@ -140,7 +143,9 @@ export async function createBooking(req, res, next) {
         currency: 'INR',
         paymentMethod: paymentMethod?.includes('UPI') ? 'UPI' : 'Card',
         transactionReference: `TXN-${randomCode}-${Date.now().toString().slice(-4)}`,
-        status: 'success',
+        gatewayOrderId: `order_legacy_${randomCode}`,
+        status: 'pending',
+        gateway: 'Mock',
       });
 
       const seatUpdate = await Seat.updateMany(
@@ -163,15 +168,16 @@ export async function createBooking(req, res, next) {
       throw error;
     }
 
-    // Decrement available seats in bus document
-    await Bus.findByIdAndUpdate(busId, {
-      $inc: { availableSeatsCount: -seats.length },
-    });
-
     res.status(201).json({
       success: true,
-      message: 'Booking confirmed successfully!',
-      data: newBooking,
+      message: 'Pending booking created (legacy flow). Please complete payment to confirm.',
+      data: {
+        bookingId: newBooking._id,
+        pnr: newBooking.bookingReference,
+        bookingStatus: newBooking.bookingStatus,
+        paymentStatus: newBooking.paymentStatus,
+        totalFare: newBooking.totalFare,
+      },
     });
   } catch (error) {
     next(error);

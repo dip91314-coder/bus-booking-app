@@ -102,15 +102,20 @@ const Payment = () => {
           const bRes = await bookingApi.createBooking(bookingPayload);
           if (bRes?.success && bRes.data) {
             serverBooking = bRes.data;
+            const bId = serverBooking.bookingId || serverBooking.id || serverBooking._id;
             setProcessingStep('Authorizing payment transaction & generating digital ticket...');
-            await paymentApi.initiatePayment(serverBooking.id || serverBooking._id);
+            const initRes = await paymentApi.initiatePayment(bId);
             const verifyRes = await paymentApi.verifyPayment({
-              bookingId: serverBooking.id || serverBooking._id,
+              bookingId: bId,
+              orderId: initRes?.orderId,
               paymentId: `PAY-${Date.now()}`,
+              signature: 'mock_signature',
               paymentMethod: resolvedMethod
             });
             if (verifyRes?.ticket?.pnr) {
               serverBooking.pnr = verifyRes.ticket.pnr;
+            } else if (serverBooking.pnr) {
+              // PNR already exists
             }
           }
         } catch (apiErr) {

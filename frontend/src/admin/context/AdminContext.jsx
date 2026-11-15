@@ -74,6 +74,29 @@ export const AdminProvider = ({ children }) => {
   // 12. Settings State
   const [settings, setSettings] = useState(() => loadState('settings', INITIAL_SETTINGS));
 
+  // Fetch management data from API and sync to state
+  const fetchManagementData = (active, setterMap) => {
+    adminApi.getManagementData()
+      .then((data) => {
+        if (!active || !data) return;
+        if (Array.isArray(data.buses) && data.buses.length > 0) setterMap.setBuses(normalizeYatraFleetItems(data.buses));
+        if (Array.isArray(data.routes) && data.routes.length > 0) setterMap.setRoutes(data.routes);
+        if (Array.isArray(data.schedules) && data.schedules.length > 0) setterMap.setSchedules(normalizeYatraFleetItems(data.schedules));
+        if (Array.isArray(data.bookings) && data.bookings.length > 0) setterMap.setBookings(normalizeYatraFleetItems(data.bookings));
+        if (Array.isArray(data.passengers) && data.passengers.length > 0) setterMap.setPassengers(data.passengers);
+        if (Array.isArray(data.drivers) && data.drivers.length > 0) setterMap.setDrivers(data.drivers);
+        if (Array.isArray(data.staff) && data.staff.length > 0) setterMap.setStaff(data.staff);
+        if (Array.isArray(data.payments) && data.payments.length > 0) setterMap.setPayments(data.payments);
+        if (Array.isArray(data.offers) && data.offers.length > 0) setterMap.setOffers(data.offers);
+        if (Array.isArray(data.reviews) && data.reviews.length > 0) setterMap.setReviews(data.reviews);
+        if (Array.isArray(data.notifications) && data.notifications.length > 0) setterMap.setNotifications(data.notifications);
+        if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) setterMap.setSettings(data.settings);
+      })
+      .catch((error) => {
+        console.warn('Admin management data sync note:', getAdminErrorMessage(error));
+      });
+  };
+
   useEffect(() => {
     if (!hasAdminSession()) return undefined;
 
@@ -713,6 +736,8 @@ export const AdminProvider = ({ children }) => {
       .reduce((acc, booking) => acc + (booking.totalAmount || booking.fare || 0), 0);
 
     const pendingBookingsCount = bookings.filter((booking) => booking.bookingStatus?.toLowerCase() === 'pending').length;
+    const confirmedCount = bookings.filter((booking) => booking.bookingStatus?.toLowerCase() === 'confirmed').length;
+    const cancelledCount = bookings.filter((booking) => booking.bookingStatus?.toLowerCase() === 'cancelled').length;
     const activeBusesCount = buses.filter((b) => b.status === 'Active').length;
     const activeRoutesCount = routes.filter((r) => r.status === 'Active').length;
     const totalPassengersCount = passengers.length;
@@ -729,6 +754,9 @@ export const AdminProvider = ({ children }) => {
       totalBuses: buses.length,
       activeBuses: activeBusesCount,
       activeRoutes: activeRoutesCount,
+      totalScheduledTrips: schedules.length,
+      totalConfirmedTickets: confirmedCount,
+      totalCancelledBookings: cancelledCount,
       pendingBookings: pendingBookingsCount,
       occupancyRate: `${occupancy}%`
     };

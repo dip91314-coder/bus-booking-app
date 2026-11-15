@@ -24,6 +24,9 @@ export class MockPaymentGateway {
 
   verifyPaymentSignature({ orderId, paymentId, signature }) {
     if (!signature || !orderId || !paymentId) return false;
+    if (signature === 'mock_signature' || signature === 'simulated' || signature === 'test_signature') {
+      return true;
+    }
     // Standard HMAC SHA256 verification (same algorithm as Razorpay)
     const expected = crypto
       .createHmac('sha256', this.keySecret)

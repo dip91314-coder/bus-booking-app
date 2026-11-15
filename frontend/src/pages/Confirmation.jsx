@@ -24,27 +24,28 @@ const Confirmation = () => {
         .getTicket(id)
         .then((ticketData) => {
           if (!active || !ticketData) return;
+          const snap = ticketData.journeySnapshot || ticketData.journey || {};
           setRemoteBooking(normalizeYatraFleetItem({
             id: ticketData.pnr || ticketData._id,
             pnr: ticketData.pnr,
-            busName: ticketData.journey?.busName,
-            busNumber: ticketData.journey?.busNumber,
+            busName: snap.busName,
+            busNumber: snap.busNumber,
             operator: 'YatraBus',
-            busType: ticketData.journey?.busType || 'AC Luxury Coach',
-            origin: ticketData.journey?.source || ticketData.journey?.origin,
-            destination: ticketData.journey?.destination,
-            journeyDate: ticketData.journey?.travelDate,
-            departureTime: ticketData.journey?.departureTime,
-            arrivalTime: ticketData.journey?.arrivalTime,
-            boardingPoint: ticketData.journey?.boardingPoint?.name || 'Main Boarding Terminal',
-            droppingPoint: ticketData.journey?.droppingPoint?.name || 'City Junction',
+            busType: snap.busType || 'AC Luxury Coach',
+            origin: snap.source || snap.origin,
+            destination: snap.destination,
+            journeyDate: snap.travelDate,
+            departureTime: snap.departureTime,
+            arrivalTime: snap.arrivalTime,
+            boardingPoint: typeof snap.boardingPoint === 'string' ? snap.boardingPoint : snap.boardingPoint?.name || 'Main Boarding Terminal',
+            droppingPoint: typeof snap.droppingPoint === 'string' ? snap.droppingPoint : snap.droppingPoint?.name || 'City Junction',
             seats: ticketData.seats || [],
-            passengers: ticketData.passengers || [],
-            totalFare: ticketData.pricing?.totalFare || 950,
+            passengers: ticketData.passengerSnapshot || ticketData.passengers || [],
+            totalFare: ticketData.priceBreakdown?.totalAmount || ticketData.pricing?.totalFare || 950,
             bookingStatus: ticketData.status || 'confirmed',
             paymentStatus: ticketData.paymentStatus || 'paid',
             paymentMethod: ticketData.paymentMethod || 'Online Gateway',
-            bookedAt: ticketData.issuedAt || new Date().toISOString()
+            bookedAt: ticketData.generatedAt || ticketData.issuedAt || new Date().toISOString()
           }));
         })
         .catch((err) => {

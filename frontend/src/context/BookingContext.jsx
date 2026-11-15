@@ -27,10 +27,15 @@ export const BookingProvider = ({ children }) => {
 
   // Active Booking Flow State
   const [selectedBus, setSelectedBus] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null); // full trip object from search results
+  const [tripId, setTripId] = useState(null); // tripId used throughout booking flow
   const [selectedSeats, setSelectedSeats] = useState([]);
+  const [lockExpiry, setLockExpiry] = useState(null); // timestamp when seat locks expire
   const [selectedBoardingPoint, setSelectedBoardingPoint] = useState(null);
   const [selectedDroppingPoint, setSelectedDroppingPoint] = useState(null);
   const [passengers, setPassengers] = useState([]);
+  const [bookingId, setBookingId] = useState(null); // set after createBooking
+  const [pnr, setPnr] = useState(null); // set after createBooking
 
   // User Bookings History
   const [bookings, setBookings] = useState(() => {
@@ -269,15 +274,26 @@ export const BookingProvider = ({ children }) => {
         setSearchParams,
         selectedBus,
         setSelectedBus,
+        selectedTrip,
+        setSelectedTrip,
+        tripId,
+        setTripId,
         selectedSeats,
+        setSelectedSeats,
         toggleSeat,
         clearSeats,
+        lockExpiry,
+        setLockExpiry,
         selectedBoardingPoint,
         setSelectedBoardingPoint,
         selectedDroppingPoint,
         setSelectedDroppingPoint,
         passengers,
         setPassengers,
+        bookingId,
+        setBookingId,
+        pnr,
+        setPnr,
         bookings,
         confirmBooking,
         cancelBooking,

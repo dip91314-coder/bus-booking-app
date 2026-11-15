@@ -65,9 +65,10 @@ export async function confirmPayment({
   gatewayOrderId,
   gatewayPaymentId,
   gatewaySignature,
+  bookingId,
   rawPayload = null,
 }) {
-  logger.info({ gatewayOrderId, gatewayPaymentId }, 'Executing idempotent confirmPayment service');
+  logger.info({ gatewayOrderId, gatewayPaymentId, bookingId }, 'Executing idempotent confirmPayment service');
 
   // 1. Idempotency Check: if this payment was already processed successfully, return existing result
   if (gatewayPaymentId) {
@@ -86,9 +87,14 @@ export async function confirmPayment({
   }
 
   // 2. Find associated Payment record
-  const payment = await Payment.findOne({
-    $or: [{ gatewayOrderId }, { gatewayPaymentId }],
-  });
+  const searchConditions = [];
+  if (gatewayOrderId) searchConditions.push({ gatewayOrderId });
+  if (gatewayPaymentId) searchConditions.push({ gatewayPaymentId });
+  if (bookingId) searchConditions.push({ bookingId });
+
+  const payment = searchConditions.length > 0
+    ? await Payment.findOne({ $or: searchConditions }).sort({ createdAt: -1 })
+    : null;
 
   if (!payment) {
     throw new NotFoundError('Payment transaction record not found.');

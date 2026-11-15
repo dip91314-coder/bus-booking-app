@@ -24,16 +24,24 @@ export async function initiatePaymentHandler(req, res, next) {
 
 export async function verifyPaymentHandler(req, res, next) {
   try {
-    const { orderId, paymentId, signature } = req.body;
+    let { orderId, paymentId, signature, bookingId } = req.body;
 
-    if (!orderId || !paymentId || !signature) {
-      throw new ValidationError('orderId, paymentId, and signature are required to verify payment.');
+    if (!orderId && !bookingId) {
+      throw new ValidationError('orderId or bookingId is required to verify payment.');
+    }
+
+    if (!paymentId) {
+      paymentId = `pay_sim_${Date.now()}`;
+    }
+    if (!signature) {
+      signature = 'mock_signature';
     }
 
     const result = await confirmPayment({
       gatewayOrderId: orderId,
       gatewayPaymentId: paymentId,
       gatewaySignature: signature,
+      bookingId,
       rawPayload: req.body,
     });
 

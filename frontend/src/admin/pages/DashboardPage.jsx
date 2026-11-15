@@ -37,7 +37,6 @@ import {
 } from 'recharts';
 import {
   REVENUE_MONTHLY_DATA,
-  BOOKING_STATUS_PIE,
   HIGHWAY_CORRIDOR_METRICS
 } from '../data/mockAdminData';
 
@@ -53,6 +52,21 @@ const DashboardPage = () => {
       maximumFractionDigits: 0
     }).format(val);
   };
+
+  // Dynamically compute booking status pie from actual bookings
+  const bookingStatusPie = React.useMemo(() => {
+    const total = bookings.length || 1;
+    const confirmedCount = bookings.filter(b => b.bookingStatus?.toLowerCase() === 'confirmed').length;
+    const cancelledCount = bookings.filter(b => b.bookingStatus?.toLowerCase() === 'cancelled').length;
+    const pendingCount = bookings.filter(b => b.bookingStatus?.toLowerCase() === 'pending').length;
+    const completedCount = bookings.filter(b => b.bookingStatus?.toLowerCase() === 'completed').length;
+    return [
+      { name: 'Confirmed', value: Math.round((confirmedCount / total) * 100), color: '#10B981' },
+      { name: 'Completed', value: Math.round((completedCount / total) * 100), color: '#3B82F6' },
+      { name: 'Pending', value: Math.round((pendingCount / total) * 100), color: '#F59E0B' },
+      { name: 'Cancelled', value: Math.round((cancelledCount / total) * 100), color: '#EF4444' }
+    ].filter(item => item.value > 0);
+  }, [bookings]);
 
   return (
     <div className="space-y-8 animate__animated animate__fadeIn">
@@ -304,7 +318,7 @@ const DashboardPage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={BOOKING_STATUS_PIE}
+                    data={bookingStatusPie}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
@@ -312,7 +326,7 @@ const DashboardPage = () => {
                     paddingAngle={4}
                     dataKey="value"
                   >
-                    {BOOKING_STATUS_PIE.map((entry, index) => (
+                    {bookingStatusPie.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -332,7 +346,7 @@ const DashboardPage = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-4 border-t border-slate-100 text-xs">
-            {BOOKING_STATUS_PIE.map((item, idx) => (
+            {bookingStatusPie.map((item, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <span
                   className="w-3 h-3 rounded-full shrink-0"
