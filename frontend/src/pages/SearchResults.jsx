@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Bus,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 
 const SearchResults = () => {
@@ -97,7 +98,7 @@ const SearchResults = () => {
   const [filters, setFilters] = useState({
     busTypes: [],
     timeSlots: [],
-    maxPrice: 2500,
+    maxPrice: dynamicMaxPrice,
     minRating: 0
   });
 
@@ -105,7 +106,7 @@ const SearchResults = () => {
     setFilters({
       busTypes: [],
       timeSlots: [],
-      maxPrice: 2500,
+      maxPrice: dynamicMaxPrice,
       minRating: 0
     });
     setSearchText('');
@@ -323,8 +324,18 @@ const SearchResults = () => {
                     onChange={(event) => setSearchText(event.target.value)}
                     placeholder="Search bus type, amenities, or boarding point"
                     aria-label="Search buses by type, amenities, or boarding point"
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#161D2E] py-2.5 pl-10 pr-4 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900/50"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#161D2E] py-2.5 pl-10 pr-10 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900/50"
                   />
+                  {searchText && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchText('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                      aria-label="Clear search text"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </label>
                 <button
                   type="button"
@@ -385,20 +396,35 @@ const SearchResults = () => {
               </div>
             ) : (
               <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-primary dark:text-purple-400 flex items-center justify-center mx-auto">
+                <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-[#5B21B6] dark:text-purple-400 flex items-center justify-center mx-auto">
                   <Bus className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">No Buses Match Your Active Filters</h3>
                 <p className="text-xs text-gray-500 dark:text-slate-400 max-w-md mx-auto">
-                  Try widening your price range, deselecting time slots, or resetting all filters to see more buses.
+                  {searchText ? (
+                    <>No buses match "<strong className="text-gray-900 dark:text-white">{searchText}</strong>". Try clearing your search keyword or resetting filters to see all available buses.</>
+                  ) : (
+                    <>Try widening your price range, deselecting time slots, or resetting all filters to see more buses.</>
+                  )}
                 </p>
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="bg-primary hover:bg-primary-dark text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow"
-                >
-                  Reset All Filters
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  {searchText && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchText('')}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer"
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-md cursor-pointer"
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
               </div>
             )}
           </div>

@@ -21,10 +21,11 @@ const NotificationBell = () => {
   }, []);
 
   const iconForType = (type) => {
-    if (type === 'booking' || type === 'ticket') return Ticket;
-    if (type === 'payment') return CreditCard;
-    if (type === 'cancellation') return AlertTriangle;
-    if (type === 'schedule') return Bus;
+    const t = String(type || '').toLowerCase();
+    if (t === 'booking' || t === 'ticket') return Ticket;
+    if (t === 'payment') return CreditCard;
+    if (t === 'cancellation') return AlertTriangle;
+    if (t === 'schedule' || t === 'delay' || t === 'schedule_change') return Bus;
     return Info;
   };
 
