@@ -126,9 +126,9 @@ const PrintableTicket = ({ booking }) => {
         className="bg-white rounded-3xl shadow-elevated border border-gray-200 overflow-hidden relative"
       >
         {/* Ticket Header Banner */}
-        <div className="bg-gradient-to-r from-primary to-[#0C247A] text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center">
+        <div className="bg-gradient-to-r from-primary to-[#0C247A] text-white p-5 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center shrink-0">
               <Bus className="w-7 h-7 text-accent" />
             </div>
             <div>
@@ -137,22 +137,37 @@ const PrintableTicket = ({ booking }) => {
                   Yatra<span className="text-accent">Bus</span>
                 </span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-400/30">
-                  Confirmed
+                  {booking.bookingStatus ? String(booking.bookingStatus).toUpperCase() : 'CONFIRMED'}
                 </span>
               </div>
-              <p className="text-xs text-blue-200">Official Digital Boarding Pass & Tax Invoice</p>
+              <p className="text-xs text-blue-200 font-medium mt-0.5">
+                Official Electronic Reservation Slip (ERS) & Tax Boarding Pass
+              </p>
+              <div className="text-[10px] text-blue-200/90 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span>GSTIN: <strong className="text-white">19AAACY9821K1ZM</strong></span>
+                <span>•</span>
+                <span>SAC: 996411</span>
+                <span>•</span>
+                <span>Helpline: <strong className="text-amber-300">1800-250-8737</strong></span>
+              </div>
+              <p className="text-[10px] text-blue-300/80 mt-0.5">
+                Corporate Office: Sector V, Salt Lake City, Kolkata, WB 700091 · support@yatrabus.com
+              </p>
             </div>
           </div>
 
-          <div className="text-left sm:text-right bg-white/10 sm:bg-transparent p-3 sm:p-0 rounded-xl">
+          <div className="text-left sm:text-right bg-white/10 sm:bg-transparent p-3 sm:p-0 rounded-xl shrink-0">
             <span className="text-[11px] text-blue-200 block uppercase tracking-wider font-semibold">
               Booking Reference (PNR)
             </span>
-            <span className="text-xl sm:text-2xl font-black text-accent tracking-wider font-mono">
-              {booking.pnr}
+            <span className="text-2xl sm:text-3xl font-black text-accent tracking-wider font-mono">
+              {booking.pnr || booking.bookingReference || booking.id}
             </span>
-            <span className="mt-1 block text-[10px] text-blue-100">
+            <span className="mt-0.5 block text-[10px] text-blue-100">
               Booking ID: {booking.bookingReference || booking._id || booking.id || booking.pnr}
+            </span>
+            <span className="mt-0.5 block text-[10px] text-blue-200">
+              Issued: {new Date(booking.bookedAt || booking.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
           </div>
         </div>
@@ -164,7 +179,7 @@ const PrintableTicket = ({ booking }) => {
         </div>
 
         {/* Journey Route & Operator Details */}
-        <div className="p-6 sm:p-8 space-y-6">
+        <div className="p-5 sm:p-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
             <div>
               <span className="text-[11px] text-gray-400 uppercase tracking-wider font-bold">From</span>
@@ -233,8 +248,8 @@ const PrintableTicket = ({ booking }) => {
             <h5 className="font-black text-gray-900 text-xs uppercase tracking-wider mb-3">
               Passenger Manifest
             </h5>
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <table className="w-full text-xs text-left">
+            <div className="border border-gray-200 rounded-xl overflow-x-auto">
+              <table className="w-full text-xs text-left min-w-[500px]">
                 <thead className="bg-gray-50 text-gray-600 uppercase text-[10px] tracking-wider border-b border-gray-200">
                   <tr>
                     <th className="py-2.5 px-4 font-bold">#</th>

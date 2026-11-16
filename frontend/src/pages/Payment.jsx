@@ -33,6 +33,7 @@ const Payment = () => {
     selectedBus,
     selectedSeats,
     passengers,
+    contactDetails,
     confirmBooking,
     searchParams,
     selectedBoardingPoint,
@@ -190,8 +191,8 @@ const Payment = () => {
                     age: 25,
                     gender: 'male'
                   })),
-            contactEmail: user?.email || '',
-            contactPhone: user?.phone || ''
+            contactEmail: contactDetails?.email || user?.email || passengers?.[0]?.email || '',
+            contactPhone: contactDetails?.phone || user?.phone || ''
           };
 
           const bRes = await bookingApi.createBooking(bookingPayload);
@@ -209,8 +210,8 @@ const Payment = () => {
             });
             if (verifyRes?.ticket?.pnr) {
               serverBooking.pnr = verifyRes.ticket.pnr;
-            } else if (serverBooking.pnr) {
-              // PNR already exists
+            } else if (serverBooking.pnr || serverBooking.bookingReference) {
+              serverBooking.pnr = serverBooking.pnr || serverBooking.bookingReference;
             }
           }
         } catch (apiErr) {
@@ -225,14 +226,16 @@ const Payment = () => {
       }
 
       setProcessingStep('Finalizing reservation & generating PNR...');
+      const resolvedEmail = contactDetails?.email || user?.email || passengers?.[0]?.email || '';
+      const resolvedPhone = contactDetails?.phone || user?.phone || '';
       const confirmed = confirmBooking({
         paymentMethod: resolvedMethod,
-        contactEmail: user?.email || '',
-        contactPhone: user?.phone || '',
-        bookingReference: serverBooking?.pnr
+        contactEmail: resolvedEmail,
+        contactPhone: resolvedPhone,
+        bookingReference: serverBooking?.pnr || serverBooking?.bookingReference
       });
 
-      const finalPnr = serverBooking?.pnr || confirmed?.pnr || `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const finalPnr = serverBooking?.pnr || serverBooking?.bookingReference || confirmed?.pnr || `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       addNotification({
         title: 'Payment received',
         message: `Payment of ₹${totalAmount} for booking ${finalPnr} was received.`,

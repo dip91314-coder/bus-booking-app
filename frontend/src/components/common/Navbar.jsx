@@ -233,50 +233,90 @@ const Navbar = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white/95 dark:bg-[#0D111D]/95 backdrop-blur-md border-b border-[#E5E7EB] dark:border-slate-800 shadow-soft px-6 py-4 space-y-3">
-          <nav className="flex flex-col space-y-2">
+        <div className="md:hidden bg-white/95 dark:bg-[#0D111D]/95 backdrop-blur-md border-b border-[#E5E7EB] dark:border-slate-800 shadow-soft px-5 py-4 space-y-3">
+          {isAuthenticated && (
+            <div className="flex items-center gap-3 p-3 bg-purple-50/60 dark:bg-slate-800/60 rounded-2xl mb-1 border border-purple-100 dark:border-slate-700">
+              <div className="w-10 h-10 rounded-full bg-[#5B21B6] flex items-center justify-center text-sm font-bold text-white overflow-hidden shrink-0 shadow-sm">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                ) : (
+                  user?.name ? user.name.charAt(0).toUpperCase() : 'U'
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black text-slate-900 dark:text-white truncate">{user?.name || 'Passenger'}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
+              </div>
+            </div>
+          )}
+
+          <nav className="flex flex-col space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`py-2 text-sm font-medium transition-colors ${
+                className={`py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
                   isActive(link.path)
-                    ? 'text-[#5B21B6] dark:text-purple-400 font-semibold'
-                    : 'text-[#475569] dark:text-slate-300'
+                    ? 'text-[#5B21B6] dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 font-bold'
+                    : 'text-[#475569] dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
+
           <div className="pt-3 border-t border-[#F1F5F9] dark:border-slate-800 flex flex-col gap-2">
-            <Link
-              to="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-sm font-medium text-[#475569] dark:text-slate-300 py-2"
-            >
-              Staff Login
-            </Link>
-            {!isAuthenticated ? (
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2.5 text-sm font-medium text-white bg-[#5B21B6] rounded-sm"
-              >
-                Sign In
-              </Link>
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm font-bold text-[#5B21B6] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 rounded-xl"
+                >
+                  <Ticket className="w-4 h-4 text-[#5B21B6] dark:text-purple-400" />
+                  <span>My Bookings & Account</span>
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm font-bold text-[#5B21B6] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 rounded-xl"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-[#5B21B6] dark:text-purple-400" />
+                    <span>Admin Operations</span>
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm font-medium text-rose-600 dark:text-rose-400"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full text-left py-2 text-sm font-medium text-rose-600 dark:text-rose-400"
-              >
-                Sign Out
-              </button>
+              <>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-medium text-[#475569] dark:text-slate-300 py-2 px-3"
+                >
+                  Staff Login
+                </Link>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#5B21B6] to-[#7C3AED] rounded-xl shadow-sm"
+                >
+                  Sign In
+                </Link>
+              </>
             )}
           </div>
         </div>

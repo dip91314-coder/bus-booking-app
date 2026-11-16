@@ -1,4 +1,11 @@
 import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logoPath = path.resolve(__dirname, '../assets/logo.png');
 
 export function generateTicketPdf(ticket) {
   return new Promise((resolve, reject) => {
@@ -19,68 +26,99 @@ export function generateTicketPdf(ticket) {
 
       // 1. Official YATRA BUS Brand Header Banner
       doc
-        .rect(40, 35, 515, 70)
+        .rect(40, 30, 515, 82)
         .fill('#4C1D95');
 
       // Gold top accent highlight line
       doc
-        .rect(40, 35, 515, 4)
+        .rect(40, 30, 515, 4)
         .fill('#F59E0B');
+
+      // Official Logo rendering
+      const hasLogo = fs.existsSync(logoPath);
+      let textStartX = 55;
+
+      if (hasLogo) {
+        try {
+          doc.roundedRect(52, 40, 38, 38, 6).fill('#FFFFFF');
+          doc.image(logoPath, 54, 42, { fit: [34, 34], align: 'center', valign: 'center' });
+          textStartX = 98;
+        } catch {
+          textStartX = 55;
+        }
+      }
 
       // YATRA BUS Brand Typography
       doc
-        .fontSize(22)
+        .fontSize(20)
         .fillColor('#FFFFFF')
         .font('Helvetica-Bold')
-        .text('YATRA BUS', 55, 48);
+        .text('YATRA BUS', textStartX, 44);
 
       doc
-        .fontSize(9)
+        .fontSize(8)
         .fillColor('#E9D5FF')
         .font('Helvetica')
-        .text("India's Premier Bus Network · Official Electronic Reservation Slip (ERS)", 55, 76);
+        .text("India's Premier Bus Network · Official Electronic Reservation Slip (ERS)", textStartX, 68);
+
+      doc
+        .fontSize(7)
+        .fillColor('#DDD6FE')
+        .font('Helvetica')
+        .text("GSTIN: 19AAACY9821K1ZM · SAC: 996411 · Corporate Office: Salt Lake Sector V, Kolkata 700091", 55, 84);
 
       // Support & Verification Contact info (Top Right)
       doc
-        .fontSize(8)
+        .fontSize(8.5)
         .fillColor('#DDD6FE')
         .font('Helvetica-Bold')
-        .text('24x7 HELPLINE: 1800-250-8737', 320, 50, { width: 220, align: 'right' });
+        .text('24x7 HELPLINE: 1800-250-8737', 300, 44, { width: 240, align: 'right' });
 
       doc
         .fontSize(8)
         .fillColor('#C4B5FD')
         .font('Helvetica')
-        .text('support@yatrabus.com · www.yatrabus.com', 320, 66, { width: 220, align: 'right' });
+        .text('support@yatrabus.com · www.yatrabus.com', 300, 60, { width: 240, align: 'right' });
+
+      doc
+        .fontSize(7.5)
+        .fillColor('#E9D5FF')
+        .font('Helvetica')
+        .text('Govt. Recognized Intercity Coach Carrier', 300, 74, { width: 240, align: 'right' });
 
       // 2. PNR & Booking Reference Bar
-      const topMetaY = 118;
+      const topMetaY = 120;
       doc
-        .rect(40, topMetaY, 515, 45)
+        .rect(40, topMetaY, 515, 46)
         .fillAndStroke('#F5F3FF', '#DDD6FE');
 
       doc
         .fillColor('#4C1D95')
-        .fontSize(11)
+        .fontSize(12)
         .font('Helvetica-Bold')
-        .text(`PNR: ${pnr || 'N/A'}`, 55, topMetaY + 10)
+        .text(`PNR: ${pnr || 'N/A'}`, 55, topMetaY + 9)
         .fillColor('#374151')
-        .fontSize(9)
+        .fontSize(8.5)
         .font('Helvetica')
         .text(`Booking ID: ${bookingId || ticket._id || 'N/A'}`, 55, topMetaY + 26);
 
       const statusColor = isCancelled ? '#DC2626' : '#059669';
       const statusText = isCancelled ? 'STATUS: CANCELLED' : 'STATUS: CONFIRMED';
 
+      const issuedTimeStr = new Date(ticket.generatedAt || Date.now()).toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      });
+
       doc
         .fillColor(statusColor)
         .fontSize(11)
         .font('Helvetica-Bold')
-        .text(statusText, 360, topMetaY + 10, { width: 180, align: 'right' })
+        .text(statusText, 340, topMetaY + 9, { width: 200, align: 'right' })
         .fillColor('#6B7280')
-        .fontSize(9)
+        .fontSize(8.5)
         .font('Helvetica')
-        .text(`Issued: ${new Date(ticket.generatedAt || Date.now()).toLocaleDateString()}`, 360, topMetaY + 26, { width: 180, align: 'right' });
+        .text(`Issued: ${issuedTimeStr}`, 340, topMetaY + 26, { width: 200, align: 'right' });
 
       // 3. Journey Details Section
       const journeyY = 178;

@@ -44,8 +44,14 @@ const UserDashboard = () => {
     cancelBooking,
     savedTravellers,
     addSavedTraveller,
-    deleteSavedTraveller
+    deleteSavedTraveller,
+    refreshUserBookings
   } = useBooking();
+
+  // Load fresh bookings from backend on dashboard mount
+  useEffect(() => {
+    refreshUserBookings?.();
+  }, [refreshUserBookings]);
 
   // Redirect admin users to /admin
   if (user?.role === 'admin') {
@@ -144,10 +150,17 @@ const UserDashboard = () => {
     };
   }, [user, isDemo]);
 
-  // Filter user bookings
-  const upcomingBookings = bookings.filter((b) => b.bookingStatus === 'confirmed');
-  const pastBookings = bookings.filter((b) => b.bookingStatus === 'completed');
-  const cancelledBookings = bookings.filter((b) => b.bookingStatus === 'cancelled');
+  // Filter user bookings with case-insensitivity
+  const isConfirmed = (b) => {
+    const s = String(b.bookingStatus || '').toLowerCase();
+    return s === 'confirmed' || s === 'active' || s === 'paid' || s === 'pending';
+  };
+  const isCompleted = (b) => String(b.bookingStatus || '').toLowerCase() === 'completed';
+  const isCancelled = (b) => String(b.bookingStatus || '').toLowerCase() === 'cancelled';
+
+  const upcomingBookings = bookings.filter(isConfirmed);
+  const pastBookings = bookings.filter(isCompleted);
+  const cancelledBookings = bookings.filter(isCancelled);
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -515,109 +528,112 @@ const UserDashboard = () => {
         {activeTab === 'bookings' && (
           <div className="space-y-4">
             {upcomingBookings.length > 0 ? (
-              upcomingBookings.map((b) => (
-                <div
-                  key={b.pnr}
-                  className="bg-white rounded-2xl p-6 shadow-card hover:shadow-hover border border-gray-100 transition duration-300"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-black text-primary bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-                          PNR: {b.pnr}
-                        </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                          Confirmed 🟢
+              upcomingBookings.map((b) => {
+                const pnrVal = b.pnr || b.bookingReference || b.id;
+                return (
+                  <div
+                    key={pnrVal}
+                    className="bg-white rounded-2xl p-6 shadow-card hover:shadow-hover border border-gray-100 transition duration-300"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-black text-primary bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                            PNR: {pnrVal}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                            Confirmed 🟢
+                          </span>
+                        </div>
+                        <h3 className="text-base font-black text-gray-900 mt-2">{b.operator}</h3>
+                        <p className="text-xs text-gray-500 font-medium">
+                          {b.busName} • {b.busType}
+                        </p>
+                      </div>
+
+                      <div className="text-left sm:text-right">
+                        <span className="text-xs text-gray-400 block">Total Fare Paid</span>
+                        <span className="text-xl font-black text-primary font-sans">₹{b.totalFare}</span>
+                        <span className="text-[10px] text-gray-400 block">
+                          via {b.paymentMethod || 'Simulated Payment'}
                         </span>
                       </div>
-                      <h3 className="text-base font-black text-gray-900 mt-2">{b.operator}</h3>
-                      <p className="text-xs text-gray-500 font-medium">
-                        {b.busName} • {b.busType}
-                      </p>
                     </div>
 
-                    <div className="text-left sm:text-right">
-                      <span className="text-xs text-gray-400 block">Total Fare Paid</span>
-                      <span className="text-xl font-black text-primary font-sans">₹{b.totalFare}</span>
-                      <span className="text-[10px] text-gray-400 block">
-                        via {b.paymentMethod || 'Simulated Payment'}
-                      </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
+                      <div>
+                        <span className="text-gray-400 block font-medium">Route & Schedule</span>
+                        <p className="font-extrabold text-gray-900 mt-0.5">
+                          {b.from_location || b.origin} ➔ {b.to_location || b.destination}
+                        </p>
+                        <p className="text-gray-500 mt-0.5">
+                          Departure: <strong>{b.departureTime}</strong> ({b.journeyDate})
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="text-gray-400 block font-medium">Pickup Point</span>
+                        <p className="font-bold text-gray-900 mt-0.5">{b.pickup_point || b.boardingPoint}</p>
+                      </div>
+
+                      <div>
+                        <span className="text-gray-400 block font-medium">Drop Point</span>
+                        <p className="font-bold text-gray-900 mt-0.5">{b.drop_point || b.droppingPoint}</p>
+                      </div>
+
+                      <div>
+                        <span className="text-gray-400 block font-medium">Seats & Passengers</span>
+                        <p className="font-extrabold text-emerald-700 mt-0.5">
+                          Seats: {b.seats?.join(', ')} ({b.passengers?.length || b.seats?.length} Passengers)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <div className="text-xs text-gray-400 font-medium">
+                        Booked on: {new Date(b.bookedAt || Date.now()).toLocaleDateString()}
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to cancel booking ${pnrVal}?`)) {
+                              cancelBooking(pnrVal);
+                            }
+                          }}
+                          aria-label={`Cancel booking ${pnrVal}`}
+                          variant="danger"
+                          size="sm"
+                        >
+                          Cancel Booking
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadTicket(pnrVal)}
+                          disabled={downloadingPnr === pnrVal}
+                          className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/60 px-3.5 py-2 rounded-xl transition inline-flex items-center gap-1.5 disabled:opacity-60 shadow-xs cursor-pointer"
+                          title="Download official YATRA BUS PDF ticket"
+                        >
+                          {downloadingPnr === pnrVal ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5" />
+                          )}
+                          <span>Download Ticket</span>
+                        </button>
+                        <Link
+                          to={`/booking/confirmation/${pnrVal}`}
+                          className="text-xs font-bold text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
+                        >
+                          <span>View Details</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
-                    <div>
-                      <span className="text-gray-400 block font-medium">Route & Schedule</span>
-                      <p className="font-extrabold text-gray-900 mt-0.5">
-                        {b.from_location || b.origin} ➔ {b.to_location || b.destination}
-                      </p>
-                      <p className="text-gray-500 mt-0.5">
-                        Departure: <strong>{b.departureTime}</strong> ({b.journeyDate})
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-400 block font-medium">Pickup Point</span>
-                      <p className="font-bold text-gray-900 mt-0.5">{b.pickup_point || b.boardingPoint}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-400 block font-medium">Drop Point</span>
-                      <p className="font-bold text-gray-900 mt-0.5">{b.drop_point || b.droppingPoint}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-400 block font-medium">Seats & Passengers</span>
-                      <p className="font-extrabold text-emerald-700 mt-0.5">
-                        Seats: {b.seats?.join(', ')} ({b.passengers?.length || b.seats?.length} Passengers)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-gray-400 font-medium">
-                      Booked on: {new Date(b.bookedAt || Date.now()).toLocaleDateString()}
-                    </div>
-
-                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to cancel booking ${b.pnr}?`)) {
-                            cancelBooking(b.pnr);
-                          }
-                        }}
-                        aria-label={`Cancel booking ${b.pnr}`}
-                        variant="danger"
-                        size="sm"
-                      >
-                        Cancel Booking
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadTicket(b.pnr)}
-                        disabled={downloadingPnr === b.pnr}
-                        className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/60 px-3.5 py-2 rounded-xl transition inline-flex items-center gap-1.5 disabled:opacity-60 shadow-xs cursor-pointer"
-                        title="Download official YATRA BUS PDF ticket"
-                      >
-                        {downloadingPnr === b.pnr ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}
-                        <span>Download Ticket</span>
-                      </button>
-                      <Link
-                        to={`/booking/confirmation/${b.pnr}`}
-                        className="text-xs font-bold text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
-                      >
-                        <span>View Details</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-purple-100/80 dark:border-slate-800 space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 mx-auto flex items-center justify-center p-3 border border-purple-100 dark:border-slate-800">
@@ -645,44 +661,47 @@ const UserDashboard = () => {
         {activeTab === 'completed' && (
           <div className="space-y-4">
             {pastBookings.length > 0 ? (
-              pastBookings.map((b) => (
-                <div
-                  key={b.pnr}
-                  className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 opacity-90"
-                >
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-xs font-mono font-bold text-gray-500">PNR: {b.pnr}</span>
-                    <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                      Journey Completed
-                    </span>
+              pastBookings.map((b) => {
+                const pnrVal = b.pnr || b.bookingReference || b.id;
+                return (
+                  <div
+                    key={pnrVal}
+                    className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 opacity-90"
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-mono font-bold text-gray-500">PNR: {pnrVal}</span>
+                      <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        Journey Completed
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
+                    <p className="text-xs text-gray-500">
+                      {b.origin} ➔ {b.destination} • {b.journeyDate} • Seats: {b.seats?.join(', ')}
+                    </p>
+                    <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTicket(pnrVal)}
+                        disabled={downloadingPnr === pnrVal}
+                        className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-purple-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                      >
+                        {downloadingPnr === pnrVal ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>Download E-Ticket</span>
+                      </button>
+                      <Link
+                        to={`/booking/confirmation/${pnrVal}`}
+                        className="text-xs text-primary font-bold hover:underline"
+                      >
+                        View Invoice Receipt
+                      </Link>
+                    </div>
                   </div>
-                  <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
-                  <p className="text-xs text-gray-500">
-                    {b.origin} ➔ {b.destination} • {b.journeyDate} • Seats: {b.seats?.join(', ')}
-                  </p>
-                  <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadTicket(b.pnr)}
-                      disabled={downloadingPnr === b.pnr}
-                      className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-purple-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
-                    >
-                      {downloadingPnr === b.pnr ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5" />
-                      )}
-                      <span>Download E-Ticket</span>
-                    </button>
-                    <Link
-                      to={`/booking/confirmation/${b.pnr}`}
-                      className="text-xs text-primary font-bold hover:underline"
-                    >
-                      View Invoice Receipt
-                    </Link>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
                 <p className="text-xs text-gray-500">No completed journeys recorded yet.</p>
@@ -695,47 +714,50 @@ const UserDashboard = () => {
         {activeTab === 'cancelled' && (
           <div className="space-y-4">
             {cancelledBookings.length > 0 ? (
-              cancelledBookings.map((b) => (
-                <div
-                  key={b.pnr}
-                  className="bg-white rounded-2xl p-5 shadow-card border border-red-100"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-mono font-bold text-gray-500">PNR: {b.pnr}</span>
-                    <span className="text-[10px] font-bold bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full border border-red-200">
-                      Cancelled & Refunded
-                    </span>
-                  </div>
-                  <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
-                  <p className="text-xs text-gray-500">
-                    {b.origin} ➔ {b.destination} • Journey Date: {b.journeyDate}
-                  </p>
-                  <p className="text-[11px] text-emerald-600 font-semibold mt-2">
-                    Simulated Refund of ₹{b.totalFare} credited to original payment source.
-                  </p>
-                  <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadTicket(b.pnr)}
-                      disabled={downloadingPnr === b.pnr}
-                      className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
-                    >
-                      {downloadingPnr === b.pnr ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5" />
-                      )}
-                      <span>Download Cancellation Receipt</span>
-                    </button>
+              cancelledBookings.map((b) => {
+                const pnrVal = b.pnr || b.bookingReference || b.id;
+                return (
+                  <div
+                    key={pnrVal}
+                    className="bg-white rounded-2xl p-5 shadow-card border border-red-100"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-mono font-bold text-gray-500">PNR: {pnrVal}</span>
+                      <span className="text-[10px] font-bold bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full border border-red-200">
+                        Cancelled & Refunded
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
+                    <p className="text-xs text-gray-500">
+                      {b.origin} ➔ {b.destination} • Journey Date: {b.journeyDate}
+                    </p>
+                    <p className="text-[11px] text-emerald-600 font-semibold mt-2">
+                      Simulated Refund of ₹{b.totalFare} credited to original payment source.
+                    </p>
+                    <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTicket(pnrVal)}
+                        disabled={downloadingPnr === pnrVal}
+                        className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                      >
+                        {downloadingPnr === pnrVal ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>Download Cancellation Receipt</span>
+                      </button>
                     <Link
-                      to={`/booking/confirmation/${b.pnr}`}
+                      to={`/booking/confirmation/${pnrVal}`}
                       className="text-xs text-slate-500 hover:text-slate-700 font-bold hover:underline"
                     >
                       View Record
                     </Link>
                   </div>
                 </div>
-              ))
+              );
+            })
             ) : (
               <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
                 <p className="text-xs text-gray-500">No cancelled bookings.</p>

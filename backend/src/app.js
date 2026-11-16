@@ -20,6 +20,7 @@ import { authenticate } from './middleware/auth.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
 import { TripNotification } from './models/TripNotification.js';
 import { AdminNotification } from './models/AdminNotification.js';
+import { testSmtpConnection } from './services/emailService.js';
 import jwt from 'jsonwebtoken';
 
 // Route imports
@@ -326,6 +327,18 @@ export function createApp() {
   };
   app.patch('/api/notifications/read-all', optionalAuthenticate, readAllNotificationsHandler);
   app.patch('/notifications/read-all', optionalAuthenticate, readAllNotificationsHandler);
+
+  const testEmailHandler = async (req, res, next) => {
+    try {
+      const { toEmail } = req.body || {};
+      const result = await testSmtpConnection(toEmail || req.user?.email);
+      res.status(200).json({ success: Boolean(result.success), data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+  app.post('/api/notifications/test-email', optionalAuthenticate, testEmailHandler);
+  app.post('/notifications/test-email', optionalAuthenticate, testEmailHandler);
 
   // API Route mounting: mount under both /api/<path> and /<path>
   // This guarantees requests reach endpoints whether VITE_API_URL includes /api or not

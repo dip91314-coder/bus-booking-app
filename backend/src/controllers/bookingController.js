@@ -193,7 +193,12 @@ export async function createBooking(req, res, next) {
     res.status(201).json({
       success: true,
       message: 'Booking confirmed successfully!',
-      data: normalizeYatraBus(newBooking),
+      data: {
+        ...normalizeYatraBus(newBooking),
+        pnr: newBooking.bookingReference,
+        bookingReference: newBooking.bookingReference,
+        id: newBooking._id.toString(),
+      },
     });
   } catch (error) {
     next(error);
@@ -203,13 +208,28 @@ export async function createBooking(req, res, next) {
 export async function getMyBookings(req, res, next) {
   try {
     const userId = req.user?.userId;
+    const userEmail = req.user?.email;
 
-    const bookings = await Booking.find({ userId }).sort({ createdAt: -1 });
+    const query = userId && userEmail
+      ? { $or: [{ userId }, { contactEmail: userEmail }] }
+      : userId
+      ? { userId }
+      : userEmail
+      ? { contactEmail: userEmail }
+      : { userId: null };
+
+    const bookings = await Booking.find(query).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       count: bookings.length,
-      data: bookings.map(normalizeYatraBus),
+      data: bookings.map((b) => ({
+        ...normalizeYatraBus(b),
+        id: b._id.toString(),
+        pnr: b.bookingReference,
+        bookingReference: b.bookingReference,
+        bookingId: b._id.toString(),
+      })),
     });
   } catch (error) {
     next(error);

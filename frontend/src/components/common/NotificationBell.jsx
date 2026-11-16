@@ -16,8 +16,12 @@ const NotificationBell = () => {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('pointerdown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
   }, []);
 
   const iconForType = (type) => {
@@ -49,7 +53,7 @@ const NotificationBell = () => {
 
       {isOpen && (
         <div
-          className="absolute right-0 z-[60] mt-2 w-[min(92vw,24rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-[#111622]"
+          className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-16 sm:top-auto z-[100] mt-2 sm:w-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#111622]"
           role="dialog"
           aria-label="Notifications"
         >

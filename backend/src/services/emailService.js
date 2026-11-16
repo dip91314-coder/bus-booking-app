@@ -68,11 +68,15 @@ export async function sendBookingConfirmationEmail({ booking, ticket = null, toE
     booking?.userEmail ||
     booking?.contactInfo?.email ||
     booking?.contact_info?.email ||
-    booking?.passengers?.[0]?.email;
+    booking?.passengers?.[0]?.email ||
+    ticket?.contactEmail;
   if (!recipient) {
-    logger.warn({ bookingId: booking?._id, pnr: booking?.pnr }, 'No recipient email for booking confirmation.');
+    logger.warn({ bookingId: booking?._id, pnr: booking?.pnr || booking?.bookingReference }, 'No recipient email for booking confirmation.');
     return { success: false, reason: 'no_recipient' };
   }
+
+  const hasCredentials = Boolean(env.SMTP_USER && env.SMTP_PASS);
+  logger.info({ recipient, pnr: booking?.pnr || booking?.bookingReference, hasCredentials }, 'Preparing booking confirmation email dispatch');
 
   const pnr = booking.pnr || booking.bookingReference || ticket?.pnr || 'N/A';
   const busName = booking.busName || ticket?.journeySnapshot?.busName || 'YatraBus Express';
@@ -225,5 +229,24 @@ export async function sendNotificationEmail({ toEmail, subject, title, message }
     subject: subject || title || 'Notification from YATRA BUS',
     html,
     text: `${title ? `${title}\n\n` : ''}${message}`,
+  });
+}
+
+export async function testSmtpConnection(testRecipient = null) {
+  const target = testRecipient || env.SMTP_USER || 'test@yatrabus.com';
+  const hasCredentials = Boolean(env.SMTP_USER && env.SMTP_PASS);
+  if (!hasCredentials) {
+    return {
+      success: false,
+      configured: false,
+      message: 'SMTP credentials (SMTP_USER / SMTP_PASS) are not set in environment or .env. Using non-crashing fallback transporter.'
+    };
+  }
+
+  return sendEmail({
+    to: target,
+    subject: 'YATRA BUS — SMTP Verification Test',
+    text: 'This is a test email confirming your YATRA BUS SMTP configuration is working correctly.',
+    html: '<h3>YATRA BUS SMTP Mailer</h3><p>Your SMTP mailer credentials have been successfully verified!</p>'
   });
 }
