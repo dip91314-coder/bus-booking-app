@@ -9,6 +9,7 @@ import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError, UnauthorizedError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
+import { logger } from '../config/logger.js';
 
 export async function createBooking(req, res, next) {
   try {
@@ -188,7 +189,9 @@ export async function createBooking(req, res, next) {
     });
 
     // Asynchronously dispatch confirmation email
-    sendBookingConfirmationEmail({ booking: newBooking }).catch(() => {});
+    sendBookingConfirmationEmail({ booking: newBooking }).catch((emailErr) => {
+      logger.warn({ error: emailErr.message, pnr: newBooking.bookingReference }, 'Async confirmation email dispatch note');
+    });
 
     res.status(201).json({
       success: true,

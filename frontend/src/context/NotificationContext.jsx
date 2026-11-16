@@ -88,7 +88,19 @@ export const NotificationProvider = ({ children }) => {
           // Merge local client notifications with server notifications
           const serverMap = new Map(normalized.map((item) => [item.id, item]));
           const localOnly = current.filter((c) => c.source === 'client' && !serverMap.has(c.id));
-          return sortNewestFirst([...serverMap.values(), ...localOnly]).slice(0, 100);
+          const allMerged = sortNewestFirst([...serverMap.values(), ...localOnly]);
+
+          // Prevent duplicate notifications with identical title & message
+          const seenFingerprints = new Set();
+          const uniqueList = [];
+          for (const item of allMerged) {
+            const fingerprint = `${(item.title || '').trim().toLowerCase()}::${(item.message || '').trim().toLowerCase()}`;
+            if (!seenFingerprints.has(fingerprint)) {
+              seenFingerprints.add(fingerprint);
+              uniqueList.push(item);
+            }
+          }
+          return uniqueList.slice(0, 100);
         });
       }
       setError(null);
@@ -120,17 +132,30 @@ export const NotificationProvider = ({ children }) => {
   }, [fetchBackendNotifications]);
 
   const addNotification = useCallback((notification) => {
+    const title = (notification.title || '').trim();
+    const message = (notification.message || '').trim();
+
     const created = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      title: notification.title,
-      message: notification.message,
+      title,
+      message,
       type: notification.type || notification.category || 'info',
       category: notification.category || 'alert',
       is_read: false,
       created_at: new Date().toISOString(),
       source: 'client',
     };
-    setNotifications((current) => sortNewestFirst([created, ...current]).slice(0, 100));
+
+    setNotifications((current) => {
+      // Prevent immediate duplicate if exact same notification exists in top items
+      const isDuplicate = current.slice(0, 5).some(
+        (n) => (n.title || '').trim().toLowerCase() === title.toLowerCase() &&
+               (n.message || '').trim().toLowerCase() === message.toLowerCase()
+      );
+      if (isDuplicate) return current;
+      return sortNewestFirst([created, ...current]).slice(0, 100);
+    });
+
     return created;
   }, []);
 
