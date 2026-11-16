@@ -1,4 +1,4 @@
-import { Destination, TripPackage, Route, Bus, Trip, BusOperator } from '../models/index.js';
+import { Destination, TripPackage, Route, Bus, Trip, BusOperator, User } from '../models/index.js';
 import { logger } from '../config/logger.js';
 
 export const DEFAULT_DESTINATIONS = [
@@ -334,6 +334,30 @@ export async function seedDefaults() {
       logger.info('Auto-seeding default authentic Indian tour packages...');
       await TripPackage.insertMany(DEFAULT_PACKAGES);
       logger.info(`Successfully seeded ${DEFAULT_PACKAGES.length} default tour packages.`);
+    }
+
+    const userCount = await User.estimatedDocumentCount();
+    if (userCount === 0) {
+      logger.info('Auto-seeding default admin and demo user...');
+      await User.create([
+        {
+          name: 'Vikram Das',
+          email: 'admin@yatrabus.com',
+          password: 'admin123',
+          phone: '9811223344',
+          role: 'admin',
+          city: 'Kolkata',
+        },
+        {
+          name: 'Rahul Sen',
+          email: 'rahul@yatra.com',
+          password: 'rahul123',
+          phone: '9876543210',
+          role: 'user',
+          city: 'Kolkata',
+        },
+      ]);
+      logger.info('Successfully seeded default users.');
     }
     defaultsSeeded = true;
   } catch (error) {

@@ -1,4 +1,11 @@
-import Redis from 'ioredis';
+let Redis = null;
+try {
+  const mod = await import('ioredis');
+  Redis = mod.default || mod;
+} catch {
+  // ioredis package not installed or unavailable
+}
+
 import { logger } from './logger.js';
 
 let redisClient = null;
@@ -6,6 +13,7 @@ let hasWarnedFallback = false;
 let redisStatus = 'disabled';
 
 function isEnabled() {
+  if (!Redis) return false;
   const val = process.env.REDIS_ENABLED;
   if (val === 'false' || val === false) return false;
   // If in test mode and no explicit REDIS_URL or REDIS_TEST is set, default to false
@@ -20,7 +28,7 @@ export function initRedis(customUrl) {
     return redisClient;
   }
 
-  if (!isEnabled()) {
+  if (!isEnabled() || !Redis) {
     redisStatus = 'disabled';
     return null;
   }

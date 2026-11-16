@@ -35,8 +35,17 @@ export default async function handler(req, res) {
 
   // Restore the client's original requested route if rewritten by Vercel
   const originalUrl = req.headers['x-matched-path'] || req.headers['x-forwarded-url'] || req.headers['x-vercel-matched-path'];
-  if (originalUrl && (req.url === '/api' || req.url === '/api/' || req.url === '/api/index.js')) {
-    req.url = originalUrl;
+  if (originalUrl) {
+    const isRewrittenToApi =
+      req.url === '/api' ||
+      req.url === '/api/' ||
+      req.url === '/api/index.js' ||
+      req.url.startsWith('/api?');
+    if (isRewrittenToApi) {
+      const queryIdx = req.url.indexOf('?');
+      const query = queryIdx !== -1 ? req.url.slice(queryIdx) : '';
+      req.url = originalUrl.includes('?') ? originalUrl : `${originalUrl}${query}`;
+    }
   }
 
   return app(req, res);

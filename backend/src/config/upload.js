@@ -1,4 +1,11 @@
-import multer from 'multer';
+let multer = null;
+try {
+  const mod = await import('multer');
+  multer = mod.default || mod;
+} catch {
+  // multer not installed or unavailable in current environment
+}
+
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -21,17 +28,19 @@ try {
   // Gracefully non-fatal in read-only serverless filesystems
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${safeBase}-${uniqueSuffix}${ext}`);
-  },
-});
+const storage = multer
+  ? multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+      },
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const safeBase = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        cb(null, `${safeBase}-${uniqueSuffix}${ext}`);
+      },
+    })
+  : null;
 
 const fileFilter = (req, file, cb) => {
   const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
@@ -42,10 +51,16 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-export const uploadImage = multer({
-  storage,
-  fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
-  },
-});
+export const uploadImage = multer
+  ? multer({
+      storage,
+      fileFilter,
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    })
+  : {
+      single: () => (req, res, next) => next(),
+      array: () => (req, res, next) => next(),
+      fields: () => (req, res, next) => next(),
+    };

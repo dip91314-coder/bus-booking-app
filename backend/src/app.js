@@ -109,12 +109,13 @@ export function createApp() {
     message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' },
   });
   app.use('/api/', limiter);
+  app.use('/auth/', limiter);
 
   // Body parser and compression
   app.use(express.json({
     limit: '1mb',
     verify: (req, _res, buffer) => {
-      if (req.originalUrl.split('?')[0] === '/api/payments/webhook') {
+      if (req.originalUrl.split('?')[0] === '/api/payments/webhook' || req.originalUrl.split('?')[0] === '/payments/webhook') {
         req.rawBody = Buffer.from(buffer);
       }
     },
@@ -143,8 +144,8 @@ export function createApp() {
   // Favicon handler to prevent 404s in logs
   app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
-  // Root Welcome & API Status
-  app.get('/', (req, res) => {
+  // Root Welcome & API Status (Accessible at both / and /api)
+  const rootStatusHandler = (req, res) => {
     const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
     res.status(200).json({
       status: 'online',
@@ -155,10 +156,13 @@ export function createApp() {
       health: '/api/health',
       timestamp: new Date().toISOString(),
     });
-  });
+  };
+  app.get('/', rootStatusHandler);
+  app.get('/api', rootStatusHandler);
+  app.get('/api/', rootStatusHandler);
 
-  // Health check
-  app.get('/api/health', (req, res) => {
+  // Health check (Accessible at both /api/health and /health)
+  const healthHandler = (req, res) => {
     const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
     const redisStatus = getRedisStatus();
     const isHealthy = mongoStatus === 'connected';
@@ -171,10 +175,12 @@ export function createApp() {
       mongo: mongoStatus,
       redis: redisStatus,
     });
-  });
+  };
+  app.get('/api/health', healthHandler);
+  app.get('/health', healthHandler);
 
   // Public settings endpoint
-  app.get('/api/settings', async (req, res, next) => {
+  const settingsHandler = async (req, res, next) => {
     try {
       const settings = await PlatformSettings.findOne({ key: 'platform' });
       res.status(200).json({
@@ -190,10 +196,12 @@ export function createApp() {
     } catch (err) {
       next(err);
     }
-  });
+  };
+  app.get('/api/settings', settingsHandler);
+  app.get('/settings', settingsHandler);
 
   // User notifications endpoint
-  app.get('/api/notifications', authenticate, async (req, res, next) => {
+  const getNotificationsHandler = async (req, res, next) => {
     try {
       const notifs = await TripNotification.find({ userId: req.user.userId })
         .sort({ createdAt: -1 })
@@ -202,9 +210,11 @@ export function createApp() {
     } catch (err) {
       next(err);
     }
-  });
+  };
+  app.get('/api/notifications', authenticate, getNotificationsHandler);
+  app.get('/notifications', authenticate, getNotificationsHandler);
 
-  app.patch('/api/notifications/:id/read', authenticate, async (req, res, next) => {
+  const readNotificationHandler = async (req, res, next) => {
     try {
       const notif = await TripNotification.findOneAndUpdate(
         { _id: req.params.id, userId: req.user.userId },
@@ -215,23 +225,33 @@ export function createApp() {
     } catch (err) {
       next(err);
     }
-  });
+  };
+  app.patch('/api/notifications/:id/read', authenticate, readNotificationHandler);
+  app.patch('/notifications/:id/read', authenticate, readNotificationHandler);
 
-  // API Route mounting
-  app.use('/api/auth', authRoutes);
-  app.use('/api/buses', busRoutes);
-  app.use('/api/seats', seatRoutes);
-  app.use('/api/bookings', bookingRoutes);
-  app.use('/api/routes', routeRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/trips', tripRoutes);
-  app.use('/api/payments', paymentRoutes);
-  app.use('/api/tickets', ticketRoutes);
-  app.use('/api/offers', offerRoutes);
-  app.use('/api/destinations', destinationRoutes);
-  app.use('/api/journal', journalRoutes);
-  app.use('/api/users/saved-passengers', savedPassengerRoutes);
-  app.use('/api/packages', packageRoutes);
+  // API Route mounting: mount under both /api/<path> and /<path>
+  // This guarantees requests reach endpoints whether VITE_API_URL includes /api or not
+  const apiRouters = [
+    ['/auth', authRoutes],
+    ['/buses', busRoutes],
+    ['/seats', seatRoutes],
+    ['/bookings', bookingRoutes],
+    ['/routes', routeRoutes],
+    ['/admin', adminRoutes],
+    ['/trips', tripRoutes],
+    ['/payments', paymentRoutes],
+    ['/tickets', ticketRoutes],
+    ['/offers', offerRoutes],
+    ['/destinations', destinationRoutes],
+    ['/journal', journalRoutes],
+    ['/users/saved-passengers', savedPassengerRoutes],
+    ['/packages', packageRoutes],
+  ];
+
+  apiRouters.forEach(([subPath, router]) => {
+    app.use(`/api${subPath}`, router);
+    app.use(subPath, router);
+  });
 
   // 404 handler for unknown routes
   app.use((req, res) => {

@@ -1,8 +1,16 @@
 import axios from 'axios';
 import { MOCK_BUSES, POPULAR_ROUTES } from '../data/mockData';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const getApiBaseUrl = () => {
+  let url =
+    import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  // Strip trailing slashes
+  url = url.trim().replace(/\/+$/, '');
+  // Guarantee /api endpoint suffix
+  return url.endsWith('/api') ? url : `${url}/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
