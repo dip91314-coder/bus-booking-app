@@ -77,6 +77,7 @@ After seeding the database, log in with the pre-configured credentials:
 - 🏷️ **Dynamic Coupons & Discounts**: Real-time server validation of promotional codes (e.g., `YATRAFIRST`, `FESTIVE50`) with instant savings deduction.
 - 💳 **Online Payment Gateway**: Integrated simulated / Razorpay checkout with idempotent signature verification.
 - 📄 **Official PDF Ticket Generation**: Instant browser download of server-generated digital tickets using PDFKit.
+- 📧 **Email Notifications**: Welcome email after account registration and a PDF ticket attachment after successful payment.
 - 🗺️ **Short Trips & Weekend Circuits**: Browse authentic curated travel packages (`/short-trips`) with day-by-day itineraries and inclusions.
 - 🧭 **Curated Destination Guides**: Interactive showcase of top Indian destinations with highlights and regional pickup points.
 - 📔 **Personal Travel Dashboard**: Booking history, saved passenger roster management, and travel memory journal entries.
@@ -230,7 +231,17 @@ CLIENT_URL=http://localhost:5173
 
 # Optional: configure only when Redis is enabled
 REDIS_URL=
+
+# Optional SMTP delivery (Gmail users should create an App Password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=
 ```
+
+Configure these SMTP values in the backend environment (never in `frontend/.env`) to enable welcome emails and ticket delivery. If SMTP is missing or unavailable, account registration and confirmed bookings still succeed; the registration response indicates whether its email was sent, and delivery failures are logged.
 
 If the frontend needs a separate API base URL, create `frontend/.env`:
 
@@ -329,6 +340,12 @@ You can deploy the stack across managed cloud services with zero server maintena
 | `CLIENT_URL` | Hosted frontend origin URL | `https://yatrabus.vercel.app` |
 | `CORS_ORIGIN` | Allowed CORS origin | `https://yatrabus.vercel.app` |
 | `LOCK_MINUTES` | Hold expiration time in minutes | `8` |
+| `SMTP_HOST` | SMTP server hostname | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `SMTP_SECURE` | Use implicit TLS (typically true for port 465) | `false` |
+| `SMTP_USER` | SMTP account username | Your mail account |
+| `SMTP_PASS` | SMTP password or provider app password | Secret environment value |
+| `EMAIL_FROM` | Optional verified sender address | `YatraBus <you@example.com>` |
 | `ADMIN_SEED_PASSWORD` | Strong password for admin in production | `CustomStrongPassword#2026` |
 
 #### 4. Frontend Web App: Vercel or Netlify

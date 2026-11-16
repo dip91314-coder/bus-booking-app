@@ -4,6 +4,27 @@ import { paymentGateway } from './paymentGateway.js';
 import { canUseTransactions } from './seatLockService.js';
 import { NotFoundError, ValidationError, ConflictError } from '../utils/customErrors.js';
 import { logger } from '../config/logger.js';
+import { sendBookingTicketEmail } from './emailService.js';
+
+async function deliverTicketEmail(booking, ticket) {
+  if (!booking || !ticket || ticket.emailSentAt) return Boolean(ticket?.emailSentAt);
+
+  try {
+    const result = await sendBookingTicketEmail({ booking, ticket });
+    if (!result.sent) {
+      logger.warn({ pnr: booking.pnr, reason: result.reason }, 'Booking ticket email was not sent');
+      return false;
+    }
+
+    const emailSentAt = new Date();
+    await Ticket.updateOne({ _id: ticket._id }, { $set: { emailSentAt } });
+    ticket.emailSentAt = emailSentAt;
+    return true;
+  } catch (error) {
+    logger.error({ err: error, pnr: booking.pnr }, 'Booking ticket email delivery failed');
+    return false;
+  }
+}
 
 export async function initiatePayment({ bookingId, userId }) {
   const booking = await Booking.findById(bookingId);
@@ -77,11 +98,13 @@ export async function confirmPayment({
       const existingTicket = await Ticket.findOne({ bookingId: existingPayment.bookingId });
       const existingBooking = await Booking.findById(existingPayment.bookingId);
       logger.info({ gatewayPaymentId }, 'Duplicate payment detected. Returning existing ticket idempotently.');
+      const emailSent = await deliverTicketEmail(existingBooking, existingTicket);
       return {
         success: true,
         isDuplicate: true,
         booking: existingBooking,
         ticket: existingTicket,
+        emailSent,
       };
     }
   }
@@ -257,12 +280,14 @@ export async function confirmPayment({
       await session.commitTransaction();
     }
 
+    const emailSent = await deliverTicketEmail(booking, ticket);
     logger.info({ bookingId: booking._id, pnr: booking.pnr, ticketId: ticket._id }, 'Payment confirmed & ticket issued');
 
     return {
       success: true,
       booking,
       ticket,
+      emailSent,
     };
   } catch (error) {
     if (useTransaction) {
