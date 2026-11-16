@@ -35,6 +35,7 @@ import destinationRoutes from './routes/destinationRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
 import savedPassengerRoutes from './routes/savedPassengerRoutes.js';
 import packageRoutes from './routes/packageRoutes.js';
+import imageRoutes from './routes/imageRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -246,6 +247,7 @@ export function createApp() {
     ['/journal', journalRoutes],
     ['/users/saved-passengers', savedPassengerRoutes],
     ['/packages', packageRoutes],
+    ['/images', imageRoutes],
   ];
 
   apiRouters.forEach(([subPath, router]) => {

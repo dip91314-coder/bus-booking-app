@@ -31,6 +31,7 @@ import toast from 'react-hot-toast';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { offerApi, packageApi } from '../services/api';
 import OptimizedImage from '../components/common/OptimizedImage';
+import TravelImage from '../components/common/TravelImage';
 
 const LeafletMap = React.lazy(() => import('../components/common/LeafletMap'));
 
@@ -926,7 +927,8 @@ const Home = () => {
                 className="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111622] flex flex-col justify-between cursor-pointer"
               >
                 <div className="relative h-44 overflow-hidden">
-                  <OptimizedImage
+                  <TravelImage
+                    query={dest.name}
                     src={dest.img}
                     alt={dest.name}
                     containerClassName="w-full h-full"
@@ -1011,7 +1013,8 @@ const Home = () => {
               >
                 <div>
                   <div className="relative aspect-[16/10] w-full overflow-hidden">
-                    <OptimizedImage
+                    <TravelImage
+                      query={trip.destinationCity || trip.route || trip.title}
                       src={trip.image}
                       alt={trip.title}
                       fallbackSrc="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80"

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { destinationApi } from '../services/api';
 import { INITIAL_DESTINATIONS } from '../data/destinationsData';
-import OptimizedImage from '../components/common/OptimizedImage';
+import TravelImage from '../components/common/TravelImage';
 import { DestinationCardSkeleton } from '../components/common/Skeletons';
 import { MapPin, Search, ArrowRight, Sparkles, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 
@@ -140,7 +140,8 @@ const Destinations = () => {
               >
                 <div>
                   <div className="h-56 w-full overflow-hidden relative">
-                    <OptimizedImage
+                    <TravelImage
+                      query={`${dest.name}, ${dest.state || ''}`}
                       src={dest.image}
                       alt={`${dest.name}, ${dest.state} - ${dest.title}`}
                       containerClassName="w-full h-full"
