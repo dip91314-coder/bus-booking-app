@@ -179,8 +179,6 @@ export const BookingProvider = ({ children }) => {
       console.warn('LocalStorage unavailable:', e);
     }
   }, [savedTravellers, user]);
-    }
-  }, [savedTravellers]);
 
   // Seat toggle logic with 6-seat cap
   const toggleSeat = (seat) => {
