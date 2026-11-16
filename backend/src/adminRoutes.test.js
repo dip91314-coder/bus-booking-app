@@ -9,6 +9,7 @@ import { Offer } from './models/Offer.js';
 import { Route } from './models/Route.js';
 import { BusSchedule } from './models/BusSchedule.js';
 import { AdminNotification } from './models/AdminNotification.js';
+import { AuditLog } from './models/AuditLog.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
 import { generateAccessToken } from './utils/token.js';
 
@@ -100,6 +101,14 @@ describe('Admin management API', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ capacity: 1 });
     expect(invalidResize.status).toBe(400);
+
+    const deleted = await request(app)
+      .delete(`/api/admin/buses/${response.body.data.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(deleted.status).toBe(200);
+
+    const auditLog = await AuditLog.findOne({ action: 'DELETE_BUS' });
+    expect(auditLog.adminEmail).toBe('admin@example.com');
   });
 
   it('persists offers and validates admin payloads', async () => {
