@@ -75,13 +75,9 @@ const Register = () => {
         <div className="text-center mb-6">
           <Link to="/" className="inline-flex items-center justify-center mb-3 group">
             <img
-              src="/logo.svg"
+              src="/logo.png"
               alt="YatraBus Logo"
               className="h-10 w-auto transition-transform group-hover:scale-105"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/logo.png';
-              }}
             />
           </Link>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Create your account</h2>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { authApi } from '../services/api';
+import { getRandomAvatar, resolveUserAvatar } from '../utils/avatar';
 
 const AuthContext = createContext(null);
 
@@ -8,7 +9,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('yatra_user');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          parsed.avatar = resolveUserAvatar(parsed);
+          return parsed;
+        }
+      }
+      return null;
     } catch {
       return null;
     }
@@ -37,8 +45,10 @@ export const AuthProvider = ({ children }) => {
       try {
         const res = await authApi.getMe();
         if (res.success && res.data?.user) {
-          setUser(res.data.user);
-          localStorage.setItem('yatra_user', JSON.stringify(res.data.user));
+          const fetchedUser = res.data.user;
+          fetchedUser.avatar = resolveUserAvatar(fetchedUser);
+          setUser(fetchedUser);
+          localStorage.setItem('yatra_user', JSON.stringify(fetchedUser));
         }
       } catch (err) {
         console.warn('Session verification failed, logging out:', err?.message);
@@ -57,6 +67,7 @@ export const AuthProvider = ({ children }) => {
       const res = await authApi.login(email, password);
       if (res.success && res.data?.user) {
         const loggedUser = res.data.user;
+        loggedUser.avatar = resolveUserAvatar(loggedUser);
         setUser(loggedUser);
         localStorage.setItem('yatra_user', JSON.stringify(loggedUser));
         toast.success(`Welcome back, ${loggedUser.name}!`);
@@ -118,6 +129,7 @@ export const AuthProvider = ({ children }) => {
       const res = await authApi.register(userData);
       if (res.success && res.data?.user) {
         const newUser = res.data.user;
+        newUser.avatar = resolveUserAvatar(newUser);
         setUser(newUser);
         localStorage.setItem('yatra_user', JSON.stringify(newUser));
         toast.success('Account created successfully! Welcome to YatraBus.');
@@ -135,8 +147,7 @@ export const AuthProvider = ({ children }) => {
           email: userData.email,
           role: 'user',
           phone: userData.phone || '9876543210',
-          avatar:
-            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+          avatar: getRandomAvatar(userData.email || userData.name),
         };
         localStorage.setItem('yatrabus_token', 'demo-user-jwt-token');
         localStorage.setItem('yatra_user', JSON.stringify(demoNewUser));
@@ -156,6 +167,8 @@ export const AuthProvider = ({ children }) => {
     } finally {
       localStorage.removeItem('yatrabus_token');
       localStorage.removeItem('yatra_user');
+      localStorage.removeItem('yatra_bookings');
+      localStorage.removeItem('yatra_travellers');
       setUser(null);
       toast.success('You have been logged out.');
     }

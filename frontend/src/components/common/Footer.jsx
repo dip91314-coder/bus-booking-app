@@ -14,13 +14,9 @@ const Footer = () => {
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
               <img
-                src="/logo.svg"
+                src="/logo.png"
                 alt="YatraBus"
                 className="h-8 w-auto"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = '/logo.png';
-                }}
               />
             </Link>
             <p className="text-sm text-[#64748B] dark:text-slate-400 leading-relaxed">

@@ -66,13 +66,9 @@ const Navbar = () => {
           className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5B21B6] rounded-sm transition-transform duration-200 hover:scale-[1.02]"
         >
           <img
-            src="/logo.svg"
+            src="/logo.png"
             alt="YatraBus"
             className="h-9 w-auto"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = '/logo.png';
-            }}
           />
         </Link>
 
@@ -142,8 +138,12 @@ const Navbar = () => {
                 aria-expanded={userDropdownOpen}
                 aria-haspopup="true"
               >
-                <div className="w-7 h-7 rounded-full bg-[#5B21B6] flex items-center justify-center text-xs font-semibold text-white shadow-sm">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                <div className="w-7 h-7 rounded-full bg-[#5B21B6] flex items-center justify-center text-xs font-semibold text-white shadow-sm overflow-hidden">
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.name || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    user?.name ? user.name.charAt(0).toUpperCase() : 'U'
+                  )}
                 </div>
                 <span className="max-w-[120px] truncate text-[#0F172A] dark:text-slate-100">
                   {user?.name || 'Account'}

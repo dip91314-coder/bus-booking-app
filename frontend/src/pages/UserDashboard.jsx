@@ -24,11 +24,13 @@ import {
   Sparkles,
   Share2,
   Award,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import JournalSpreadCarousel from '../components/ui/journal-spread-carousel';
 import { travelSpreadsData } from '../data/travelJournals';
+import { resolveUserAvatar, getRandomAvatar } from '../utils/avatar';
 
 const UserDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -58,8 +60,10 @@ const UserDashboard = () => {
   const [addTravellerOpen, setAddTravellerOpen] = useState(false);
   const [newTraveller, setNewTraveller] = useState({ name: '', age: '', gender: 'male', phone: '' });
 
-  // Travel Journal state
-  const [spreads, setSpreads] = useState(travelSpreadsData);
+  const isDemo = user?.email?.toLowerCase() === 'rahul@yatra.com';
+
+  // Travel Journal state: empty by default for any real new user
+  const [spreads, setSpreads] = useState(() => (isDemo ? travelSpreadsData : []));
   const [newMemoryOpen, setNewMemoryOpen] = useState(false);
   const [newMemoryTitle, setNewMemoryTitle] = useState('');
   const [newMemoryLocation, setNewMemoryLocation] = useState('');
@@ -71,47 +75,54 @@ const UserDashboard = () => {
     const fetchJournal = async () => {
       try {
         const liveEntries = await journalApi.getMyJournal();
-        if (active && Array.isArray(liveEntries) && liveEntries.length > 0) {
-          const mapped = liveEntries.map((e) => ({
-            id: e._id || e.id,
-            label: e.title,
-            image: e.image || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80',
-            alt: e.location || e.title,
-            paper: '#1e293b',
-            prints: e.prints?.length ? e.prints : [
-              {
-                src: e.image || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
-                caption: e.location || 'Journey Snapshot',
-                x: 14,
-                y: 20,
-                w: 26,
-                rotate: -3,
-                tape: true
-              }
-            ],
-            notes: e.notes?.length ? e.notes : [
-              {
-                x: 54,
-                y: 16,
-                w: 36,
-                title: e.title,
-                body: e.story,
-                rotate: 1,
-                style: 'card'
-              }
-            ]
-          }));
-          setSpreads(mapped);
+        if (active && Array.isArray(liveEntries)) {
+          if (liveEntries.length > 0) {
+            const mapped = liveEntries.map((e) => ({
+              id: e._id || e.id,
+              label: e.title,
+              image: e.image || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80',
+              alt: e.location || e.title,
+              paper: '#1e293b',
+              prints: e.prints?.length ? e.prints : [
+                {
+                  src: e.image || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+                  caption: e.location || 'Journey Snapshot',
+                  x: 14,
+                  y: 20,
+                  w: 26,
+                  rotate: -3,
+                  tape: true
+                }
+              ],
+              notes: e.notes?.length ? e.notes : [
+                {
+                  x: 54,
+                  y: 16,
+                  w: 36,
+                  title: e.title,
+                  body: e.story,
+                  rotate: 1,
+                  style: 'card'
+                }
+              ]
+            }));
+            setSpreads(mapped);
+          } else {
+            setSpreads(isDemo ? travelSpreadsData : []);
+          }
         }
       } catch (err) {
         console.warn('Could not load user journal from API:', err?.message);
+        if (active && !isDemo) {
+          setSpreads([]);
+        }
       }
     };
     fetchJournal();
     return () => {
       active = false;
     };
-  }, []);
+  }, [user, isDemo]);
 
   // Filter user bookings
   const upcomingBookings = bookings.filter((b) => b.bookingStatus === 'confirmed');
@@ -249,13 +260,25 @@ const UserDashboard = () => {
       <div className="bg-gradient-to-r from-[#2A054E] via-[#3B0764] to-[#4C0E82] text-white py-9 px-4 sm:px-6 lg:px-8 shadow-xl">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="relative">
+            <div className="relative group">
               <img
-                src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=140&q=80'}
+                src={resolveUserAvatar(user)}
                 alt={user?.name || 'User'}
                 className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-lg"
               />
               <span className="absolute -bottom-1 -right-1 bg-emerald-500 w-4 h-4 rounded-full border-2 border-[#2A054E]" title="Active" />
+              <button
+                type="button"
+                onClick={() => {
+                  const newAvatar = getRandomAvatar();
+                  updateProfile({ avatar: newAvatar });
+                  toast.success('Randomized a new avatar for your profile!');
+                }}
+                title="Shuffle Random Avatar"
+                className="absolute -top-1.5 -right-1.5 bg-[#5B21B6] hover:bg-amber-400 text-white hover:text-slate-900 rounded-full p-1.5 shadow-md border border-white/40 transition-all hover:scale-110 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </button>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -396,19 +419,39 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          {/* Interactive 3D Journal Spread Carousel */}
-          <div className="pt-6">
-            <JournalSpreadCarousel
-              spreads={spreads}
-              title="Indian Road Trip Journal"
-              meta={`${spreads.length} curated double-page spreads`}
-              height="480px"
-              initialIndex={0}
-              autoPlay={false}
-              onAction={handleJournalAction}
-              className="rounded-2xl shadow-inner bg-slate-950/5 border border-slate-200/50"
-            />
-          </div>
+          {/* Interactive 3D Journal Spread Carousel or Clean Empty State */}
+          {spreads.length > 0 ? (
+            <div className="pt-6">
+              <JournalSpreadCarousel
+                spreads={spreads}
+                title="Indian Road Trip Journal"
+                meta={`${spreads.length} curated double-page spreads`}
+                height="480px"
+                initialIndex={0}
+                autoPlay={false}
+                onAction={handleJournalAction}
+                className="rounded-2xl shadow-inner bg-slate-950/5 border border-slate-200/50"
+              />
+            </div>
+          ) : (
+            <div className="mt-6 py-12 px-4 text-center rounded-2xl bg-purple-50/40 dark:bg-slate-900/40 border border-dashed border-purple-200 dark:border-slate-800 space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-[#7E22CE] dark:text-purple-300 mx-auto flex items-center justify-center">
+                <Camera className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">No Journey Memories Yet</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Your journey scrapbook is currently empty. Record your favorite bus stops, scenic photos, and travel milestones across India.
+              </p>
+              <button
+                type="button"
+                onClick={() => setNewMemoryOpen(true)}
+                className="bg-[#7E22CE] hover:bg-[#6B21A8] text-white text-xs font-bold px-4 py-2 rounded-xl transition inline-flex items-center gap-1.5 shadow-sm mt-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Your First Memory</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Navigation Tabs */}
@@ -531,17 +574,22 @@ const UserDashboard = () => {
                 </div>
               ))
             ) : (
-              <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100 space-y-3">
-                <Ticket className="w-12 h-12 text-gray-300 mx-auto" />
-                <h3 className="text-base font-bold text-gray-800">No Upcoming Bookings</h3>
-                <p className="text-xs text-gray-500">
-                  Ready to plan your next journey? Search across 250+ Indian destinations.
-                </p>
+              <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-purple-100/80 dark:border-slate-800 space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 mx-auto flex items-center justify-center p-3 border border-purple-100 dark:border-slate-800">
+                  <img src="/logo.png" alt="YatraBus Logo" className="h-8 w-auto object-contain" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 dark:text-slate-100">No Upcoming Bookings Found</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                    Your account has no scheduled trips. Ready to plan your journey across 250+ Indian destinations?
+                  </p>
+                </div>
                 <Link
                   to="/buses"
-                  className="bg-accent text-white text-xs font-bold px-4 py-2.5 rounded-xl inline-block mt-2"
+                  className="bg-[#7E22CE] hover:bg-[#6B21A8] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition inline-flex items-center gap-1.5"
                 >
-                  Search Available Buses
+                  <Bus className="w-3.5 h-3.5" />
+                  <span>Search & Book Buses</span>
                 </Link>
               </div>
             )}
@@ -637,41 +685,61 @@ const UserDashboard = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedTravellers.map((traveller) => (
-                <div
-                  key={traveller.id}
-                  className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 flex items-start justify-between"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#7E22CE] flex items-center justify-center font-bold text-xs uppercase">
-                      {traveller.name.slice(0, 2)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900">{traveller.name}</h4>
-                      <p className="text-[11px] text-gray-500 capitalize">
-                        {traveller.gender} • {traveller.age} years
-                      </p>
-                      {traveller.phone && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">+91 {traveller.phone}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      deleteSavedTraveller(traveller.id);
-                      toast.success(`Removed ${traveller.name} from saved travellers.`);
-                    }}
-                    className="text-gray-400 hover:text-red-500 transition p-1"
-                    title="Delete saved traveller"
+            {savedTravellers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {savedTravellers.map((traveller) => (
+                  <div
+                    key={traveller.id}
+                    className="bg-white dark:bg-[#111622] rounded-2xl p-5 shadow-card border border-gray-100 dark:border-slate-800 flex items-start justify-between"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-[#7E22CE] dark:text-purple-300 flex items-center justify-center font-bold text-xs uppercase">
+                        {traveller.name.slice(0, 2)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-xs text-gray-900 dark:text-slate-100">{traveller.name}</h4>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 capitalize">
+                          {traveller.gender} • {traveller.age} years
+                        </p>
+                        {traveller.phone && (
+                          <p className="text-[10px] text-gray-400 mt-0.5">+91 {traveller.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deleteSavedTraveller(traveller.id);
+                        toast.success(`Removed ${traveller.name} from saved travellers.`);
+                      }}
+                      className="text-gray-400 hover:text-red-500 transition p-1 cursor-pointer"
+                      title="Delete saved traveller"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-purple-100/80 dark:border-slate-800 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center">
+                  <BookmarkCheck className="w-7 h-7" />
                 </div>
-              ))}
-            </div>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">No Saved Travellers</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  Save family members and frequent travel companions for instant 1-click autofill during bus bookings.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAddTravellerOpen(true)}
+                  className="bg-[#7E22CE] hover:bg-[#6B21A8] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add First Traveller</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -695,46 +763,66 @@ const UserDashboard = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {spreads.map((spread, idx) => (
-                <div
-                  key={spread.id || idx}
-                  className="bg-white rounded-2xl overflow-hidden shadow-card border border-purple-100 hover:shadow-hover transition duration-300 flex flex-col"
-                >
-                  <div className="relative h-44 overflow-hidden bg-slate-900">
-                    <img
-                      src={spread.image}
-                      alt={spread.alt || spread.label}
-                      className="w-full h-full object-cover transition duration-500 hover:scale-105"
-                    />
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/20">
-                      Spread #{idx + 1}
+            {spreads.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {spreads.map((spread, idx) => (
+                  <div
+                    key={spread.id || idx}
+                    className="bg-white rounded-2xl overflow-hidden shadow-card border border-purple-100 hover:shadow-hover transition duration-300 flex flex-col"
+                  >
+                    <div className="relative h-44 overflow-hidden bg-slate-900">
+                      <img
+                        src={spread.image}
+                        alt={spread.alt || spread.label}
+                        className="w-full h-full object-cover transition duration-500 hover:scale-105"
+                      />
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/20">
+                        Spread #{idx + 1}
+                      </div>
+                    </div>
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-extrabold text-sm text-gray-900">{spread.label}</h4>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                          {spread.notes?.[0]?.body || spread.alt}
+                        </p>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                        <span className="text-[11px] text-purple-700 font-semibold">
+                          {spread.prints?.length || 0} Photos • {spread.notes?.length || 0} Notes
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleJournalAction('share', idx)}
+                          className="text-gray-400 hover:text-purple-600 transition flex items-center gap-1"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                          <span>Share</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-extrabold text-sm text-gray-900">{spread.label}</h4>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                        {spread.notes?.[0]?.body || spread.alt}
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                      <span className="text-[11px] text-purple-700 font-semibold">
-                        {spread.prints?.length || 0} Photos • {spread.notes?.length || 0} Notes
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleJournalAction('share', idx)}
-                        className="text-gray-400 hover:text-purple-600 transition flex items-center gap-1"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>Share</span>
-                      </button>
-                    </div>
-                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-purple-100/80 dark:border-slate-800 space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                  <Camera className="w-7 h-7" />
                 </div>
-              ))}
-            </div>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">No Travel Memories Saved</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  Snapshots and notes from your journeys will appear here. Add your first travel experience!
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setNewMemoryOpen(true)}
+                  className="bg-[#7E22CE] hover:bg-[#6B21A8] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Write Memory Entry</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -744,6 +832,32 @@ const UserDashboard = () => {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-extrabold text-gray-900">Edit Passenger Profile</h3>
+            
+            {/* Avatar Preview & Randomizer */}
+            <div className="flex items-center gap-4 p-3 bg-purple-50/60 rounded-2xl border border-purple-100">
+              <img
+                src={resolveUserAvatar(user)}
+                alt="Profile Avatar"
+                className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400"
+              />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-slate-800">Profile Avatar</p>
+                <p className="text-[11px] text-slate-500">Generate a unique look</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const newAvatar = getRandomAvatar();
+                  updateProfile({ avatar: newAvatar });
+                  toast.success('Randomized a new avatar!');
+                }}
+                className="bg-white hover:bg-amber-400 hover:text-slate-900 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-purple-200 transition flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Randomize</span>
+              </button>
+            </div>
+
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">

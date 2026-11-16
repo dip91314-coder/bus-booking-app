@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 import { MOCK_BUSES, INITIAL_USER_BOOKINGS, INITIAL_SAVED_TRAVELLERS } from '../data/mockData';
 import { normalizeYatraFleetItems } from '../utils/yatraFleet';
 import { bookingApi, savedPassengerApi } from '../services/api';
@@ -7,6 +8,8 @@ import toast from 'react-hot-toast';
 const BookingContext = createContext(null);
 
 export const BookingProvider = ({ children }) => {
+  const { user } = useAuth();
+
   // Bus inventory
   const [buses, setBuses] = useState(() => {
     try {
@@ -38,23 +41,43 @@ export const BookingProvider = ({ children }) => {
   const [bookingId, setBookingId] = useState(null); // set after createBooking
   const [pnr, setPnr] = useState(null); // set after createBooking
 
-  // User Bookings History
+  // User Bookings History: empty by default for all real new users
   const [bookings, setBookings] = useState(() => {
     try {
-      const saved = localStorage.getItem('yatra_bookings');
-      return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : INITIAL_USER_BOOKINGS;
+      if (typeof window === 'undefined') return [];
+      const savedUserStr = localStorage.getItem('yatra_user');
+      const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      if (!savedUser) return [];
+      const isDemo = savedUser.email?.toLowerCase() === 'rahul@yatra.com';
+      if (isDemo) {
+        const saved = localStorage.getItem('yatra_bookings_demo');
+        return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : INITIAL_USER_BOOKINGS;
+      }
+      const uid = savedUser.id || savedUser._id || savedUser.email;
+      const saved = localStorage.getItem(`yatra_bookings_${uid}`);
+      return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : [];
     } catch {
-      return INITIAL_USER_BOOKINGS;
+      return [];
     }
   });
 
-  // Saved Travellers
+  // Saved Travellers: empty by default for all real new users
   const [savedTravellers, setSavedTravellers] = useState(() => {
     try {
-      const saved = localStorage.getItem('yatra_travellers');
-      return saved ? JSON.parse(saved) : INITIAL_SAVED_TRAVELLERS;
+      if (typeof window === 'undefined') return [];
+      const savedUserStr = localStorage.getItem('yatra_user');
+      const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      if (!savedUser) return [];
+      const isDemo = savedUser.email?.toLowerCase() === 'rahul@yatra.com';
+      if (isDemo) {
+        const saved = localStorage.getItem('yatra_travellers_demo');
+        return saved ? JSON.parse(saved) : INITIAL_SAVED_TRAVELLERS;
+      }
+      const uid = savedUser.id || savedUser._id || savedUser.email;
+      const saved = localStorage.getItem(`yatra_travellers_${uid}`);
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_SAVED_TRAVELLERS;
+      return [];
     }
   });
 
@@ -77,7 +100,7 @@ export const BookingProvider = ({ children }) => {
     if (!token) return;
     try {
       const list = await savedPassengerApi.getSavedPassengers();
-      if (Array.isArray(list) && list.length > 0) {
+      if (Array.isArray(list)) {
         setSavedTravellers(list.map((p) => ({ ...p, id: p._id || p.id })));
       }
     } catch (err) {
@@ -85,12 +108,42 @@ export const BookingProvider = ({ children }) => {
     }
   }, []);
 
+  // Sync state whenever the logged-in user changes
   useEffect(() => {
+    if (!user) {
+      setBookings([]);
+      setSavedTravellers([]);
+      return;
+    }
+    const isDemo = user.email?.toLowerCase() === 'rahul@yatra.com';
+    const uid = user.id || user._id || user.email;
+    const bKey = isDemo ? 'yatra_bookings_demo' : `yatra_bookings_${uid}`;
+    const tKey = isDemo ? 'yatra_travellers_demo' : `yatra_travellers_${uid}`;
+
+    try {
+      const savedB = localStorage.getItem(bKey);
+      if (savedB) {
+        setBookings(normalizeYatraFleetItems(JSON.parse(savedB)));
+      } else {
+        setBookings(isDemo ? INITIAL_USER_BOOKINGS : []);
+      }
+
+      const savedT = localStorage.getItem(tKey);
+      if (savedT) {
+        setSavedTravellers(JSON.parse(savedT));
+      } else {
+        setSavedTravellers(isDemo ? INITIAL_SAVED_TRAVELLERS : []);
+      }
+    } catch {
+      setBookings(isDemo ? INITIAL_USER_BOOKINGS : []);
+      setSavedTravellers(isDemo ? INITIAL_SAVED_TRAVELLERS : []);
+    }
+
     refreshUserBookings();
     refreshSavedPassengers();
-  }, [refreshUserBookings, refreshSavedPassengers]);
+  }, [user, refreshUserBookings, refreshSavedPassengers]);
 
-  // Sync to local storage
+  // Sync to local storage scoped to user
   useEffect(() => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -103,21 +156,29 @@ export const BookingProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('yatra_bookings', JSON.stringify(bookings));
+      if (typeof window !== 'undefined' && window.localStorage && user) {
+        const isDemo = user.email?.toLowerCase() === 'rahul@yatra.com';
+        const uid = user.id || user._id || user.email;
+        const bKey = isDemo ? 'yatra_bookings_demo' : `yatra_bookings_${uid}`;
+        localStorage.setItem(bKey, JSON.stringify(bookings));
       }
     } catch (e) {
       console.warn('LocalStorage unavailable:', e);
     }
-  }, [bookings]);
+  }, [bookings, user]);
 
   useEffect(() => {
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('yatra_travellers', JSON.stringify(savedTravellers));
+      if (typeof window !== 'undefined' && window.localStorage && user) {
+        const isDemo = user.email?.toLowerCase() === 'rahul@yatra.com';
+        const uid = user.id || user._id || user.email;
+        const tKey = isDemo ? 'yatra_travellers_demo' : `yatra_travellers_${uid}`;
+        localStorage.setItem(tKey, JSON.stringify(savedTravellers));
       }
     } catch (e) {
       console.warn('LocalStorage unavailable:', e);
+    }
+  }, [savedTravellers, user]);
     }
   }, [savedTravellers]);
 
