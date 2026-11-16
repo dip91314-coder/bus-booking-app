@@ -59,6 +59,7 @@ import {
   adjustAdminPassengerWallet,
   changeAdminBookingSeat,
   getAdminAuditLogs,
+  resendAdminBookingConfirmation,
 } from '../controllers/adminController.js';
 import { uploadImage } from '../config/upload.js';
 import { authenticate } from '../middleware/auth.js';
@@ -167,6 +168,7 @@ router.post('/trips/recurrence', generateRecurringTrips);
 router.post('/pricing/preview', previewPricing);
 router.patch('/passengers/:id/wallet', adjustAdminPassengerWallet);
 router.post('/bookings/:id/change-seat', changeAdminBookingSeat);
+router.post('/bookings/:id/resend-confirmation', resendAdminBookingConfirmation);
 router.get('/audit-logs', getAdminAuditLogs);
 
 router.post('/upload', uploadImage.single('file'), (req, res) => {

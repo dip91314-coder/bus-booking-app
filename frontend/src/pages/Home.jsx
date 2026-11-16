@@ -144,7 +144,7 @@ const Home = () => {
       route: 'On every Return Trip',
       code: 'RETURN100',
       badge: 'BOOK NOW',
-      tag: 'ROUND TRIP',
+      tag: 'RETURN TRIP',
       img: 'https://images.unsplash.com/photo-1570125909517-53cb21c89ff2?w=600&auto=format&fit=crop&q=80',
       bgGradient: 'from-[#4C1D95] via-[#2E1065] to-[#1A0426]'
     }

@@ -4,6 +4,7 @@ import { paymentGateway } from './paymentGateway.js';
 import { canUseTransactions } from './seatLockService.js';
 import { NotFoundError, ValidationError, ConflictError } from '../utils/customErrors.js';
 import { logger } from '../config/logger.js';
+import { sendBookingConfirmationEmail } from './emailService.js';
 
 export async function initiatePayment({ bookingId, userId }) {
   const booking = await Booking.findById(bookingId);
@@ -258,6 +259,11 @@ export async function confirmPayment({
     }
 
     logger.info({ bookingId: booking._id, pnr: booking.pnr, ticketId: ticket._id }, 'Payment confirmed & ticket issued');
+
+    // Asynchronously dispatch booking confirmation email without blocking checkout
+    sendBookingConfirmationEmail({ booking, ticket }).catch((emailErr) => {
+      logger.warn({ error: emailErr.message, bookingId: booking._id }, 'Async email dispatch note');
+    });
 
     return {
       success: true,

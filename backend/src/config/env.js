@@ -21,6 +21,12 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().optional().default('rzp_test_mock_key_id'),
   RAZORPAY_KEY_SECRET: z.string().optional().default('rzp_test_mock_secret'),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional().default('rzp_webhook_secret_key_12345'),
+  SMTP_HOST: z.string().optional().default(process.env.SMTP_HOST || 'smtp.gmail.com'),
+  SMTP_PORT: z.string().default(process.env.SMTP_PORT || '587').transform((val) => parseInt(val, 10)),
+  SMTP_SECURE: z.string().optional().default(process.env.SMTP_SECURE || 'false').transform((val) => val === 'true'),
+  SMTP_USER: z.string().optional().default(process.env.SMTP_USER || process.env.EMAIL_USER || ''),
+  SMTP_PASS: z.string().optional().default(process.env.SMTP_PASS || process.env.EMAIL_PASS || ''),
+  SMTP_FROM: z.string().optional().default(process.env.SMTP_FROM || '"YATRA BUS" <no-reply@yatrabus.com>'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -51,4 +57,10 @@ export const env = parsed.success ? parsed.data : {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || 'rzp_test_mock_key_id',
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || 'rzp_test_mock_secret',
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || 'rzp_webhook_secret_key_12345',
+  SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+  SMTP_USER: process.env.SMTP_USER || process.env.EMAIL_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || process.env.EMAIL_PASS || '',
+  SMTP_FROM: process.env.SMTP_FROM || '"YATRA BUS" <no-reply@yatrabus.com>',
 };

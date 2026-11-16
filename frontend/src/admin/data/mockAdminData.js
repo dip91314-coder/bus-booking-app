@@ -892,7 +892,7 @@ export const INITIAL_OFFERS = [
   {
     id: 'OFF-404',
     code: 'RETURN25',
-    title: 'Round Trip Rebate',
+    title: 'Return Trip Rebate',
     discountPercentage: 25,
     maxDiscount: 500,
     minBookingAmount: 2000,
@@ -900,7 +900,7 @@ export const INITIAL_OFFERS = [
     usageCount: 994,
     usageLimit: 1000,
     status: 'Expired',
-    description: 'Save 25% on round trip ticket purchases.'
+    description: 'Save 25% on return trip ticket purchases.'
   }
 ];
 

@@ -19,6 +19,8 @@ import { requestId } from './middleware/requestId.js';
 import { authenticate } from './middleware/auth.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
 import { TripNotification } from './models/TripNotification.js';
+import { AdminNotification } from './models/AdminNotification.js';
+import jwt from 'jsonwebtoken';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -201,34 +203,129 @@ export function createApp() {
   app.get('/api/settings', settingsHandler);
   app.get('/settings', settingsHandler);
 
-  // User notifications endpoint
+  // Optional JWT Authentication for notifications so both guests & members get announcements
+  const optionalAuthenticate = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET);
+      req.user = decoded;
+    } catch {
+      // Continue unauthenticated if token invalid or expired
+    }
+    next();
+  };
+
+  // User & Platform notifications endpoint
   const getNotificationsHandler = async (req, res, next) => {
     try {
-      const notifs = await TripNotification.find({ userId: req.user.userId })
+      const userId = req.user?.userId;
+
+      // 1. Fetch system announcements & operational broadcasts from Admin
+      const adminNotifs = await AdminNotification.find()
         .sort({ createdAt: -1 })
-        .limit(50);
-      res.status(200).json({ success: true, count: notifs.length, data: notifs });
+        .limit(40);
+
+      const formattedAdmin = adminNotifs.map((n) => ({
+        id: n._id.toString(),
+        title: n.title,
+        message: n.message,
+        type: n.category || 'alert',
+        category: n.category || 'alert',
+        is_read: Boolean(n.read),
+        created_at: n.createdAt ? n.createdAt.toISOString() : new Date().toISOString(),
+        source: 'admin',
+      }));
+
+      // 2. If authenticated, fetch customer-specific trip notifications
+      let userTripNotifs = [];
+      if (userId) {
+        const tripNotifs = await TripNotification.find({ userId })
+          .sort({ createdAt: -1 })
+          .limit(40);
+
+        userTripNotifs = tripNotifs.map((n) => ({
+          id: n._id.toString(),
+          title: n.title,
+          message: n.message,
+          type: n.type?.toLowerCase() || 'ticket',
+          category: 'booking',
+          is_read: Boolean(n.isRead),
+          created_at: n.createdAt ? n.createdAt.toISOString() : new Date().toISOString(),
+          source: 'trip',
+          tripId: n.tripId,
+          bookingId: n.bookingId,
+        }));
+      }
+
+      // 3. Combine and sort newest first
+      const combined = [...formattedAdmin, ...userTripNotifs].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      const unreadCount = combined.filter((n) => !n.is_read).length;
+
+      res.status(200).json({
+        success: true,
+        count: combined.length,
+        unreadCount,
+        data: combined,
+      });
     } catch (err) {
       next(err);
     }
   };
-  app.get('/api/notifications', authenticate, getNotificationsHandler);
-  app.get('/notifications', authenticate, getNotificationsHandler);
+  app.get('/api/notifications', optionalAuthenticate, getNotificationsHandler);
+  app.get('/notifications', optionalAuthenticate, getNotificationsHandler);
 
   const readNotificationHandler = async (req, res, next) => {
     try {
-      const notif = await TripNotification.findOneAndUpdate(
-        { _id: req.params.id, userId: req.user.userId },
-        { isRead: true },
-        { new: true }
-      );
-      res.status(200).json({ success: true, data: notif });
+      const { id } = req.params;
+      if (!mongoose.isValidObjectId(id)) {
+        return res.status(200).json({ success: true, message: 'Notification marked as read.' });
+      }
+
+      let updated = null;
+      if (req.user?.userId) {
+        updated = await TripNotification.findOneAndUpdate(
+          { _id: id, userId: req.user.userId },
+          { isRead: true },
+          { new: true }
+        );
+      }
+
+      if (!updated) {
+        updated = await AdminNotification.findByIdAndUpdate(
+          id,
+          { read: true },
+          { new: true }
+        );
+      }
+
+      res.status(200).json({ success: true, data: updated });
     } catch (err) {
       next(err);
     }
   };
-  app.patch('/api/notifications/:id/read', authenticate, readNotificationHandler);
-  app.patch('/notifications/:id/read', authenticate, readNotificationHandler);
+  app.patch('/api/notifications/:id/read', optionalAuthenticate, readNotificationHandler);
+  app.patch('/notifications/:id/read', optionalAuthenticate, readNotificationHandler);
+
+  const readAllNotificationsHandler = async (req, res, next) => {
+    try {
+      if (req.user?.userId) {
+        await TripNotification.updateMany({ userId: req.user.userId, isRead: false }, { isRead: true });
+      }
+      await AdminNotification.updateMany({ read: false }, { read: true });
+      res.status(200).json({ success: true, message: 'All notifications marked as read.' });
+    } catch (err) {
+      next(err);
+    }
+  };
+  app.patch('/api/notifications/read-all', optionalAuthenticate, readAllNotificationsHandler);
+  app.patch('/notifications/read-all', optionalAuthenticate, readAllNotificationsHandler);
 
   // API Route mounting: mount under both /api/<path> and /<path>
   // This guarantees requests reach endpoints whether VITE_API_URL includes /api or not

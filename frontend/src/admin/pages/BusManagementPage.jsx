@@ -22,7 +22,12 @@ import {
   Armchair,
   LayoutGrid,
   Ban,
-  Heart
+  Heart,
+  Loader2,
+  AlertCircle,
+  Clock,
+  Save,
+  Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../services/api';
@@ -114,15 +119,24 @@ const BusManagementPage = () => {
     });
   }, [buses, typeFilter, statusFilter, acFilter]);
 
+  // Submission and error states
+  const [isSubmittingBus, setIsSubmittingBus] = useState(false);
+  const [busSubmitError, setBusSubmitError] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [busEditError, setBusEditError] = useState('');
+  const [isDeletingBus, setIsDeletingBus] = useState(false);
+
   // Form validation
   const validateForm = () => {
     const errors = {};
-    if (!formData.busNumber.trim()) errors.busNumber = 'Bus Number is required';
-    if (!formData.busName.trim()) errors.busName = 'Bus Name is required';
-    if (!formData.capacity || Number(formData.capacity) <= 0) errors.capacity = 'Capacity must be > 0';
-    if (!formData.fare || Number(formData.fare) <= 0) errors.fare = 'Fare must be > 0';
-    if (!formData.origin.trim()) errors.origin = 'Origin city is required';
-    if (!formData.destination.trim()) errors.destination = 'Destination is required';
+    if (!formData.busNumber?.trim()) errors.busNumber = 'Registration / Bus Number is required';
+    if (!formData.busName?.trim()) errors.busName = 'Bus Name / Fleet Label is required';
+    if (!formData.capacity || Number(formData.capacity) <= 0) errors.capacity = 'Capacity must be greater than 0';
+    if (!formData.fare || Number(formData.fare) <= 0) errors.fare = 'Base fare must be greater than 0';
+    if (!formData.origin?.trim()) errors.origin = 'Origin city is required';
+    if (!formData.destination?.trim()) errors.destination = 'Destination city is required';
+    if (!formData.departureTime?.trim()) errors.departureTime = 'Departure time is required (e.g. 20:00)';
+    if (!formData.arrivalTime?.trim()) errors.arrivalTime = 'Arrival time is required (e.g. 06:30)';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -131,27 +145,29 @@ const BusManagementPage = () => {
   const handleOpenAdd = () => {
     setFormData(defaultFormState);
     setFormErrors({});
+    setBusSubmitError('');
     setAddModalOpen(true);
   };
 
   const handleOpenEdit = (bus) => {
     setSelectedBus(bus);
     setFormData({
-      busNumber: bus.busNumber,
-      busName: bus.busName,
+      busNumber: bus.busNumber || '',
+      busName: bus.busName || '',
       operator: 'YatraBus',
-      busType: bus.busType,
-      isAc: bus.isAc,
-      capacity: bus.capacity,
-      fare: bus.fare,
-      origin: bus.origin,
-      destination: bus.destination,
-      departureTime: bus.departureTime,
-      arrivalTime: bus.arrivalTime,
-      status: bus.status,
-      amenities: bus.amenities || []
+      busType: bus.busType || 'AC Sleeper (2+1)',
+      isAc: bus.isAc !== undefined ? bus.isAc : true,
+      capacity: bus.capacity || bus.totalSeats || 36,
+      fare: bus.fare || bus.baseFare || 950,
+      origin: bus.origin || '',
+      destination: bus.destination || '',
+      departureTime: bus.departureTime || '20:00',
+      arrivalTime: bus.arrivalTime || '06:30',
+      status: bus.status || 'Active',
+      amenities: bus.amenities || ['AC', 'WiFi', 'Charging Point', 'Live GPS']
     });
     setFormErrors({});
+    setBusEditError('');
     setEditModalOpen(true);
   };
 
@@ -165,34 +181,106 @@ const BusManagementPage = () => {
     setDeleteConfirmOpen(true);
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      toast.error('Please fix validation errors.');
+      toast.error('Please fix all highlighted errors in the form.');
       return;
     }
 
-    addBus({
-      ...formData,
-      capacity: Number(formData.capacity),
-      fare: Number(formData.fare)
-    });
-    setAddModalOpen(false);
+    setIsSubmittingBus(true);
+    setBusSubmitError('');
+
+    try {
+      const payload = {
+        busNumber: formData.busNumber.trim().toUpperCase(),
+        busName: formData.busName.trim(),
+        operator: 'YatraBus',
+        busType: formData.busType,
+        isAc: Boolean(formData.isAc),
+        capacity: Number(formData.capacity),
+        fare: Number(formData.fare),
+        origin: formData.origin.trim(),
+        destination: formData.destination.trim(),
+        departureTime: formData.departureTime.trim(),
+        arrivalTime: formData.arrivalTime.trim(),
+        status: formData.status || 'Active',
+        amenities: formData.amenities || []
+      };
+
+      const result = await addBus(payload);
+      if (result) {
+        toast.success(`Bus ${payload.busNumber} added to fleet successfully!`);
+        setAddModalOpen(false);
+        setFormData(defaultFormState);
+        setFormErrors({});
+        if (refetch) refetch();
+      } else {
+        setBusSubmitError('Could not save bus. A coach with this registration number may already exist.');
+      }
+    } catch (err) {
+      setBusSubmitError(err?.response?.data?.message || err?.message || 'Failed to register bus.');
+    } finally {
+      setIsSubmittingBus(false);
+    }
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
-      toast.error('Please fix validation errors.');
+      toast.error('Please fix all highlighted errors in the form.');
       return;
     }
 
-    updateBus(selectedBus.id, {
-      ...formData,
-      capacity: Number(formData.capacity),
-      fare: Number(formData.fare)
-    });
-    setEditModalOpen(false);
+    setIsSubmittingEdit(true);
+    setBusEditError('');
+
+    try {
+      const payload = {
+        busNumber: formData.busNumber.trim().toUpperCase(),
+        busName: formData.busName.trim(),
+        operator: 'YatraBus',
+        busType: formData.busType,
+        isAc: Boolean(formData.isAc),
+        capacity: Number(formData.capacity),
+        fare: Number(formData.fare),
+        origin: formData.origin.trim(),
+        destination: formData.destination.trim(),
+        departureTime: formData.departureTime.trim(),
+        arrivalTime: formData.arrivalTime.trim(),
+        status: formData.status || 'Active',
+        amenities: formData.amenities || []
+      };
+
+      const result = await updateBus(selectedBus.id, payload);
+      if (result) {
+        toast.success(`Bus ${payload.busNumber} updated successfully!`);
+        setEditModalOpen(false);
+        setFormErrors({});
+        if (refetch) refetch();
+      } else {
+        setBusEditError('Failed to update bus. Please verify specifications.');
+      }
+    } catch (err) {
+      setBusEditError(err?.response?.data?.message || err?.message || 'Failed to update bus.');
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!busToDelete) return;
+    setIsDeletingBus(true);
+    try {
+      await deleteBus(busToDelete.id);
+      setDeleteConfirmOpen(false);
+      setBusToDelete(null);
+      if (refetch) refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to delete bus');
+    } finally {
+      setIsDeletingBus(false);
+    }
   };
 
   const handleAmenityToggle = (amenity) => {
@@ -451,11 +539,60 @@ const BusManagementPage = () => {
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm transition self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/20 transition self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Bus</span>
         </button>
+      </div>
+
+      {/* Fleet Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <Bus className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Total Fleet</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white">{buses.length} Coaches</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Active in Service</span>
+            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+              {buses.filter((b) => b.status === 'Active').length} Live
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Wrench className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Maintenance</span>
+            <span className="text-xl font-black text-amber-600 dark:text-amber-400">
+              {buses.filter((b) => b.status === 'Maintenance').length} Under Repair
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Total Capacity</span>
+            <span className="text-xl font-black text-purple-600 dark:text-purple-400">
+              {buses.reduce((acc, b) => acc + (Number(b.capacity) || Number(b.totalSeats) || 0), 0)} Seats
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Filter Slot */}
@@ -529,66 +666,79 @@ const BusManagementPage = () => {
       {/* ADD BUS MODAL */}
       <Modal
         isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        onClose={() => !isSubmittingBus && setAddModalOpen(false)}
         title="Register New Bus Coach"
-        subtitle="Add a new luxury or express coach to the national booking system."
+        subtitle="Add a new luxury or express coach to the national YatraBus booking system."
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleAddSubmit} className="space-y-4 text-xs">
+          {busSubmitError && (
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1 font-medium">{busSubmitError}</div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Registration / Bus Number *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Registration / Bus Number <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. DL-01-TC-9988"
+                placeholder="e.g. WB-02-TC-9988"
                 value={formData.busNumber}
-                onChange={(e) => setFormData({ ...formData, busNumber: e.target.value })}
-                className={`w-full px-3 py-2 rounded-xl border font-mono ${
-                  formErrors.busNumber ? 'border-rose-500 bg-rose-50/30' : 'border-slate-200'
+                onChange={(e) => {
+                  setFormData({ ...formData, busNumber: e.target.value.toUpperCase() });
+                  if (formErrors.busNumber) setFormErrors({ ...formErrors, busNumber: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono uppercase bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  formErrors.busNumber ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200 dark:border-slate-700'
                 }`}
               />
               {formErrors.busNumber && (
-                <p className="text-[11px] text-rose-500 mt-1">{formErrors.busNumber}</p>
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.busNumber}</p>
               )}
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Bus Name / Fleet Label *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Bus Name / Fleet Label <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. YatraBus Premium Sleeper"
+                placeholder="e.g. YatraBus Royal Star Sleeper"
                 value={formData.busName}
-                onChange={(e) => setFormData({ ...formData, busName: e.target.value })}
-                className={`w-full px-3 py-2 rounded-xl border ${
-                  formErrors.busName ? 'border-rose-500 bg-rose-50/30' : 'border-slate-200'
+                onChange={(e) => {
+                  setFormData({ ...formData, busName: e.target.value });
+                  if (formErrors.busName) setFormErrors({ ...formErrors, busName: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  formErrors.busName ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200 dark:border-slate-700'
                 }`}
               />
               {formErrors.busName && (
-                <p className="text-[11px] text-rose-500 mt-1">{formErrors.busName}</p>
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.busName}</p>
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
                 Fleet Operator
               </label>
               <input
                 type="text"
                 value="YatraBus"
                 readOnly
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Bus Type Category *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Bus Type Category <span className="text-rose-500">*</span>
               </label>
               <select
                 value={formData.busType}
@@ -599,7 +749,7 @@ const BusManagementPage = () => {
                     isAc: !e.target.value.includes('Non-AC')
                   })
                 }
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
               >
                 {BUS_TYPES_LIST.map((t) => (
                   <option key={t} value={t}>
@@ -610,44 +760,56 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Seat Capacity *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Seat Capacity <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
                 min="10"
                 max="60"
                 value={formData.capacity}
-                onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                className={`w-full px-3 py-2 rounded-xl border ${
-                  formErrors.capacity ? 'border-rose-500' : 'border-slate-200'
+                onChange={(e) => {
+                  setFormData({ ...formData, capacity: e.target.value });
+                  if (formErrors.capacity) setFormErrors({ ...formErrors, capacity: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.capacity ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
                 }`}
               />
+              {formErrors.capacity && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.capacity}</p>
+              )}
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Base Fare (₹) *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Base Fare (₹) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
                 min="100"
                 value={formData.fare}
-                onChange={(e) => setFormData({ ...formData, fare: e.target.value })}
-                className={`w-full px-3 py-2 rounded-xl border font-bold text-primary ${
-                  formErrors.fare ? 'border-rose-500' : 'border-slate-200'
+                onChange={(e) => {
+                  setFormData({ ...formData, fare: e.target.value });
+                  if (formErrors.fare) setFormErrors({ ...formErrors, fare: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900 ${
+                  formErrors.fare ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
                 }`}
               />
+              {formErrors.fare && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.fare}</p>
+              )}
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">Status</label>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Operational Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
               >
                 <option value="Active">Active</option>
                 <option value="Maintenance">Maintenance</option>
@@ -656,49 +818,110 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">Origin City *</label>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Origin City <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="text"
                 value={formData.origin}
-                onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                onChange={(e) => {
+                  setFormData({ ...formData, origin: e.target.value });
+                  if (formErrors.origin) setFormErrors({ ...formErrors, origin: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.origin ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
                 placeholder="e.g. Kolkata"
               />
+              {formErrors.origin && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.origin}</p>
+              )}
             </div>
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Destination City *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Destination City <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.destination}
-                onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                onChange={(e) => {
+                  setFormData({ ...formData, destination: e.target.value });
+                  if (formErrors.destination) setFormErrors({ ...formErrors, destination: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.destination ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
                 placeholder="e.g. Siliguri"
               />
+              {formErrors.destination && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.destination}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Standard Departure Time <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.departureTime}
+                onChange={(e) => {
+                  setFormData({ ...formData, departureTime: e.target.value });
+                  if (formErrors.departureTime) setFormErrors({ ...formErrors, departureTime: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.departureTime ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+                placeholder="e.g. 20:00"
+              />
+              {formErrors.departureTime && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.departureTime}</p>
+              )}
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Standard Arrival Time <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.arrivalTime}
+                onChange={(e) => {
+                  setFormData({ ...formData, arrivalTime: e.target.value });
+                  if (formErrors.arrivalTime) setFormErrors({ ...formErrors, arrivalTime: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.arrivalTime ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+                placeholder="e.g. 06:30"
+              />
+              {formErrors.arrivalTime && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.arrivalTime}</p>
+              )}
             </div>
           </div>
 
           {/* Amenities Multi-Check */}
           <div>
-            <label className="block font-bold text-slate-700 uppercase mb-1.5">
+            <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1.5">
               Onboard Amenities & Equipment
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
               {ALL_AMENITIES.map((amenity) => {
                 const checked = formData.amenities.includes(amenity);
                 return (
                   <label
                     key={amenity}
-                    className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium"
+                    className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-medium hover:text-blue-600 transition select-none"
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handleAmenityToggle(amenity)}
-                      className="rounded text-primary focus:ring-0"
+                      className="rounded text-blue-600 focus:ring-0"
                     />
                     <span>{amenity}</span>
                   </label>
@@ -707,19 +930,32 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          {/* Sticky Form Action Buttons */}
+          <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 p-4 bg-white/95 dark:bg-[#111827]/95 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 z-30 shadow-lg backdrop-blur-md">
             <button
               type="button"
               onClick={() => setAddModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              disabled={isSubmittingBus}
+              className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
+              disabled={isSubmittingBus}
+              className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md shadow-blue-500/20 transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
-              Register Bus to Fleet
+              {isSubmittingBus ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Registering Bus...</span>
+                </>
+              ) : (
+                <>
+                  <Bus className="w-3.5 h-3.5" />
+                  <span>Save Bus / Add to Fleet</span>
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -728,54 +964,77 @@ const BusManagementPage = () => {
       {/* EDIT BUS MODAL */}
       <Modal
         isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
+        onClose={() => !isSubmittingEdit && setEditModalOpen(false)}
         title={`Edit Bus: ${selectedBus?.busNumber}`}
         subtitle="Update coach specifications and operational status."
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
+          {busEditError && (
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="flex-1 font-medium">{busEditError}</div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Registration / Bus Number *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Registration / Bus Number <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.busNumber}
-                onChange={(e) => setFormData({ ...formData, busNumber: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border font-mono border-slate-200"
+                onChange={(e) => {
+                  setFormData({ ...formData, busNumber: e.target.value.toUpperCase() });
+                  if (formErrors.busNumber) setFormErrors({ ...formErrors, busNumber: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono uppercase bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition ${
+                  formErrors.busNumber ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
               />
+              {formErrors.busNumber && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.busNumber}</p>
+              )}
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Bus Name / Fleet Label *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Bus Name / Fleet Label <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.busName}
-                onChange={(e) => setFormData({ ...formData, busName: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                onChange={(e) => {
+                  setFormData({ ...formData, busName: e.target.value });
+                  if (formErrors.busName) setFormErrors({ ...formErrors, busName: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.busName ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
               />
+              {formErrors.busName && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.busName}</p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
                 Fleet Operator
               </label>
               <input
                 type="text"
                 value="YatraBus"
                 readOnly
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Bus Type Category *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Bus Type Category <span className="text-rose-500">*</span>
               </label>
               <select
                 value={formData.busType}
@@ -786,7 +1045,7 @@ const BusManagementPage = () => {
                     isAc: !e.target.value.includes('Non-AC')
                   })
                 }
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
               >
                 {BUS_TYPES_LIST.map((t) => (
                   <option key={t} value={t}>
@@ -797,37 +1056,53 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Seat Capacity *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Seat Capacity <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
                 value={formData.capacity}
-                onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                onChange={(e) => {
+                  setFormData({ ...formData, capacity: e.target.value });
+                  if (formErrors.capacity) setFormErrors({ ...formErrors, capacity: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.capacity ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
               />
+              {formErrors.capacity && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.capacity}</p>
+              )}
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">
-                Base Fare (₹) *
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Base Fare (₹) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
                 value={formData.fare}
-                onChange={(e) => setFormData({ ...formData, fare: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border font-bold text-primary border-slate-200"
+                onChange={(e) => {
+                  setFormData({ ...formData, fare: e.target.value });
+                  if (formErrors.fare) setFormErrors({ ...formErrors, fare: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900 ${
+                  formErrors.fare ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
               />
+              {formErrors.fare && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.fare}</p>
+              )}
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 uppercase mb-1">Status</label>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
               >
                 <option value="Active">Active</option>
                 <option value="Maintenance">Maintenance</option>
@@ -836,23 +1111,109 @@ const BusManagementPage = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Origin City <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.origin}
+                onChange={(e) => {
+                  setFormData({ ...formData, origin: e.target.value });
+                  if (formErrors.origin) setFormErrors({ ...formErrors, origin: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.origin ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+                placeholder="e.g. Kolkata"
+              />
+              {formErrors.origin && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.origin}</p>
+              )}
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Destination City <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.destination}
+                onChange={(e) => {
+                  setFormData({ ...formData, destination: e.target.value });
+                  if (formErrors.destination) setFormErrors({ ...formErrors, destination: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.destination ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+                placeholder="e.g. Siliguri"
+              />
+              {formErrors.destination && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.destination}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Standard Departure Time <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.departureTime}
+                onChange={(e) => {
+                  setFormData({ ...formData, departureTime: e.target.value });
+                  if (formErrors.departureTime) setFormErrors({ ...formErrors, departureTime: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.departureTime ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+                placeholder="e.g. 20:00"
+              />
+              {formErrors.departureTime && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.departureTime}</p>
+              )}
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                Standard Arrival Time <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.arrivalTime}
+                onChange={(e) => {
+                  setFormData({ ...formData, arrivalTime: e.target.value });
+                  if (formErrors.arrivalTime) setFormErrors({ ...formErrors, arrivalTime: null });
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${
+                  formErrors.arrivalTime ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+                placeholder="e.g. 06:30"
+              />
+              {formErrors.arrivalTime && (
+                <p className="text-[11px] text-rose-500 font-semibold mt-1">{formErrors.arrivalTime}</p>
+              )}
+            </div>
+          </div>
+
           <div>
-            <label className="block font-bold text-slate-700 uppercase mb-1.5">
+            <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase mb-1.5">
               Amenities & Equipment
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
               {ALL_AMENITIES.map((amenity) => {
                 const checked = formData.amenities?.includes(amenity);
                 return (
                   <label
                     key={amenity}
-                    className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium"
+                    className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-medium hover:text-blue-600 transition select-none"
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handleAmenityToggle(amenity)}
-                      className="rounded text-primary focus:ring-0"
+                      className="rounded text-blue-600 focus:ring-0"
                     />
                     <span>{amenity}</span>
                   </label>
@@ -861,19 +1222,32 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          {/* Sticky Edit Action Buttons */}
+          <div className="sticky bottom-0 -mx-6 -mb-6 mt-6 p-4 bg-white/95 dark:bg-[#111827]/95 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 z-30 shadow-lg backdrop-blur-md">
             <button
               type="button"
               onClick={() => setEditModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              disabled={isSubmittingEdit}
+              className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
+              disabled={isSubmittingEdit}
+              className="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md shadow-blue-500/20 transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
-              Save Changes
+              {isSubmittingEdit ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving Changes...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Changes</span>
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -1138,13 +1512,9 @@ const BusManagementPage = () => {
       {/* DELETE CONFIRMATION DIALOG */}
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
-        onClose={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          if (busToDelete) {
-            deleteBus(busToDelete.id);
-            setBusToDelete(null);
-          }
-        }}
+        onClose={() => !isDeletingBus && setDeleteConfirmOpen(false)}
+        onConfirm={handleConfirmDelete}
+        loading={isDeletingBus}
         title="Delete Bus from Fleet"
         message={`Are you sure you want to remove bus ${busToDelete?.busNumber} (${busToDelete?.busName})? This will decommission the vehicle from active booking schedules.`}
         confirmText="Yes, Delete Bus"

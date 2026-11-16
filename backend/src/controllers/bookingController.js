@@ -8,6 +8,7 @@ import { SeatReservation } from '../models/SeatReservation.js';
 import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError, UnauthorizedError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
+import { sendBookingConfirmationEmail } from '../services/emailService.js';
 
 export async function createBooking(req, res, next) {
   try {
@@ -185,6 +186,9 @@ export async function createBooking(req, res, next) {
     await Bus.findByIdAndUpdate(busId, {
       $inc: { availableSeatsCount: -seats.length },
     });
+
+    // Asynchronously dispatch confirmation email
+    sendBookingConfirmationEmail({ booking: newBooking }).catch(() => {});
 
     res.status(201).json({
       success: true,

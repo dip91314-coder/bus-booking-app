@@ -1,84 +1,189 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { notificationApi } from '../services/api';
 
 const STORAGE_KEY = 'yatrabus_notifications_v1';
+const READ_SET_KEY = 'yatrabus_read_notifications_v1';
 const NotificationContext = createContext(null);
 
-const sortNewestFirst = (notifications) =>
-  [...notifications].sort(
-    (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+const sortNewestFirst = (items) =>
+  [...items].sort(
+    (left, right) => new Date(right.created_at || right.createdAt).getTime() - new Date(left.created_at || left.createdAt).getTime()
   );
 
-const loadNotifications = () => {
+const getLocalReadIds = () => {
+  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+  try {
+    const raw = window.localStorage.getItem(READ_SET_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveLocalReadIds = (readSet) => {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(READ_SET_KEY, JSON.stringify([...readSet]));
+  } catch {
+    // ignore
+  }
+};
+
+const loadSavedNotifications = () => {
   if (typeof window === 'undefined' || !window.localStorage) return [];
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
-    return sortNewestFirst(parsed.filter((notification) => notification?.id && notification?.title));
+    const readIds = getLocalReadIds();
+    return sortNewestFirst(
+      parsed
+        .filter((n) => n?.id && n?.title)
+        .map((n) => ({
+          ...n,
+          is_read: n.is_read || readIds.has(n.id),
+        }))
+    );
   } catch (error) {
-    console.warn('Could not load notifications from local storage:', error?.message);
+    console.warn('Could not load notifications from storage:', error?.message);
     return [];
   }
 };
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(loadNotifications);
+  const [notifications, setNotifications] = useState(loadSavedNotifications);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // Sync state to localStorage
   useEffect(() => {
     if (typeof window === 'undefined' || !window.localStorage) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-    } catch (error) {
-      console.warn('Could not save notifications to local storage:', error?.message);
+    } catch {
+      // ignore
     }
   }, [notifications]);
 
-  useEffect(() => {
-    const handleStorage = (event) => {
-      if (event.key === STORAGE_KEY) {
-        setNotifications(loadNotifications());
+  // Fetch real notifications from backend API
+  const fetchBackendNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const serverNotifs = await notificationApi.getNotifications();
+      if (Array.isArray(serverNotifs)) {
+        const readIds = getLocalReadIds();
+        const normalized = serverNotifs.map((n) => ({
+          id: String(n.id || n._id),
+          title: n.title,
+          message: n.message,
+          type: n.type || n.category || 'info',
+          category: n.category || 'alert',
+          is_read: Boolean(n.is_read || n.isRead || n.read || readIds.has(String(n.id || n._id))),
+          created_at: n.created_at || n.createdAt || new Date().toISOString(),
+          source: n.source || 'backend',
+        }));
+
+        setNotifications((current) => {
+          // Merge local client notifications with server notifications
+          const serverMap = new Map(normalized.map((item) => [item.id, item]));
+          const localOnly = current.filter((c) => c.source === 'client' && !serverMap.has(c.id));
+          return sortNewestFirst([...serverMap.values(), ...localOnly]).slice(0, 100);
+        });
       }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+      setError(null);
+    } catch (err) {
+      console.warn('Could not fetch notifications from backend API:', err?.message);
+      setError(err?.message || 'Failed to sync notifications');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Initial fetch and interval poll (every 25 seconds)
+  useEffect(() => {
+    fetchBackendNotifications();
+
+    const interval = setInterval(() => {
+      fetchBackendNotifications();
+    }, 25000);
+
+    const handleFocus = () => {
+      fetchBackendNotifications();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchBackendNotifications]);
 
   const addNotification = useCallback((notification) => {
     const created = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       title: notification.title,
       message: notification.message,
-      type: notification.type || 'info',
+      type: notification.type || notification.category || 'info',
+      category: notification.category || 'alert',
       is_read: false,
       created_at: new Date().toISOString(),
+      source: 'client',
     };
     setNotifications((current) => sortNewestFirst([created, ...current]).slice(0, 100));
     return created;
   }, []);
 
-  const markAsRead = useCallback((id) => {
+  const markAsRead = useCallback(async (id) => {
+    const strId = String(id);
+    // Optimistically mark as read in local state
     setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === id ? { ...notification, is_read: true } : notification
-      )
+      current.map((n) => (n.id === strId ? { ...n, is_read: true } : n))
     );
+
+    const readIds = getLocalReadIds();
+    readIds.add(strId);
+    saveLocalReadIds(readIds);
+
+    // Call backend API
+    try {
+      await notificationApi.markAsRead(strId);
+    } catch (err) {
+      console.warn('Could not sync markAsRead to backend:', err?.message);
+    }
   }, []);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, is_read: true }))
-    );
-  }, []);
+  const markAllAsRead = useCallback(async () => {
+    setNotifications((current) => current.map((n) => ({ ...n, is_read: true })));
+
+    const readIds = getLocalReadIds();
+    notifications.forEach((n) => readIds.add(n.id));
+    saveLocalReadIds(readIds);
+
+    try {
+      await notificationApi.markAllAsRead();
+    } catch (err) {
+      console.warn('Could not sync markAllAsRead to backend:', err?.message);
+    }
+  }, [notifications]);
 
   const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.is_read).length,
+    () => notifications.filter((n) => !n.is_read).length,
     [notifications]
   );
 
   const value = useMemo(
-    () => ({ notifications, unreadCount, addNotification, markAsRead, markAllAsRead }),
-    [notifications, unreadCount, addNotification, markAsRead, markAllAsRead]
+    () => ({
+      notifications,
+      unreadCount,
+      isLoading,
+      error,
+      refetch: fetchBackendNotifications,
+      addNotification,
+      markAsRead,
+      markAllAsRead,
+    }),
+    [notifications, unreadCount, isLoading, error, fetchBackendNotifications, addNotification, markAsRead, markAllAsRead]
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
