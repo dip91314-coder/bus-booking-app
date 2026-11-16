@@ -17,36 +17,62 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ticketApi } from '../../services/api';
+import Button from '../common/Button';
+import { useNotifications } from '../../context/NotificationContext';
 
 const PrintableTicket = ({ booking }) => {
+  const { addNotification } = useNotifications();
+  const [isDownloading, setIsDownloading] = React.useState(false);
+
   if (!booking) return null;
 
   const handlePrint = () => {
+    addNotification({
+      title: 'Ticket printed',
+      message: `Print view opened for booking ${booking.pnr || booking.id}.`,
+      type: 'ticket'
+    });
     window.print();
   };
 
   const handleDownload = async () => {
+    setIsDownloading(true);
     try {
       toast.loading('Generating official PDF ticket...', { id: 'pdf-dl' });
-      const ref = booking.pnr || booking.bookingReference || booking._id || booking.id;
+      const ref = booking.bookingReference || booking.pnr || booking._id || booking.id;
       await ticketApi.downloadPdf(ref);
       toast.success('Official PDF ticket downloaded!', { id: 'pdf-dl' });
-    } catch {
-      toast.dismiss('pdf-dl');
-      window.print();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'PDF download failed. You can still print this ticket.', {
+        id: 'pdf-dl'
+      });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (navigator.share) {
-      navigator.share({
-        title: `Bus Ticket PNR ${booking.pnr}`,
-        text: `My YatraBus booking from ${booking.origin} to ${booking.destination} is confirmed! PNR: ${booking.pnr}`,
-        url: window.location.href
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.href);
+      try {
+        await navigator.share({
+          title: `Bus Ticket PNR ${booking.pnr}`,
+          text: `My YatraBus booking from ${booking.from_location || booking.origin} to ${booking.to_location || booking.destination} is confirmed! PNR: ${booking.pnr}`,
+          url: window.location.href
+        });
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          toast.error('Could not share the ticket. Please try again.');
+        }
+      }
+      return;
+    }
+
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard access is unavailable.');
+      await navigator.clipboard.writeText(window.location.href);
       toast.success('Ticket link copied to clipboard!');
+    } catch {
+      toast.error('Could not copy the ticket link. Please copy the page URL manually.');
     }
   };
 
@@ -70,27 +96,27 @@ const PrintableTicket = ({ booking }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
             onClick={handleShare}
-            className="flex items-center gap-1.5 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl transition"
+            variant="secondary"
+            size="sm"
           >
             <Share2 className="w-4 h-4" /> Share
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 text-xs font-bold text-primary bg-blue-50 hover:bg-primary hover:text-white px-4 py-2 rounded-xl border border-blue-200 transition"
-          >
+          </Button>
+          <Button type="button" onClick={handlePrint} size="sm" className="min-h-10">
             <Printer className="w-4 h-4" /> Print Ticket
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleDownload}
-            className="flex items-center gap-1.5 text-xs font-bold text-white bg-accent hover:bg-accent-hover px-4 py-2 rounded-xl shadow-md transition"
+            variant="secondary"
+            size="sm"
+            loading={isDownloading}
+            className="min-h-10"
           >
             <Download className="w-4 h-4" /> Download PDF
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -125,6 +151,9 @@ const PrintableTicket = ({ booking }) => {
             <span className="text-xl sm:text-2xl font-black text-accent tracking-wider font-mono">
               {booking.pnr}
             </span>
+            <span className="mt-1 block text-[10px] text-blue-100">
+              Booking ID: {booking.bookingReference || booking._id || booking.id || booking.pnr}
+            </span>
           </div>
         </div>
 
@@ -138,14 +167,14 @@ const PrintableTicket = ({ booking }) => {
         <div className="p-6 sm:p-8 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
             <div>
-              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-bold">Origin</span>
-              <h4 className="text-xl font-black text-gray-900">{booking.origin}</h4>
+              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-bold">From</span>
+              <h4 className="text-xl font-black text-gray-900">{booking.from_location || booking.fromLocation || booking.origin}</h4>
               <p className="text-xs text-gray-600 font-medium mt-0.5">
                 {booking.departureTime} • {booking.journeyDate}
               </p>
               <p className="text-[11px] text-gray-500 mt-1 flex items-start gap-1">
                 <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                <span>{booking.boardingPoint}</span>
+                <span>{booking.pickup_point || booking.pickupPoint || booking.boardingPoint}</span>
               </p>
             </div>
 
@@ -163,14 +192,14 @@ const PrintableTicket = ({ booking }) => {
             </div>
 
             <div className="text-left md:text-right">
-              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-bold">Destination</span>
-              <h4 className="text-xl font-black text-gray-900">{booking.destination}</h4>
+              <span className="text-[11px] text-gray-400 uppercase tracking-wider font-bold">To</span>
+              <h4 className="text-xl font-black text-gray-900">{booking.to_location || booking.toLocation || booking.destination}</h4>
               <p className="text-xs text-gray-600 font-medium mt-0.5">
                 {booking.arrivalTime} • Next Day
               </p>
               <p className="text-[11px] text-gray-500 mt-1 flex items-start md:justify-end gap-1">
                 <MapPin className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
-                <span>{booking.droppingPoint}</span>
+                <span>{booking.drop_point || booking.dropPoint || booking.droppingPoint}</span>
               </p>
             </div>
           </div>
@@ -178,8 +207,8 @@ const PrintableTicket = ({ booking }) => {
           {/* Bus Service & Seats summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-gray-100 text-xs">
             <div>
-              <span className="text-gray-400 block font-medium">Bus Operator</span>
-              <span className="font-extrabold text-gray-900 text-sm">{booking.operator}</span>
+              <span className="text-gray-400 block font-medium">Bus Name</span>
+              <span className="font-extrabold text-gray-900 text-sm">{booking.busName || booking.operator}</span>
             </div>
             <div>
               <span className="text-gray-400 block font-medium">Bus Class</span>
@@ -194,7 +223,7 @@ const PrintableTicket = ({ booking }) => {
             <div>
               <span className="text-gray-400 block font-medium">Total Fare Paid</span>
               <span className="font-black text-primary text-base font-sans">
-                ₹{booking.totalFare}
+                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(booking.totalFare || 0)}
               </span>
             </div>
           </div>
@@ -247,8 +276,10 @@ const PrintableTicket = ({ booking }) => {
 
             {/* Simulated QR Code */}
             <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 flex flex-col items-center shrink-0">
-              <QrCode className="w-16 h-16 text-gray-800" />
-              <span className="text-[9px] font-mono text-gray-500 mt-1 uppercase">Scan for Gate Pass</span>
+              <QrCode className="w-16 h-16 text-gray-800" aria-hidden="true" />
+              <span className="text-[9px] font-mono text-gray-500 mt-1 uppercase">
+                Ticket ID: {booking.pnr || booking.id}
+              </span>
             </div>
           </div>
         </div>

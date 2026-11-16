@@ -31,6 +31,7 @@ import toast from 'react-hot-toast';
 import JournalSpreadCarousel from '../components/ui/journal-spread-carousel';
 import { travelSpreadsData } from '../data/travelJournals';
 import { resolveUserAvatar, getRandomAvatar } from '../utils/avatar';
+import Button from '../components/common/Button';
 
 const UserDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -223,11 +224,15 @@ const UserDashboard = () => {
   const handleJournalAction = async (action, index) => {
     const current = spreads[index];
     if (action === 'share') {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(window.location.href);
+      if (!navigator.clipboard) {
+        toast.error('Clipboard access is unavailable. Copy the page URL to share this journal.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(window.location.href);
         toast.success(`Link to "${current?.label || 'Travel Journal'}" copied to clipboard!`);
-      } else {
-        toast.success(`Spread shared: ${current?.label}`);
+      } catch {
+        toast.error('Could not copy the journal link. Please copy the page URL manually.');
       }
     } else if (action === 'add') {
       setNewMemoryOpen(true);
@@ -240,8 +245,9 @@ const UserDashboard = () => {
         if (current.id && !String(current.id).startsWith('custom-')) {
           await journalApi.deleteJournalEntry(current.id);
         }
-      } catch (err) {
-        console.warn('Could not delete journal on server:', err?.message);
+      } catch (error) {
+        toast.error(error?.response?.data?.message || 'Could not delete this travel memory.');
+        return;
       }
       setSpreads(spreads.filter((_, i) => i !== index));
       toast.success(`Deleted spread "${current?.label}".`);
@@ -520,11 +526,11 @@ const UserDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
                     <div>
                       <span className="text-gray-400 block font-medium">Route & Schedule</span>
                       <p className="font-extrabold text-gray-900 mt-0.5">
-                        {b.origin} ➔ {b.destination}
+                        {b.from_location || b.origin} ➔ {b.to_location || b.destination}
                       </p>
                       <p className="text-gray-500 mt-0.5">
                         Departure: <strong>{b.departureTime}</strong> ({b.journeyDate})
@@ -532,8 +538,13 @@ const UserDashboard = () => {
                     </div>
 
                     <div>
-                      <span className="text-gray-400 block font-medium">Boarding Point</span>
-                      <p className="font-bold text-gray-900 mt-0.5">{b.boardingPoint}</p>
+                      <span className="text-gray-400 block font-medium">Pickup Point</span>
+                      <p className="font-bold text-gray-900 mt-0.5">{b.pickup_point || b.boardingPoint}</p>
+                    </div>
+
+                    <div>
+                      <span className="text-gray-400 block font-medium">Drop Point</span>
+                      <p className="font-bold text-gray-900 mt-0.5">{b.drop_point || b.droppingPoint}</p>
                     </div>
 
                     <div>
@@ -550,23 +561,24 @@ const UserDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           if (confirm(`Are you sure you want to cancel booking ${b.pnr}?`)) {
                             cancelBooking(b.pnr);
-                            toast.success(`Booking ${b.pnr} has been cancelled.`);
                           }
                         }}
-                        className="text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-xl transition"
+                        aria-label={`Cancel booking ${b.pnr}`}
+                        variant="danger"
+                        size="sm"
                       >
                         Cancel Booking
-                      </button>
+                      </Button>
                       <Link
                         to={`/booking/confirmation/${b.pnr}`}
                         className="text-xs font-bold text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
                       >
-                        <span>View / Print Ticket</span>
+                        <span>Print Ticket</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Link>
                     </div>

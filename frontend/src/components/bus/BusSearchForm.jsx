@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
 import { POPULAR_CITIES } from '../../data/mockData';
-import { ArrowLeftRight, Calendar, Search, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, Calendar, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import Button from '../common/Button';
 
 const BusSearchForm = ({ compact = false, onSearchComplete }) => {
   const navigate = useNavigate();
@@ -358,23 +359,15 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
 
           {/* Search CTA Button (12px radius, purple gradient, lifts 2px with glow on hover, active scale 0.98, loading spinner) */}
           <div className="md:col-span-2 pt-5 md:pt-0">
-            <button
+            <Button
               type="submit"
-              disabled={isSearching}
-              className="w-full min-h-[48px] px-5 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-[#5B21B6] via-[#6D28D9] to-[#7C3AED] hover:from-[#4C1D95] hover:to-[#6D28D9] rounded-[12px] shadow-soft hover:-translate-y-0.5 hover:shadow-glow-purple active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 select-none disabled:opacity-75 disabled:cursor-wait"
+              loading={isSearching}
+              size="lg"
+              className="w-full"
             >
-              {isSearching ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin text-white" />
-                  <span>Searching...</span>
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  <span>Search Buses</span>
-                </>
-              )}
-            </button>
+              <Search className="w-4 h-4" />
+              {isSearching ? 'Searching...' : 'Search Buses'}
+            </Button>
           </div>
         </div>
       </form>

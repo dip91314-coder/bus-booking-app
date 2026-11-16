@@ -188,6 +188,19 @@ const CSS =
   ".jsc-btn svg{width:44%;height:44%}" +
   ".jsc-chip:focus-visible,.jsc-btn:focus-visible{outline:2px solid #fff;outline-offset:3px}" +
   ".jsc-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}" +
+  ".jsc-search{position:absolute;top:clamp(54px,6cqi,80px);right:clamp(14px,1.8cqi,28px);z-index:6;display:flex;gap:8px;padding:8px;border-radius:12px;background:#262a40;box-shadow:0 6px 20px rgba(0,0,0,.3)}" +
+  ".jsc-search input{width:min(52vw,220px);padding:8px 10px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:#fff;color:#20243a;font:inherit;font-size:12px}" +
+  ".jsc-search button,.jsc-menu button{border:0;border-radius:8px;padding:8px 10px;background:#fff;color:#20243a;font:inherit;font-size:12px;font-weight:700;cursor:pointer}" +
+  ".jsc-search button:focus-visible,.jsc-menu button:focus-visible,.jsc-grid-card:focus-visible{outline:2px solid #fff;outline-offset:2px}" +
+  ".jsc-menu{position:absolute;top:clamp(54px,6cqi,80px);right:clamp(14px,1.8cqi,28px);z-index:7;display:grid;gap:6px;min-width:160px;padding:8px;border-radius:12px;background:#262a40;box-shadow:0 6px 20px rgba(0,0,0,.3)}" +
+  ".jsc-menu button{text-align:left}" +
+  ".jsc-menu button:disabled{opacity:.5;cursor:not-allowed}" +
+  ".jsc-grid{position:absolute;inset:0;z-index:4;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));align-content:start;gap:12px;overflow:auto;padding:16px;background:rgba(38,42,64,.96)}" +
+  ".jsc-grid-card{min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:0;background:#343951;color:#fff;text-align:left;cursor:pointer}" +
+  ".jsc-grid-image{height:92px;overflow:hidden;background:#efebe3}" +
+  ".jsc-grid-image img{width:100%;height:100%;object-fit:cover}" +
+  ".jsc-grid-label{display:block;padding:9px;font-size:12px;font-weight:700}" +
+  ".jsc-grid-empty{grid-column:1/-1;align-self:center;text-align:center;color:#fff;font-size:13px}" +
   "@media (prefers-reduced-motion:reduce){.jsc-btn,.jsc-chip{transition:none}}"
 
 const ICON = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", viewBox: "0 0 24 24", "aria-hidden": true } as const
@@ -311,6 +324,10 @@ export default function JournalSpreadCarousel({
   const [index, setIndex] = React.useState(start)
   const [reduced, setReduced] = React.useState(false)
   const [dragging, setDragging] = React.useState(false)
+  const [viewMode, setViewMode] = React.useState<"spread" | "grid">("spread")
+  const [searchOpen, setSearchOpen] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [menuOpen, setMenuOpen] = React.useState(false)
   const rootRef = React.useRef(null as HTMLDivElement | null)
   const stageRef = React.useRef(null as HTMLDivElement | null)
   const items = React.useRef([] as (HTMLDivElement | null)[])
@@ -525,6 +542,27 @@ export default function JournalSpreadCarousel({
 
   const current = spreads[index]
   const pagesLabel = meta ?? n * 2 + " Pages"
+  const normalizedSearch = searchQuery.trim().toLowerCase()
+  const visibleSpreads = spreads
+    .map((spread, spreadIndex) => ({ spread, spreadIndex }))
+    .filter(({ spread }) =>
+      !normalizedSearch ||
+      [spread.label, spread.alt, ...((spread.notes || []).flatMap((note) => [note.title, note.body])),
+        ...((spread.prints || []).map((print) => print.caption))]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(normalizedSearch)),
+    )
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!normalizedSearch) return
+    const match = visibleSpreads[0]
+    if (!match) return
+    stop()
+    go(match.spreadIndex)
+    setViewMode("spread")
+    setSearchOpen(false)
+  }
 
   return (
     <div
@@ -540,10 +578,22 @@ export default function JournalSpreadCarousel({
       <style>{CSS}</style>
       <div className="jsc-top">
         <div className="jsc-group">
-          <button type="button" className="jsc-chip" aria-pressed="true" aria-label="Spread view">
+          <button
+            type="button"
+            className="jsc-chip"
+            aria-pressed={viewMode === "spread"}
+            aria-label="Spread view"
+            onClick={() => setViewMode("spread")}
+          >
             <Icon name="book" />
           </button>
-          <button type="button" className="jsc-chip" aria-pressed="false" aria-label="Grid view">
+          <button
+            type="button"
+            className="jsc-chip"
+            aria-pressed={viewMode === "grid"}
+            aria-label="Grid view"
+            onClick={() => setViewMode("grid")}
+          >
             <Icon name="grid" />
           </button>
         </div>
@@ -555,59 +605,132 @@ export default function JournalSpreadCarousel({
           </div>
         </div>
         <div className="jsc-group">
-          <button type="button" className="jsc-chip" aria-label="Search">
+          <button
+            type="button"
+            className="jsc-chip"
+            aria-label="Search"
+            aria-expanded={searchOpen}
+            onClick={() => setSearchOpen((open) => !open)}
+          >
             <Icon name="search" />
           </button>
-          <button type="button" className="jsc-chip" aria-label="Menu">
+          <button
+            type="button"
+            className="jsc-chip"
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
             <Icon name="menu" />
           </button>
         </div>
       </div>
+      {searchOpen && (
+        <form className="jsc-search" onSubmit={handleSearch}>
+          <input
+            aria-label="Search journal spreads"
+            placeholder="Search journal..."
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value)
+              setViewMode("grid")
+            }}
+          />
+          <button type="submit">Find</button>
+        </form>
+      )}
+      {menuOpen && (
+        <div className="jsc-menu" role="menu" aria-label="Journal actions">
+          {ACTIONS.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              role="menuitem"
+              disabled={!onAction}
+              onClick={() => {
+                onAction?.(action.id, index)
+                setMenuOpen(false)
+              }}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div
         ref={stageRef}
         className="jsc-stage"
         data-drag={dragging ? "" : undefined}
+        data-view={viewMode}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <div className="jsc-floor" aria-hidden="true" />
-        <div className="jsc-view">
-          <div className="jsc-scene">
-            {spreads.map((s, i) => (
-              <div
-                key={s.id ?? i}
-                ref={(el) => {
-                  items.current[i] = el
-                }}
-                className="jsc-item"
-                data-i={i}
-                role="group"
-                aria-roledescription="spread"
-                aria-label={(s.label ?? "Spread " + (i + 1)) + ", " + (i + 1) + " of " + n}
-                aria-hidden={i !== index}
-              >
-                {s.alt ? <span className="jsc-sr">{s.alt}</span> : null}
-                {(["l", "r"] as const).map((side, k) => (
-                  <div
-                    key={side}
-                    ref={(el) => {
-                      pages.current[i * 2 + k] = el
-                    }}
-                    className="jsc-page"
-                    data-side={side}
-                  >
-                    <Sheet spread={s} />
-                    <div className="jsc-gutter" />
-                    <div className="jsc-shade" />
-                  </div>
-                ))}
-              </div>
-            ))}
+        <>
+          <div className="jsc-floor" aria-hidden="true" />
+          <div className="jsc-view">
+            <div className="jsc-scene">
+              {spreads.map((s, i) => (
+                <div
+                  key={s.id ?? i}
+                  ref={(el) => {
+                    items.current[i] = el
+                  }}
+                  className="jsc-item"
+                  data-i={i}
+                  role="group"
+                  aria-roledescription="spread"
+                  aria-label={(s.label ?? "Spread " + (i + 1)) + ", " + (i + 1) + " of " + n}
+                  aria-hidden={i !== index}
+                >
+                  {s.alt ? <span className="jsc-sr">{s.alt}</span> : null}
+                  {(["l", "r"] as const).map((side, k) => (
+                    <div
+                      key={side}
+                      ref={(el) => {
+                        pages.current[i * 2 + k] = el
+                      }}
+                      className="jsc-page"
+                      data-side={side}
+                    >
+                      <Sheet spread={s} />
+                      <div className="jsc-gutter" />
+                      <div className="jsc-shade" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+          {viewMode === "grid" && (
+            <div className="jsc-grid" role="list" aria-label="Journal spreads">
+              {visibleSpreads.length > 0 ? visibleSpreads.map(({ spread, spreadIndex }) => (
+                <button
+                  key={spread.id ?? spreadIndex}
+                  type="button"
+                  className="jsc-grid-card"
+                  aria-label={`Open spread ${spreadIndex + 1}: ${spread.label || "Untitled spread"}`}
+                  onClick={() => {
+                    stop()
+                    go(spreadIndex)
+                    setViewMode("spread")
+                  }}
+                >
+                  <span className="jsc-grid-image" style={{ backgroundColor: spread.paper || "#efebe3" }}>
+                    {spread.image && <img src={spread.image} alt="" />}
+                  </span>
+                  <span className="jsc-grid-label">
+                    {spread.label || `Spread ${spreadIndex + 1}`}
+                  </span>
+                </button>
+              )) : (
+                <p className="jsc-grid-empty">No journal spreads match your search.</p>
+              )}
+            </div>
+          )}
+        </>
       </div>
 
       <div className="jsc-bar">

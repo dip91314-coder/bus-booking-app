@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../services/api';
+import Button from '../../components/common/Button';
 
 const PassengerManagementPage = () => {
   const { passengers, updatePassenger, togglePassengerStatus, bookings, isLoading, error, refetch } = useAdmin();
@@ -37,6 +38,7 @@ const PassengerManagementPage = () => {
   const [walletAmount, setWalletAmount] = useState(100);
   const [walletReason, setWalletReason] = useState('Promotional / Goodwill credit');
   const [walletLoading, setWalletLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
 
   // Edit Form
   const [editFormData, setEditFormData] = useState({
@@ -70,15 +72,20 @@ const PassengerManagementPage = () => {
     setStatusConfirmOpen(true);
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editFormData.name.trim() || !editFormData.email.trim()) {
       toast.error('Name and Email are required.');
       return;
     }
 
-    updatePassenger(selectedPassenger.id, editFormData);
-    setEditModalOpen(false);
+    setEditLoading(true);
+    try {
+      const updatedPassenger = await updatePassenger(selectedPassenger.id, editFormData);
+      if (updatedPassenger) setEditModalOpen(false);
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const handleOpenWallet = (passenger) => {
@@ -217,54 +224,66 @@ const PassengerManagementPage = () => {
       sortable: false,
       cellClassName: 'text-right',
       render: (row) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
+        <div className="flex items-center justify-end gap-1">
+          <Button
             type="button"
             onClick={() => setSelectedPassenger(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-slate-100 transition"
+            variant="text"
+            size="icon"
+            className="text-slate-400 hover:text-blue-600"
             title="View Passenger Profile & Booking History"
+            aria-label={`View ${row.name}`}
           >
             <Eye className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => handleOpenWallet(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 transition"
+            variant="text"
+            size="icon"
+            className="text-slate-400 hover:text-emerald-600"
             title="Adjust Wallet Balance"
+            aria-label={`Adjust wallet for ${row.name}`}
           >
             <Wallet className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => handleOpenEdit(row)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition"
+            variant="text"
+            size="icon"
+            className="text-slate-400 hover:text-blue-600"
             title="Edit Passenger Info"
+            aria-label={`Edit ${row.name}`}
           >
             <Edit className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => handleOpenToggleStatus(row)}
-            className={`p-1.5 rounded-lg transition ${
+            variant="text"
+            size="icon"
+            className={`text-slate-400 ${
               row.status === 'Active'
                 ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
                 : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
             }`}
             title={row.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
+            aria-label={`${row.status === 'Active' ? 'Suspend' : 'Activate'} ${row.name}`}
           >
             {row.status === 'Active' ? (
               <UserX className="w-4 h-4" />
             ) : (
               <UserCheck className="w-4 h-4" />
             )}
-          </button>
+          </Button>
         </div>
       )
     }
   ];
 
   return (
-    <div className="space-y-6 animate__animated animate__fadeIn">
+    <div className="space-y-4 animate__animated animate__fadeIn">
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -278,12 +297,12 @@ const PassengerManagementPage = () => {
       </div>
 
       {/* Filter Slot */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3 text-xs">
+      <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm flex flex-wrap items-center gap-2 text-xs">
         <span className="font-bold text-slate-600">Filter Status:</span>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700"
+          className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-700"
         >
           <option value="ALL">All Passenger Accounts</option>
           <option value="Active">Active Accounts</option>
@@ -291,13 +310,15 @@ const PassengerManagementPage = () => {
         </select>
 
         {statusFilter !== 'ALL' && (
-          <button
+          <Button
             type="button"
             onClick={() => setStatusFilter('ALL')}
-            className="text-xs font-bold text-rose-600 hover:underline ml-auto"
+            variant="text"
+            size="sm"
+            className="ml-auto text-rose-600 hover:bg-rose-50"
           >
             Clear Filter
-          </button>
+          </Button>
         )}
       </div>
 
@@ -311,6 +332,9 @@ const PassengerManagementPage = () => {
         searchPlaceholder="Search passenger name, email, phone, city..."
         searchKeys={['name', 'email', 'phone', 'city', 'id']}
         exportFileName="passenger_directory"
+        compact
+        defaultPageSize={20}
+        pageSizeOptions={[10, 20, 50]}
       />
 
       {/* VIEW PASSENGER PROFILE MODAL */}
@@ -322,9 +346,9 @@ const PassengerManagementPage = () => {
           subtitle={`Registered since ${selectedPassenger.joinedDate}`}
           maxWidth="max-w-2xl"
         >
-          <div className="space-y-6 text-xs">
+          <div className="space-y-4 text-xs">
             {/* Top Info Banner */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white text-lg font-black flex items-center justify-center shadow-md">
                   {selectedPassenger.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
@@ -352,8 +376,8 @@ const PassengerManagementPage = () => {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1">
                 <span className="text-slate-400 uppercase text-[10px] font-bold block">
                   Total Bookings
                 </span>
@@ -362,7 +386,7 @@ const PassengerManagementPage = () => {
                 </span>
               </div>
 
-              <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+              <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-1">
                 <span className="text-slate-400 uppercase text-[10px] font-bold block">
                   Lifetime Value
                 </span>
@@ -439,13 +463,13 @@ const PassengerManagementPage = () => {
             </div>
 
             <div className="flex justify-end pt-3 border-t border-slate-100">
-              <button
+              <Button
                 type="button"
                 onClick={() => setSelectedPassenger(null)}
-                className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl"
+                size="sm"
               >
                 Done
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -501,19 +525,22 @@ const PassengerManagementPage = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-            <button
+            <Button
               type="button"
               onClick={() => setEditModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              variant="secondary"
+              size="sm"
+              disabled={editLoading}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
+              size="sm"
+              loading={editLoading}
             >
-              Save Profile
-            </button>
+              {editLoading ? 'Saving...' : 'Save Profile'}
+            </Button>
           </div>
         </form>
       </Modal>
@@ -562,21 +589,24 @@ const PassengerManagementPage = () => {
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-            <button
+            <Button
               type="button"
               onClick={() => setWalletModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              variant="secondary"
+              size="sm"
               disabled={walletLoading}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={walletLoading}
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition"
+              variant="primary"
+              size="sm"
+              loading={walletLoading}
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
               {walletLoading ? 'Processing...' : 'Apply Wallet Adjustment'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -584,11 +614,13 @@ const PassengerManagementPage = () => {
       {/* TOGGLE STATUS CONFIRM */}
       <ConfirmDialog
         isOpen={statusConfirmOpen}
-        onClose={() => setStatusConfirmOpen(false)}
+        onClose={() => {
+          setStatusConfirmOpen(false);
+          setPassengerToToggle(null);
+        }}
         onConfirm={() => {
           if (passengerToToggle) {
-            togglePassengerStatus(passengerToToggle.id);
-            setPassengerToToggle(null);
+            return togglePassengerStatus(passengerToToggle.id);
           }
         }}
         title={`${passengerToToggle?.status === 'Active' ? 'Suspend' : 'Activate'} Passenger Account`}

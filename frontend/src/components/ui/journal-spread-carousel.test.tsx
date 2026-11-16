@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import JournalSpreadCarousel, {
   clamp,
   spreadAspect,
@@ -58,6 +58,11 @@ describe('JournalSpreadCarousel Math & Helper Functions', () => {
 });
 
 describe('JournalSpreadCarousel Component Render', () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
   const dummySpreads: JournalSpread[] = [
     {
       id: 'test-1',
@@ -97,5 +102,36 @@ describe('JournalSpreadCarousel Component Render', () => {
     expect(screen.getByText('My Road Trip')).toBeDefined();
     expect(screen.getByText('1 double-page spread')).toBeDefined();
     expect(screen.getByText(/Himalayan Journey/)).toBeDefined();
+  });
+
+  it('supports grid selection, journal search, and menu actions', () => {
+    vi.stubGlobal('requestAnimationFrame', () => 1);
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const onAction = vi.fn();
+    const onIndexChange = vi.fn();
+    const secondSpread = { ...dummySpreads[0], id: 'test-2', label: 'Desert Journey' };
+
+    render(
+      <JournalSpreadCarousel
+        spreads={[...dummySpreads, secondSpread]}
+        onAction={onAction}
+        onIndexChange={onIndexChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Grid view' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open spread 2: Desert Journey' }));
+    expect(onIndexChange).toHaveBeenCalledWith(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search journal spreads' }), {
+      target: { value: 'Himalayan' }
+    });
+    expect(screen.getByRole('button', { name: 'Open spread 1: Himalayan Journey' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Open spread 2: Desert Journey' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share spread' }));
+    expect(onAction).toHaveBeenCalledWith('share', 1);
   });
 });

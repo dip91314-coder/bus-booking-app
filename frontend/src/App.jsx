@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { BookingProvider } from './context/BookingContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { AdminProvider } from './admin/context/AdminContext';
 import MainLayout from './layouts/MainLayout';
 import { ProtectedRoute, AdminRoute } from './components/common/RouteGuards';
@@ -54,75 +55,77 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <BookingProvider>
-            <React.Suspense fallback={<AppLoadingScreen message="Connecting India's Journeys..." />}>
-              <Routes>
-                <Route path="/" element={<MainLayout />}>
-                  <Route index element={<Home />} />
-                  <Route path="buses" element={<SearchResults />} />
-                  <Route path="search" element={<SearchResults />} />
-                  <Route path="bus/:id/seats" element={<SeatSelection />} />
-                  <Route path="booking/seats/:id" element={<SeatSelection />} />
-                  <Route path="booking/passengers" element={<ProtectedRoute><PassengerDetails /></ProtectedRoute>} />
-                  <Route path="booking/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
-                  <Route path="booking/confirmation/:id" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
-                  <Route path="ticket/:id" element={<Confirmation />} />
+          <NotificationProvider>
+            <BookingProvider>
+              <React.Suspense fallback={<AppLoadingScreen message="Connecting India's Journeys..." />}>
+                <Routes>
+                  <Route path="/" element={<MainLayout />}>
+                    <Route index element={<Home />} />
+                    <Route path="buses" element={<SearchResults />} />
+                    <Route path="search" element={<SearchResults />} />
+                    <Route path="bus/:id/seats" element={<SeatSelection />} />
+                    <Route path="booking/seats/:id" element={<SeatSelection />} />
+                    <Route path="booking/passengers" element={<ProtectedRoute><PassengerDetails /></ProtectedRoute>} />
+                    <Route path="booking/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+                    <Route path="booking/confirmation/:id" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
+                    <Route path="ticket/:id" element={<Confirmation />} />
 
-                  <Route path="login" element={<Login />} />
-                  <Route path="register" element={<Register />} />
-                  <Route path="forgot-password" element={<ForgotPassword />} />
+                    <Route path="login" element={<Login />} />
+                    <Route path="register" element={<Register />} />
+                    <Route path="forgot-password" element={<ForgotPassword />} />
 
-                  <Route path="dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-                  <Route path="my-bookings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-                  <Route path="profile" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                    <Route path="dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                    <Route path="my-bookings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+                    <Route path="profile" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
 
-                  <Route path="about" element={<About />} />
-                  <Route path="contact" element={<Contact />} />
-                  <Route path="destinations" element={<Destinations />} />
-                  <Route path="short-trips" element={<ShortTrips />} />
-                  <Route path="routes" element={<PopularTrips />} />
-                  <Route path="popular-trips" element={<PopularTrips />} />
-                  <Route path="help" element={<Help />} />
-                  <Route path="privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="terms-and-conditions" element={<TermsConditions />} />
-                </Route>
+                    <Route path="about" element={<About />} />
+                    <Route path="contact" element={<Contact />} />
+                    <Route path="destinations" element={<Destinations />} />
+                    <Route path="short-trips" element={<ShortTrips />} />
+                    <Route path="routes" element={<PopularTrips />} />
+                    <Route path="popular-trips" element={<PopularTrips />} />
+                    <Route path="help" element={<Help />} />
+                    <Route path="privacy-policy" element={<PrivacyPolicy />} />
+                    <Route path="terms-and-conditions" element={<TermsConditions />} />
+                  </Route>
 
-                <Route
-                  path="/admin"
-                  element={
-                    <AdminRoute>
-                      <AdminProvider>
-                        <AdminLayout />
-                      </AdminProvider>
-                    </AdminRoute>
-                  }
-                >
-                  <Route index element={<DashboardPage />} />
-                  <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="buses" element={<BusManagementPage />} />
-                  <Route path="routes" element={<RouteManagementPage />} />
-                  <Route path="schedules" element={<ScheduleManagementPage />} />
-                  <Route path="pricing" element={<PricingManagementPage />} />
-                  <Route path="destinations" element={<DestinationManagementPage />} />
-                  <Route path="packages" element={<PackageManagementPage />} />
-                  <Route path="bookings" element={<BookingManagementPage />} />
-                  <Route path="passengers" element={<PassengerManagementPage />} />
-                  <Route path="drivers" element={<DriverManagementPage />} />
-                  <Route path="staff" element={<StaffManagementPage />} />
-                  <Route path="payments" element={<PaymentManagementPage />} />
-                  <Route path="offers" element={<OfferManagementPage />} />
-                  <Route path="reviews" element={<ReviewManagementPage />} />
-                  <Route path="reports" element={<ReportAnalyticsPage />} />
-                  <Route path="notifications" element={<NotificationManagementPage />} />
-                  <Route path="audit-logs" element={<AuditLogPage />} />
-                  <Route path="audit-log" element={<AuditLogPage />} />
-                  <Route path="settings" element={<AdminSettingsPage />} />
-                </Route>
+                  <Route
+                    path="/admin"
+                    element={
+                      <AdminRoute>
+                        <AdminProvider>
+                          <AdminLayout />
+                        </AdminProvider>
+                      </AdminRoute>
+                    }
+                  >
+                    <Route index element={<DashboardPage />} />
+                    <Route path="dashboard" element={<DashboardPage />} />
+                    <Route path="buses" element={<BusManagementPage />} />
+                    <Route path="routes" element={<RouteManagementPage />} />
+                    <Route path="schedules" element={<ScheduleManagementPage />} />
+                    <Route path="pricing" element={<PricingManagementPage />} />
+                    <Route path="destinations" element={<DestinationManagementPage />} />
+                    <Route path="packages" element={<PackageManagementPage />} />
+                    <Route path="bookings" element={<BookingManagementPage />} />
+                    <Route path="passengers" element={<PassengerManagementPage />} />
+                    <Route path="drivers" element={<DriverManagementPage />} />
+                    <Route path="staff" element={<StaffManagementPage />} />
+                    <Route path="payments" element={<PaymentManagementPage />} />
+                    <Route path="offers" element={<OfferManagementPage />} />
+                    <Route path="reviews" element={<ReviewManagementPage />} />
+                    <Route path="reports" element={<ReportAnalyticsPage />} />
+                    <Route path="notifications" element={<NotificationManagementPage />} />
+                    <Route path="audit-logs" element={<AuditLogPage />} />
+                    <Route path="audit-log" element={<AuditLogPage />} />
+                    <Route path="settings" element={<AdminSettingsPage />} />
+                  </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </React.Suspense>
-          </BookingProvider>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </React.Suspense>
+            </BookingProvider>
+          </NotificationProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

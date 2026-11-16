@@ -23,11 +23,22 @@ import {
   Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNotifications } from '../context/NotificationContext';
+import Button from '../components/common/Button';
 
 const Payment = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { selectedBus, selectedSeats, passengers, confirmBooking, searchParams } = useBooking();
+  const {
+    selectedBus,
+    selectedSeats,
+    passengers,
+    confirmBooking,
+    searchParams,
+    selectedBoardingPoint,
+    selectedDroppingPoint
+  } = useBooking();
+  const { addNotification } = useNotifications();
 
   const [paymentMethod, setPaymentMethod] = useState('upi'); // upi, card, netbanking, wallet
   const [upiId, setUpiId] = useState('rahul@oksbi');
@@ -156,6 +167,14 @@ const Payment = () => {
         try {
           const bookingPayload = {
             tripId,
+            from_location: selectedBus?.origin || searchParams.origin,
+            to_location: selectedBus?.destination || searchParams.destination,
+            pickup_point: selectedBoardingPoint?.name || '',
+            drop_point: selectedDroppingPoint?.name || '',
+            latitude: selectedBoardingPoint?.latitude ?? undefined,
+            longitude: selectedBoardingPoint?.longitude ?? undefined,
+            boardingPoint: selectedBoardingPoint?.name || '',
+            droppingPoint: selectedDroppingPoint?.name || '',
             seats: seatNumbers,
             passengers:
               passengers.length > 0
@@ -209,10 +228,16 @@ const Payment = () => {
       const confirmed = confirmBooking({
         paymentMethod: resolvedMethod,
         contactEmail: user?.email || '',
-        contactPhone: user?.phone || ''
+        contactPhone: user?.phone || '',
+        bookingReference: serverBooking?.pnr
       });
 
       const finalPnr = serverBooking?.pnr || confirmed?.pnr || `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      addNotification({
+        title: 'Payment received',
+        message: `Payment of ₹${totalAmount} for booking ${finalPnr} was received.`,
+        type: 'payment'
+      });
 
       setTimeout(() => {
         setIsProcessing(false);
@@ -624,14 +649,14 @@ const Payment = () => {
                   <span className="text-2xl font-black text-primary font-sans">₹{totalAmount}</span>
                 </div>
 
-                <button
+                <Button
                   type="submit"
-                  disabled={isProcessing}
-                  className="bg-accent hover:bg-accent-hover active:scale-[0.99] text-white font-extrabold text-sm py-3.5 px-8 rounded-xl shadow-lg shadow-orange-500/25 transition flex items-center justify-center gap-2"
+                  loading={isProcessing}
+                  size="lg"
                 >
                   <Lock className="w-4 h-4" />
-                  <span>Confirm & Pay ₹{totalAmount}</span>
-                </button>
+                  <span>{isProcessing ? 'Processing payment...' : `Confirm & Pay ₹${totalAmount}`}</span>
+                </Button>
               </div>
             </form>
           </div>

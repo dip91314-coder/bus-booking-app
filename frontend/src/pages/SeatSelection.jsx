@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   Calendar,
   Printer,
-  Loader2
+  Loader2,
+  LocateFixed
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -36,6 +37,7 @@ const SeatSelection = () => {
   } = useBooking();
 
   const [isLoadingSeats, setIsLoadingSeats] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Find bus if not currently set or if navigated directly
   const bus = selectedBus || buses.find((b) => b.id === id || b.tripId === id || b._id === id) || buses[0];
@@ -157,6 +159,41 @@ const SeatSelection = () => {
     navigate('/booking/passengers');
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Location is not supported by this browser.');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const latitude = Number(coords.latitude.toFixed(6));
+        const longitude = Number(coords.longitude.toFixed(6));
+        setSelectedBoardingPoint({
+          id: 'current-location',
+          name: `Current location (${latitude}, ${longitude})`,
+          landmark: 'Browser location',
+          time: bus.departureTime,
+          latitude,
+          longitude
+        });
+        setIsLocating(false);
+        toast.success('Your current location is set as the pickup point.');
+      },
+      (error) => {
+        setIsLocating(false);
+        const message = error.code === 1
+          ? 'Location permission was denied. Allow location access in your browser settings and try again.'
+          : error.code === 2
+          ? 'Your current location could not be determined.'
+          : 'Location request timed out. Please try again.';
+        toast.error(message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 font-sans text-slate-800 dark:text-slate-100 transition-colors">
       {/* DevIntelle inspired top control header bar */}
@@ -268,12 +305,28 @@ const SeatSelection = () => {
               <SeatLayout bus={bus} />
             </div>
 
-            {/* Boarding Point Selection */}
+            {/* Pickup Point Selection */}
             <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-100">
-              <h3 className="text-xs font-black text-[#3B0764] uppercase tracking-wider mb-3 flex items-center gap-2">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xs font-black text-[#3B0764] uppercase tracking-wider flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#7E22CE]" />
-                Select Boarding Point ({bus.origin})
-              </h3>
+                  Select Pickup Point ({bus.origin})
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={isLocating}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-purple-200 px-3 py-1.5 text-xs font-semibold text-[#5B21B6] transition hover:bg-purple-50 focus-visible:ring-2 focus-visible:ring-purple-500 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+                  {isLocating ? 'Finding location...' : 'Use my current location'}
+                </button>
+              </div>
+              {selectedBoardingPoint?.id === 'current-location' && (
+                <p className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                  Pickup set to your current location: {selectedBoardingPoint.name}
+                </p>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {bus.boardingPoints?.map((bp) => {
                   const isSelected = selectedBoardingPoint?.id === bp.id;
@@ -281,6 +334,15 @@ const SeatSelection = () => {
                     <div
                       key={bp.id}
                       onClick={() => setSelectedBoardingPoint(bp)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setSelectedBoardingPoint(bp);
+                        }
+                      }}
+                      aria-pressed={isSelected}
                       className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
                         isSelected
                           ? 'border-[#7E22CE] bg-purple-50 ring-1 ring-[#7E22CE]'
@@ -307,11 +369,11 @@ const SeatSelection = () => {
               </div>
             </div>
 
-            {/* Dropping Point Selection */}
+            {/* Drop Point Selection */}
             <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-100">
               <h3 className="text-xs font-black text-[#3B0764] uppercase tracking-wider mb-3 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-amber-500" />
-                Select Dropping Point ({bus.destination})
+                Select Drop Point ({bus.destination})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {bus.droppingPoints?.map((dp) => {
@@ -320,6 +382,15 @@ const SeatSelection = () => {
                     <div
                       key={dp.id}
                       onClick={() => setSelectedDroppingPoint(dp)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setSelectedDroppingPoint(dp);
+                        }
+                      }}
+                      aria-pressed={isSelected}
                       className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
                         isSelected
                           ? 'border-[#7E22CE] bg-purple-50 ring-1 ring-[#7E22CE]'
