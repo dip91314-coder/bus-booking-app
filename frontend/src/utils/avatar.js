@@ -16,6 +16,23 @@ export const DIVERSE_AVATARS = [
 export const LEGACY_DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80';
 
+export function getUserAvatarUrl(fullName, options = {}) {
+  const params = new URLSearchParams({
+    name: fullName || 'User',
+    background: options.background || 'random',
+    color: options.color || 'fff',
+    size: options.size || '128',
+    rounded: String(options.rounded ?? true),
+    format: options.format || 'svg',
+  });
+
+  if (params.get('background') === 'random') {
+    params.delete('color');
+  }
+
+  return `https://ui-avatars.com/api/?${params.toString()}`;
+}
+
 export function getRandomAvatar(seed = '') {
   if (!seed) {
     return DIVERSE_AVATARS[Math.floor(Math.random() * DIVERSE_AVATARS.length)];
