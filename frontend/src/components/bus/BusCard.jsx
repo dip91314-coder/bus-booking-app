@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
+import { getAvailableSeatCount } from '../../utils/yatraFleet';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Bus,
   Clock,
@@ -20,6 +22,11 @@ const BusCard = ({ bus }) => {
   const navigate = useNavigate();
   const { setSelectedBus } = useBooking();
   const [showDetails, setShowDetails] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const availableSeats = getAvailableSeatCount(bus);
+  const totalSeats = bus.totalSeats ?? bus.capacity ?? availableSeats;
+  const availabilityPercent = totalSeats > 0 ? Math.min(100, (availableSeats / totalSeats) * 100) : 0;
+  const isLowAvailability = availableSeats > 0 && availableSeats <= 5;
 
   const handleSelectSeats = () => {
     setSelectedBus(bus);
@@ -43,7 +50,14 @@ const BusCard = ({ bus }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#111622] rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm transition mb-4 overflow-hidden">
+    <motion.article
+      layout={!reduceMotion}
+      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={reduceMotion ? undefined : { y: -2 }}
+      transition={{ duration: 0.24, ease: 'easeOut' }}
+      className="bg-white dark:bg-[#111622] rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-800 shadow-sm hover:shadow-lg transition-shadow mb-4 overflow-hidden"
+    >
       <div className="p-5">
         {/* Top Meta: Operator, Bus Type, Rating */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-slate-100 dark:border-slate-800">
@@ -123,18 +137,38 @@ const BusCard = ({ bus }) => {
 
             <div className="mt-2 text-right">
               <span className={`text-xs font-medium block mb-1.5 ${
-                (bus.availableSeats ?? bus.availableSeatsCount ?? 20) <= 5
+                isLowAvailability || availableSeats === 0
                   ? 'text-rose-600 dark:text-rose-400 font-semibold'
                   : 'text-emerald-700 dark:text-emerald-400'
               }`}>
-                {bus.availableSeats ?? bus.availableSeatsCount ?? 20} seats available
+                {availableSeats === 0
+                  ? 'Sold out'
+                  : isLowAvailability
+                    ? `Only ${availableSeats} seats left`
+                    : `${availableSeats} seats available`}
               </span>
+              <div
+                className="w-28 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 mb-2 overflow-hidden"
+                role="meter"
+                aria-label={`${availableSeats} of ${totalSeats} seats available`}
+                aria-valuemin={0}
+                aria-valuemax={totalSeats}
+                aria-valuenow={availableSeats}
+              >
+                <motion.div
+                  className={`h-full rounded-full ${isLowAvailability ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                  initial={reduceMotion ? false : { width: 0 }}
+                  animate={{ width: `${availabilityPercent}%` }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={handleSelectSeats}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 rounded-md transition flex items-center gap-1.5 shadow-sm"
+                disabled={availableSeats === 0}
+                className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold text-xs px-4 py-2 rounded-md transition flex items-center gap-1.5 shadow-sm"
               >
-                <span>Select Seats</span>
+                <span>{availableSeats === 0 ? 'Sold Out' : 'Select Seats'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -158,6 +192,8 @@ const BusCard = ({ bus }) => {
           <button
             type="button"
             onClick={() => setShowDetails(!showDetails)}
+            aria-expanded={showDetails}
+            aria-controls={`bus-details-${bus.tripId || bus.id || bus._id}`}
             className="text-xs text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium flex items-center gap-1"
           >
             {showDetails ? 'Hide Details' : 'Boarding & Dropping Points'}
@@ -167,8 +203,16 @@ const BusCard = ({ bus }) => {
       </div>
 
       {/* Expandable Points Drawer */}
+      <AnimatePresence initial={false}>
       {showDetails && (
-        <div className="bg-slate-50 dark:bg-[#0E1526] border-t border-slate-200 dark:border-slate-800 p-4 text-xs text-slate-700 dark:text-slate-300 space-y-3">
+        <motion.div
+          id={`bus-details-${bus.tripId || bus.id || bus._id}`}
+          initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.22, ease: 'easeOut' }}
+          className="overflow-hidden bg-slate-50 dark:bg-[#0E1526] border-t border-slate-200 dark:border-slate-800 p-4 text-xs text-slate-700 dark:text-slate-300 space-y-3"
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Boarding */}
             <div className="bg-white dark:bg-[#111622] p-3 rounded-md border border-slate-200 dark:border-slate-800">
@@ -206,9 +250,10 @@ const BusCard = ({ bus }) => {
               </ul>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+      </AnimatePresence>
+    </motion.article>
   );
 };
 

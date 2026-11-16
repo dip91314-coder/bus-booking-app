@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       const lowerEmail = email.toLowerCase().trim();
       const isAdminDemo =
-        (lowerEmail === 'admin@bharatbus.com' || lowerEmail === 'admin@example.com') &&
+        (lowerEmail === 'admin@yatrabus.com' || lowerEmail === 'admin@yatrabus.in' || lowerEmail === 'admin@bharatbus.com' || lowerEmail === 'admin@example.com') &&
         (password === 'admin123' || password === 'admin');
 
       const isUserDemo =
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
           id: 'admin-demo-1',
           _id: 'admin-demo-1',
           name: 'Vikram Das',
-          email: 'admin@bharatbus.com',
+          email: 'admin@yatrabus.com',
           role: 'admin',
           phone: '9811223344',
           avatar:

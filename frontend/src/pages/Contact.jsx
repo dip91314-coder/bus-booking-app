@@ -72,7 +72,7 @@ const Contact = () => {
                 Passenger Assurance
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Deterministic seat allocation guarantee, verified operators, and instant simulated booking confirmation.
+                Secure seat allocation, direct YatraBus service, and instant booking confirmation.
               </p>
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 pt-1">
                 <Clock className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />

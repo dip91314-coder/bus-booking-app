@@ -25,6 +25,7 @@ export function errorHandler(err, req, res, _next) {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,
+      message: err.message,
       error: {
         code: err.name,
         message: err.message,
@@ -41,6 +42,46 @@ export function errorHandler(err, req, res, _next) {
         code: 'DUPLICATE_RESOURCE_CONFLICT',
         message: 'A resource with these unique attributes or seats already exists.',
         details: err.keyValue,
+      },
+    });
+  }
+
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'INVALID_REQUEST_VALUE',
+        message: 'A request value has an invalid format.',
+      },
+    });
+  }
+
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'The submitted data is invalid.',
+        details: Object.values(err.errors || {}).map(({ path, message }) => ({ field: path, message })),
+      },
+    });
+  }
+
+  // Database Connection / Network Errors
+  if (
+    err.name === 'MongooseServerSelectionError' ||
+    err.name === 'MongoServerSelectionError' ||
+    err.name === 'MongoNetworkError' ||
+    err.name === 'MongoTimeoutError' ||
+    (err.name === 'MongooseError' && err.message?.includes('buffering timed out'))
+  ) {
+    logger.error({ err: err.message, requestId: req.id }, 'Database connectivity issue');
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'DATABASE_UNAVAILABLE',
+        message: 'Could not connect to MongoDB Atlas database. Please verify MONGO_URI in Vercel Environment Variables and check that 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.',
+        details: err.message,
       },
     });
   }

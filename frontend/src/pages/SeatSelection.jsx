@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
+import { useAuth } from '../context/AuthContext';
 import { seatApi } from '../services/api';
 import SeatLayout from '../components/bus/SeatLayout';
 import FareSummaryCard from '../components/booking/FareSummaryCard';
@@ -21,6 +22,7 @@ import toast from 'react-hot-toast';
 const SeatSelection = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     buses,
     selectedBus,
@@ -143,6 +145,12 @@ const SeatSelection = () => {
     }
     if (!selectedDroppingPoint) {
       toast.error('Please choose a dropping point.');
+      return;
+    }
+
+    if (!user) {
+      toast('Please log in to continue booking your bus ticket', { icon: '🔒' });
+      navigate('/login', { state: { from: '/booking/passengers' } });
       return;
     }
 

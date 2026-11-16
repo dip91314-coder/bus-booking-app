@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../services/api';
 import {
@@ -15,6 +15,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_SETTINGS
 } from '../data/mockAdminData';
+import { normalizeYatraFleetItems } from '../../utils/yatraFleet';
 
 const AdminContext = createContext(null);
 
@@ -34,12 +35,18 @@ const getAdminErrorMessage = (error) =>
   'The admin request failed.';
 
 export const AdminProvider = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // Helper to load and save to localStorage
   const loadState = (key, fallback) => {
     try {
       if (typeof window === 'undefined' || typeof localStorage === 'undefined') return fallback;
       const saved = localStorage.getItem(`bb_admin_${key}`);
-      return saved ? JSON.parse(saved) : fallback;
+      const state = saved ? JSON.parse(saved) : fallback;
+      return ['buses', 'schedules', 'bookings'].includes(key)
+        ? normalizeYatraFleetItems(state)
+        : state;
     } catch (e) {
       return fallback;
     }
@@ -70,39 +77,51 @@ export const AdminProvider = ({ children }) => {
   // 12. Settings State
   const [settings, setSettings] = useState(() => loadState('settings', INITIAL_SETTINGS));
 
-  useEffect(() => {
-    if (!hasAdminSession()) return undefined;
-
-    let active = true;
-    adminApi.getManagementData()
-      .then((data) => {
-        if (!active || !data) return;
-        if (Array.isArray(data.buses) && data.buses.length > 0) setBuses(data.buses);
-        if (Array.isArray(data.routes) && data.routes.length > 0) setRoutes(data.routes);
-        if (Array.isArray(data.schedules) && data.schedules.length > 0) setSchedules(data.schedules);
-        if (Array.isArray(data.bookings) && data.bookings.length > 0) setBookings(data.bookings);
-        if (Array.isArray(data.passengers) && data.passengers.length > 0) setPassengers(data.passengers);
-        if (Array.isArray(data.drivers) && data.drivers.length > 0) setDrivers(data.drivers);
-        if (Array.isArray(data.staff) && data.staff.length > 0) setStaff(data.staff);
-        if (Array.isArray(data.payments) && data.payments.length > 0) setPayments(data.payments);
-        if (Array.isArray(data.offers) && data.offers.length > 0) setOffers(data.offers);
-        if (Array.isArray(data.reviews) && data.reviews.length > 0) setReviews(data.reviews);
-        if (Array.isArray(data.notifications) && data.notifications.length > 0) setNotifications(data.notifications);
-        if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
-          setSettings(data.settings);
-        }
-      })
-      .catch((error) => {
-        console.warn('Admin management data sync note:', getAdminErrorMessage(error));
-      });
-
-    return () => {
-      active = false;
-    };
+  const fetchAllData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await adminApi.getManagementData();
+      if (!data) {
+        setIsLoading(false);
+        return;
+      }
+      if (Array.isArray(data.buses)) {
+        setBuses(normalizeYatraFleetItems(data.buses));
+      }
+      if (Array.isArray(data.routes)) setRoutes(data.routes);
+      if (Array.isArray(data.schedules)) {
+        setSchedules(normalizeYatraFleetItems(data.schedules));
+      }
+      if (Array.isArray(data.bookings)) {
+        setBookings(normalizeYatraFleetItems(data.bookings));
+      }
+      if (Array.isArray(data.passengers)) setPassengers(data.passengers);
+      if (Array.isArray(data.drivers)) setDrivers(data.drivers);
+      if (Array.isArray(data.staff)) setStaff(data.staff);
+      if (Array.isArray(data.payments)) setPayments(data.payments);
+      if (Array.isArray(data.offers)) setOffers(data.offers);
+      if (Array.isArray(data.reviews)) setReviews(data.reviews);
+      if (Array.isArray(data.notifications)) setNotifications(data.notifications);
+      if (data.settings && typeof data.settings === 'object' && Object.keys(data.settings).length > 0) {
+        setSettings(data.settings);
+      }
+      if (data._errors && Object.keys(data._errors).length > 0 && (!data.buses || data.buses.length === 0)) {
+        setError('Some admin resources could not be synchronized from the server.');
+      }
+    } catch (err) {
+      console.warn('Admin management data sync error:', getAdminErrorMessage(err));
+      setError(getAdminErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
   const runAdminRequest = (request, onSuccess, fallback, successMessage) => {
-    if (!hasAdminSession()) return fallback();
     return request()
       .then((data) => {
         onSuccess(data);
@@ -703,6 +722,8 @@ export const AdminProvider = ({ children }) => {
       .reduce((acc, booking) => acc + (booking.totalAmount || booking.fare || 0), 0);
 
     const pendingBookingsCount = bookings.filter((booking) => booking.bookingStatus?.toLowerCase() === 'pending').length;
+    const confirmedCount = bookings.filter((booking) => booking.bookingStatus?.toLowerCase() === 'confirmed').length;
+    const cancelledCount = bookings.filter((booking) => booking.bookingStatus?.toLowerCase() === 'cancelled').length;
     const activeBusesCount = buses.filter((b) => b.status === 'Active').length;
     const activeRoutesCount = routes.filter((r) => r.status === 'Active').length;
     const totalPassengersCount = passengers.length;
@@ -719,6 +740,9 @@ export const AdminProvider = ({ children }) => {
       totalBuses: buses.length,
       activeBuses: activeBusesCount,
       activeRoutes: activeRoutesCount,
+      totalScheduledTrips: schedules.length,
+      totalConfirmedTickets: confirmedCount,
+      totalCancelledBookings: cancelledCount,
       pendingBookings: pendingBookingsCount,
       occupancyRate: `${occupancy}%`
     };
@@ -727,6 +751,9 @@ export const AdminProvider = ({ children }) => {
   return (
     <AdminContext.Provider
       value={{
+        isLoading,
+        error,
+        refetch: fetchAllData,
         // Metrics
         metrics,
         // Buses

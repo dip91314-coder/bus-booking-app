@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { MOCK_BUSES, INITIAL_USER_BOOKINGS, INITIAL_SAVED_TRAVELLERS } from '../data/mockData';
+import { normalizeYatraFleetItems } from '../utils/yatraFleet';
+import { bookingApi, savedPassengerApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 const BookingContext = createContext(null);
@@ -9,7 +11,7 @@ export const BookingProvider = ({ children }) => {
   const [buses, setBuses] = useState(() => {
     try {
       const saved = localStorage.getItem('yatra_buses');
-      return saved ? JSON.parse(saved) : MOCK_BUSES;
+      return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : MOCK_BUSES;
     } catch {
       return MOCK_BUSES;
     }
@@ -26,16 +28,21 @@ export const BookingProvider = ({ children }) => {
 
   // Active Booking Flow State
   const [selectedBus, setSelectedBus] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null); // full trip object from search results
+  const [tripId, setTripId] = useState(null); // tripId used throughout booking flow
   const [selectedSeats, setSelectedSeats] = useState([]);
+  const [lockExpiry, setLockExpiry] = useState(null); // timestamp when seat locks expire
   const [selectedBoardingPoint, setSelectedBoardingPoint] = useState(null);
   const [selectedDroppingPoint, setSelectedDroppingPoint] = useState(null);
   const [passengers, setPassengers] = useState([]);
+  const [bookingId, setBookingId] = useState(null); // set after createBooking
+  const [pnr, setPnr] = useState(null); // set after createBooking
 
   // User Bookings History
   const [bookings, setBookings] = useState(() => {
     try {
       const saved = localStorage.getItem('yatra_bookings');
-      return saved ? JSON.parse(saved) : INITIAL_USER_BOOKINGS;
+      return saved ? normalizeYatraFleetItems(JSON.parse(saved)) : INITIAL_USER_BOOKINGS;
     } catch {
       return INITIAL_USER_BOOKINGS;
     }
@@ -50,6 +57,38 @@ export const BookingProvider = ({ children }) => {
       return INITIAL_SAVED_TRAVELLERS;
     }
   });
+
+  // Load real user bookings and saved passengers from API
+  const refreshUserBookings = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('yatrabus_token') : null;
+    if (!token) return;
+    try {
+      const liveBookings = await bookingApi.getMyBookings();
+      if (Array.isArray(liveBookings)) {
+        setBookings(normalizeYatraFleetItems(liveBookings));
+      }
+    } catch (err) {
+      console.warn('Could not load user bookings from API:', err?.message);
+    }
+  }, []);
+
+  const refreshSavedPassengers = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('yatrabus_token') : null;
+    if (!token) return;
+    try {
+      const list = await savedPassengerApi.getSavedPassengers();
+      if (Array.isArray(list) && list.length > 0) {
+        setSavedTravellers(list.map((p) => ({ ...p, id: p._id || p.id })));
+      }
+    } catch (err) {
+      console.warn('Could not load saved passengers from API:', err?.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUserBookings();
+    refreshSavedPassengers();
+  }, [refreshUserBookings, refreshSavedPassengers]);
 
   // Sync to local storage
   useEffect(() => {
@@ -173,7 +212,10 @@ export const BookingProvider = ({ children }) => {
 
           return {
             ...bus,
-            availableSeatsCount: Math.max(0, (bus.availableSeatsCount || 15) - selectedSeats.length),
+            availableSeatsCount: Math.max(
+              0,
+              Number(bus.availableSeatsCount ?? bus.availableSeats ?? 15) - selectedSeats.length
+            ),
             seats: {
               ...bus.seats,
               lower: updatedLower,
@@ -200,17 +242,36 @@ export const BookingProvider = ({ children }) => {
   };
 
   // Saved Travellers
-  const addSavedTraveller = (traveller) => {
-    const newTraveller = {
-      ...traveller,
-      id: `st-${Date.now()}`
-    };
-    setSavedTravellers((prev) => [newTraveller, ...prev]);
-    toast.success(`${traveller.name} added to Saved Travellers.`);
+  const addSavedTraveller = async (traveller) => {
+    try {
+      const created = await savedPassengerApi.createPassenger(traveller);
+      const newTraveller = created ? { ...created, id: created._id || created.id } : {
+        ...traveller,
+        id: `st-${Date.now()}`
+      };
+      setSavedTravellers((prev) => [newTraveller, ...prev]);
+      toast.success(`${traveller.name} added to Saved Travellers.`);
+      return newTraveller;
+    } catch {
+      const fallback = {
+        ...traveller,
+        id: `st-${Date.now()}`
+      };
+      setSavedTravellers((prev) => [fallback, ...prev]);
+      toast.success(`${traveller.name} added to Saved Travellers.`);
+      return fallback;
+    }
   };
 
-  const deleteSavedTraveller = (id) => {
-    setSavedTravellers((prev) => prev.filter((t) => t.id !== id));
+  const deleteSavedTraveller = async (id) => {
+    try {
+      if (id && !String(id).startsWith('st-')) {
+        await savedPassengerApi.deletePassenger(id);
+      }
+    } catch (err) {
+      console.warn('Could not delete passenger on server:', err?.message);
+    }
+    setSavedTravellers((prev) => prev.filter((t) => t.id !== id && t._id !== id));
     toast.success('Traveller removed from saved list.');
   };
 
@@ -265,15 +326,26 @@ export const BookingProvider = ({ children }) => {
         setSearchParams,
         selectedBus,
         setSelectedBus,
+        selectedTrip,
+        setSelectedTrip,
+        tripId,
+        setTripId,
         selectedSeats,
+        setSelectedSeats,
         toggleSeat,
         clearSeats,
+        lockExpiry,
+        setLockExpiry,
         selectedBoardingPoint,
         setSelectedBoardingPoint,
         selectedDroppingPoint,
         setSelectedDroppingPoint,
         passengers,
         setPassengers,
+        bookingId,
+        setBookingId,
+        pnr,
+        setPnr,
         bookings,
         confirmBooking,
         cancelBooking,

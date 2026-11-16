@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
@@ -17,9 +18,14 @@ import {
   Navigation,
   ShieldCheck,
   Star,
-  Users
+  Users,
+  Armchair,
+  LayoutGrid,
+  Ban,
+  Heart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { adminApi } from '../../services/api';
 
 const ALL_AMENITIES = [
   'AC',
@@ -35,17 +41,6 @@ const ALL_AMENITIES = [
   'Emergency Exit'
 ];
 
-const OPERATORS_LIST = [
-  'Greenline Express',
-  'Royal Cruiser',
-  'VRL Travels',
-  'Zingbus Intercity',
-  'SRS Travels',
-  'Orange Tours & Travels',
-  'IntrCity SmartBus',
-  'Himalayan Golden Bus'
-];
-
 const BUS_TYPES_LIST = [
   'AC Sleeper (2+1)',
   'Multi-Axle AC Seater (2+2)',
@@ -54,7 +49,7 @@ const BUS_TYPES_LIST = [
 ];
 
 const BusManagementPage = () => {
-  const { buses, addBus, updateBus, deleteBus } = useAdmin();
+  const { buses, addBus, updateBus, deleteBus, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [typeFilter, setTypeFilter] = useState('ALL');
@@ -66,15 +61,21 @@ const BusManagementPage = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [layoutModalOpen, setLayoutModalOpen] = useState(false);
 
   const [selectedBus, setSelectedBus] = useState(null);
   const [busToDelete, setBusToDelete] = useState(null);
+  const [editingLayoutBus, setEditingLayoutBus] = useState(null);
+  const [layoutSeats, setLayoutSeats] = useState([]);
+  const [activeDeck, setActiveDeck] = useState('lower');
+  const [activeBrush, setActiveBrush] = useState('regular');
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
 
   // Form State
   const defaultFormState = {
     busNumber: '',
     busName: '',
-    operator: 'Greenline Express',
+    operator: 'YatraBus',
     busType: 'AC Sleeper (2+1)',
     isAc: true,
     capacity: 36,
@@ -89,6 +90,16 @@ const BusManagementPage = () => {
 
   const [formData, setFormData] = useState(defaultFormState);
   const [formErrors, setFormErrors] = useState({});
+
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new' || params.get('create') === 'true') {
+      setFormData(defaultFormState);
+      setFormErrors({});
+      setAddModalOpen(true);
+    }
+  }, [location.search]);
 
   // Filtered Buses
   const filteredBuses = useMemo(() => {
@@ -128,7 +139,7 @@ const BusManagementPage = () => {
     setFormData({
       busNumber: bus.busNumber,
       busName: bus.busName,
-      operator: bus.operator,
+      operator: 'YatraBus',
       busType: bus.busType,
       isAc: bus.isAc,
       capacity: bus.capacity,
@@ -196,7 +207,82 @@ const BusManagementPage = () => {
     });
   };
 
-  // Table Columns
+  const handleOpenLayout = (bus) => {
+    setEditingLayoutBus(bus);
+    const capacity = bus.capacity || bus.totalSeats || 36;
+    if (bus.seatLayout && bus.seatLayout.length > 0) {
+      setLayoutSeats([...bus.seatLayout]);
+    } else {
+      const isDouble = bus.deckType === 'double';
+      const half = isDouble ? Math.floor(capacity / 2) : capacity;
+      const initial = [];
+      for (let i = 1; i <= half; i++) {
+        initial.push({
+          seatNumber: isDouble ? `L${i}` : `S${i}`,
+          type: isDouble ? 'sleeper' : 'seater',
+          position: 'lower',
+          category: i % 3 === 1 ? 'window' : i % 3 === 2 ? 'aisle' : 'normal',
+          isLadies: [3, 4, 7].includes(i),
+          isBlocked: false,
+        });
+      }
+      if (isDouble) {
+        for (let i = 1; i <= capacity - half; i++) {
+          initial.push({
+            seatNumber: `U${i}`,
+            type: 'sleeper',
+            position: 'upper',
+            category: i % 3 === 1 ? 'window' : i % 3 === 2 ? 'aisle' : 'normal',
+            isLadies: [1, 2].includes(i),
+            isBlocked: false,
+          });
+        }
+      }
+      setLayoutSeats(initial);
+    }
+    setLayoutModalOpen(true);
+  };
+
+  const handleSeatClick = (seatNumber) => {
+    setLayoutSeats((prev) =>
+      prev.map((s) => {
+        if (s.seatNumber !== seatNumber) return s;
+        if (activeBrush === 'regular') {
+          return { ...s, type: 'seater', isLadies: false, isBlocked: false };
+        }
+        if (activeBrush === 'sleeper') {
+          return { ...s, type: 'sleeper', isLadies: false, isBlocked: false };
+        }
+        if (activeBrush === 'ladies') {
+          return { ...s, isLadies: !s.isLadies, isBlocked: false };
+        }
+        if (activeBrush === 'blocked') {
+          return { ...s, isBlocked: !s.isBlocked };
+        }
+        return s;
+      })
+    );
+  };
+
+  const handleSaveLayout = async () => {
+    if (!editingLayoutBus) return;
+    setIsSavingLayout(true);
+    try {
+      await adminApi.updateBusLayout(editingLayoutBus.id || editingLayoutBus._id, {
+        seatLayout: layoutSeats,
+        totalSeats: layoutSeats.length,
+      });
+      toast.success('Bus seat layout updated successfully');
+      setLayoutModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || 'Cannot modify layout: error updating');
+    } finally {
+      setIsSavingLayout(false);
+    }
+  };
+
+  // Table Columns matching Bus model & Pricing
   const columns = [
     {
       key: 'busNumber',
@@ -210,7 +296,7 @@ const BusManagementPage = () => {
     },
     {
       key: 'busName',
-      label: 'Operator & Bus Name',
+      label: 'Name',
       render: (row) => (
         <div>
           <span className="font-bold text-slate-900 block">{row.operator}</span>
@@ -220,24 +306,26 @@ const BusManagementPage = () => {
     },
     {
       key: 'busType',
-      label: 'Type & Cooling',
+      label: 'Type',
       render: (row) => (
-        <div className="space-y-1">
-          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
-            {row.busType}
-          </span>
-          <div>
-            <span
-              className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-extrabold ${
-                row.isAc
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'bg-orange-50 text-orange-700 border border-orange-200'
-              }`}
-            >
-              {row.isAc ? '❄️ AC Coach' : 'Non-AC'}
-            </span>
-          </div>
-        </div>
+        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">
+          {row.busType}
+        </span>
+      )
+    },
+    {
+      key: 'isAc',
+      label: 'AC/Non-AC',
+      render: (row) => (
+        <span
+          className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold ${
+            row.isAc
+              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+              : 'bg-orange-50 text-orange-700 border border-orange-200'
+          }`}
+        >
+          {row.isAc ? '❄️ AC Coach' : 'Non-AC'}
+        </span>
       )
     },
     {
@@ -246,33 +334,46 @@ const BusManagementPage = () => {
       render: (row) => (
         <div className="flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-slate-400" />
-          <span className="font-bold text-slate-800">{row.capacity} Seats</span>
+          <span className="font-bold text-slate-800">{row.capacity || row.totalSeats} Seats</span>
         </div>
       )
     },
     {
-      key: 'origin',
-      label: 'Default Corridor',
-      render: (row) => (
-        <div className="text-slate-700 font-medium">
-          <span>{row.origin}</span>
-          <span className="text-slate-400 mx-1">➔</span>
-          <span>{row.destination}</span>
-        </div>
-      )
+      key: 'assignedRoutes',
+      label: 'Assigned Route(s)',
+      render: (row) => {
+        const routesList = row.assignedRoutes && row.assignedRoutes.length > 0
+          ? row.assignedRoutes
+          : row.origin && row.destination
+          ? [`${row.origin} ➔ ${row.destination}`]
+          : [];
+        return (
+          <div className="space-y-0.5 max-w-[180px]">
+            {routesList.length > 0 ? (
+              routesList.map((r, i) => (
+                <span key={i} className="block text-slate-700 font-medium text-xs truncate" title={r}>
+                  {r}
+                </span>
+              ))
+            ) : (
+              <span className="text-slate-400 italic text-xs">Unassigned</span>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'fare',
-      label: 'Base Fare',
+      label: 'Base Fare (Pricing)',
       render: (row) => (
         <span className="font-mono font-black text-slate-900 text-sm">
-          ₹{row.fare}
+          ₹{row.fare || row.baseFare || row.basePrice || '—'}
         </span>
       )
     },
     {
       key: 'status',
-      label: 'Availability',
+      label: 'Status',
       render: (row) => (
         <span
           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -307,6 +408,14 @@ const BusManagementPage = () => {
           </button>
           <button
             type="button"
+            onClick={() => handleOpenLayout(row)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100 transition"
+            title="Interactive Seat Layout Editor"
+          >
+            <Armchair className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => handleOpenEdit(row)}
             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition"
             title="Edit Bus"
@@ -327,7 +436,7 @@ const BusManagementPage = () => {
   ];
 
   return (
-    <div className="space-y-6 animate__animated animate__fadeIn">
+    <div className="space-y-6">
       {/* Title & Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -409,7 +518,10 @@ const BusManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredBuses}
-        searchPlaceholder="Search by bus number, operator, name, city..."
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
+        searchPlaceholder="Search by bus number, fleet label, or city..."
         searchKeys={['busNumber', 'busName', 'operator', 'origin', 'destination', 'busType']}
         exportFileName="bus_fleet_inventory"
       />
@@ -448,7 +560,7 @@ const BusManagementPage = () => {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Royal Cruiser Multi-Axle"
+                placeholder="e.g. YatraBus Premium Sleeper"
                 value={formData.busName}
                 onChange={(e) => setFormData({ ...formData, busName: e.target.value })}
                 className={`w-full px-3 py-2 rounded-xl border ${
@@ -464,19 +576,14 @@ const BusManagementPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
-                Fleet Operator *
+                Fleet Operator
               </label>
-              <select
-                value={formData.operator}
-                onChange={(e) => setFormData({ ...formData, operator: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-              >
-                {OPERATORS_LIST.map((op) => (
-                  <option key={op} value={op}>
-                    {op}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value="YatraBus"
+                readOnly
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+              />
             </div>
 
             <div>
@@ -656,19 +763,14 @@ const BusManagementPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
-                Fleet Operator *
+                Fleet Operator
               </label>
-              <select
-                value={formData.operator}
-                onChange={(e) => setFormData({ ...formData, operator: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-              >
-                {OPERATORS_LIST.map((op) => (
-                  <option key={op} value={op}>
-                    {op}
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value="YatraBus"
+                readOnly
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
+              />
             </div>
 
             <div>
@@ -877,6 +979,161 @@ const BusManagementPage = () => {
           </div>
         </Modal>
       )}
+
+      {/* INTERACTIVE VISUAL SEAT LAYOUT EDITOR MODAL */}
+      <Modal
+        isOpen={layoutModalOpen}
+        onClose={() => setLayoutModalOpen(false)}
+        title={`Seat Layout Configuration: ${editingLayoutBus?.busNumber || ''} (${editingLayoutBus?.busName || ''})`}
+      >
+        <div className="space-y-4 text-xs">
+          {/* Deck Switcher & Brush Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            {/* Deck Selector */}
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setActiveDeck('lower')}
+                className={`px-3 py-1 rounded-md font-bold text-xs transition ${
+                  activeDeck === 'lower' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Lower Deck ({layoutSeats.filter((s) => s.position === 'lower').length})
+              </button>
+              {editingLayoutBus?.deckType === 'double' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveDeck('upper')}
+                  className={`px-3 py-1 rounded-md font-bold text-xs transition ${
+                    activeDeck === 'upper' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Upper Deck ({layoutSeats.filter((s) => s.position === 'upper').length})
+                </button>
+              )}
+            </div>
+
+            {/* Brush Tool */}
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-500 mr-1">Click Action:</span>
+              <button
+                type="button"
+                onClick={() => setActiveBrush('regular')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border transition ${
+                  activeBrush === 'regular'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                    : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                }`}
+              >
+                Seater
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveBrush('sleeper')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border transition ${
+                  activeBrush === 'sleeper'
+                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+                }`}
+              >
+                Sleeper
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveBrush('ladies')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border transition ${
+                  activeBrush === 'ladies'
+                    ? 'bg-pink-600 text-white border-pink-600 shadow-sm'
+                    : 'bg-white text-pink-700 border-pink-200 hover:bg-pink-50'
+                }`}
+              >
+                Ladies Only
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveBrush('blocked')}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] border transition ${
+                  activeBrush === 'blocked'
+                    ? 'bg-slate-700 text-white border-slate-700 shadow-sm'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Block Seat
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Seat Grid */}
+          <div className="border border-slate-200 rounded-2xl p-4 bg-slate-900/5">
+            <div className="flex items-center justify-between mb-3 text-[11px] text-slate-500 font-bold uppercase tracking-wider">
+              <span>Front of Bus / Driver Cabin 🚌</span>
+              <span>Rear of Bus 🔚</span>
+            </div>
+
+            <div className="grid grid-cols-6 sm:grid-cols-9 gap-2">
+              {layoutSeats
+                .filter((seat) => (editingLayoutBus?.deckType === 'double' ? seat.position === activeDeck : true))
+                .map((seat) => {
+                  const isBlocked = Boolean(seat.isBlocked);
+                  const isLadies = Boolean(seat.isLadies);
+                  const isSleeper = seat.type === 'sleeper';
+
+                  let badgeColor = 'bg-white text-slate-800 border-slate-200 hover:border-primary';
+                  if (isBlocked) badgeColor = 'bg-slate-200 text-slate-400 border-slate-300 line-through opacity-70';
+                  else if (isLadies) badgeColor = 'bg-pink-100 text-pink-700 border-pink-300 shadow-sm font-black';
+                  else if (isSleeper) badgeColor = 'bg-purple-100 text-purple-700 border-purple-300 font-bold';
+
+                  return (
+                    <button
+                      key={seat.seatNumber}
+                      type="button"
+                      onClick={() => handleSeatClick(seat.seatNumber)}
+                      className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition active:scale-95 cursor-pointer shadow-xs ${badgeColor}`}
+                      title={`Seat ${seat.seatNumber} | ${seat.type} ${isLadies ? '| Ladies' : ''} ${isBlocked ? '| Blocked' : ''}`}
+                    >
+                      <Armchair className="w-4 h-4 shrink-0" />
+                      <span className="font-mono font-bold text-xs">{seat.seatNumber}</span>
+                      <span className="text-[9px] uppercase font-semibold">
+                        {isBlocked ? 'Blocked' : isLadies ? 'Ladies' : isSleeper ? 'Sleeper' : 'Seater'}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+
+          {/* Capacity Breakdown */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-slate-700">Total: <strong className="text-slate-900">{layoutSeats.length} Seats</strong></span>
+              <span className="text-purple-700 font-bold">Sleepers: {layoutSeats.filter((s) => s.type === 'sleeper').length}</span>
+              <span className="text-pink-700 font-bold">Ladies: {layoutSeats.filter((s) => s.isLadies).length}</span>
+              <span className="text-slate-500 font-bold">Blocked: {layoutSeats.filter((s) => s.isBlocked).length}</span>
+            </div>
+            <span className="text-[11px] text-slate-400 italic">Click seats above to alter types</span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setLayoutModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+              disabled={isSavingLayout}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveLayout}
+              disabled={isSavingLayout}
+              className="px-5 py-2 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl transition"
+            >
+              {isSavingLayout ? 'Validating & Saving...' : 'Save Layout Configuration'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* DELETE CONFIRMATION DIALOG */}
       <ConfirmDialog

@@ -15,12 +15,14 @@ import {
   Calendar,
   Ticket,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Wallet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { adminApi } from '../../services/api';
 
 const PassengerManagementPage = () => {
-  const { passengers, updatePassenger, togglePassengerStatus, bookings } = useAdmin();
+  const { passengers, updatePassenger, togglePassengerStatus, bookings, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -30,6 +32,11 @@ const PassengerManagementPage = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
   const [passengerToToggle, setPassengerToToggle] = useState(null);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [walletTargetPassenger, setWalletTargetPassenger] = useState(null);
+  const [walletAmount, setWalletAmount] = useState(100);
+  const [walletReason, setWalletReason] = useState('Promotional / Goodwill credit');
+  const [walletLoading, setWalletLoading] = useState(false);
 
   // Edit Form
   const [editFormData, setEditFormData] = useState({
@@ -72,6 +79,29 @@ const PassengerManagementPage = () => {
 
     updatePassenger(selectedPassenger.id, editFormData);
     setEditModalOpen(false);
+  };
+
+  const handleOpenWallet = (passenger) => {
+    setWalletTargetPassenger(passenger);
+    setWalletAmount(100);
+    setWalletReason('Promotional / Goodwill credit');
+    setWalletModalOpen(true);
+  };
+
+  const handleWalletSubmit = async (e) => {
+    e.preventDefault();
+    if (!walletTargetPassenger) return;
+    setWalletLoading(true);
+    try {
+      await adminApi.adjustPassengerWallet(walletTargetPassenger.id, Number(walletAmount), walletReason);
+      toast.success(`Wallet adjusted by ₹${walletAmount}`);
+      setWalletModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to adjust wallet balance');
+    } finally {
+      setWalletLoading(false);
+    }
   };
 
   // Find bookings for selected passenger
@@ -146,6 +176,15 @@ const PassengerManagementPage = () => {
       )
     },
     {
+      key: 'walletBalance',
+      label: 'Wallet Balance',
+      render: (row) => (
+        <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
+          ₹{row.walletBalance || 0}
+        </span>
+      )
+    },
+    {
       key: 'status',
       label: 'Account Status',
       render: (row) => (
@@ -186,6 +225,14 @@ const PassengerManagementPage = () => {
             title="View Passenger Profile & Booking History"
           >
             <Eye className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenWallet(row)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 transition"
+            title="Adjust Wallet Balance"
+          >
+            <Wallet className="w-4 h-4" />
           </button>
           <button
             type="button"
@@ -258,6 +305,9 @@ const PassengerManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredPassengers}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search passenger name, email, phone, city..."
         searchKeys={['name', 'email', 'phone', 'city', 'id']}
         exportFileName="passenger_directory"
@@ -463,6 +513,69 @@ const PassengerManagementPage = () => {
               className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
             >
               Save Profile
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ADJUST WALLET MODAL */}
+      <Modal
+        isOpen={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+        title={`Adjust Wallet Balance: ${walletTargetPassenger?.name || ''}`}
+      >
+        <form onSubmit={handleWalletSubmit} className="space-y-4 text-xs">
+          <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-slate-500 block text-[11px]">Current Wallet Balance</span>
+              <span className="text-xl font-black text-emerald-800 font-mono">
+                ₹{walletTargetPassenger?.walletBalance || 0}
+              </span>
+            </div>
+            <Wallet className="w-6 h-6 text-emerald-600" />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase mb-1">
+              Adjustment Amount (₹) <span className="text-slate-400 font-normal lowercase">(use negative to deduct)</span>
+            </label>
+            <input
+              type="number"
+              value={walletAmount}
+              onChange={(e) => setWalletAmount(Number(e.target.value))}
+              placeholder="e.g. 250 or -50"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono font-bold text-sm"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 uppercase mb-1">Reason for Adjustment</label>
+            <input
+              type="text"
+              value={walletReason}
+              onChange={(e) => setWalletReason(e.target.value)}
+              placeholder="e.g. Promotional credit, Referral bonus, Offline deposit"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200"
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setWalletModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              disabled={walletLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={walletLoading}
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition"
+            >
+              {walletLoading ? 'Processing...' : 'Apply Wallet Adjustment'}
             </button>
           </div>
         </form>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail } from 'lucide-react';
 import { CONTACT_CONFIG } from '../../config/contactConfig';
+import ApiHealthBadge from './ApiHealthBadge';
 
 const Footer = () => {
   return (
@@ -23,7 +24,7 @@ const Footer = () => {
               />
             </Link>
             <p className="text-sm text-[#64748B] dark:text-slate-400 leading-relaxed">
-              India's premier intercity bus ticket booking platform. Verified operators, safe travels, and transparent fares.
+              Book directly with YatraBus, our own intercity fleet. Safe journeys and transparent fares on every route.
             </p>
           </div>
 
@@ -89,7 +90,8 @@ const Footer = () => {
         {/* Bottom copyright row */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#64748B] dark:text-slate-500 gap-3">
           <p>&copy; {new Date().getFullYear()} YatraBus India Private Limited. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-6">
+            <ApiHealthBadge showVersion={true} />
             <Link to="/privacy-policy" className="hover:text-[#0F172A] dark:hover:text-slate-300 transition-colors">Privacy</Link>
             <Link to="/terms-and-conditions" className="hover:text-[#0F172A] dark:hover:text-slate-300 transition-colors">Terms</Link>
             <Link to="/help" className="hover:text-[#0F172A] dark:hover:text-slate-300 transition-colors">Help Center</Link>

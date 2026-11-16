@@ -54,6 +54,52 @@ const PricingSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    busType: {
+      type: String,
+      default: 'all',
+    },
+    dayOfWeekMultiplier: {
+      type: Number,
+      default: 1.0,
+      min: 0.5,
+      max: 3.0,
+    },
+    weekendMultiplier: {
+      type: Number,
+      default: 1.2,
+      min: 0.5,
+      max: 3.0,
+    },
+    festiveMultiplier: {
+      type: Number,
+      default: 1.25,
+      min: 0.5,
+      max: 3.0,
+    },
+    lastMinuteMultiplier: {
+      type: Number,
+      default: 1.15,
+      min: 0.5,
+      max: 3.0,
+    },
+    sleeperMultiplier: {
+      type: Number,
+      default: 1.2,
+      min: 0.5,
+      max: 3.0,
+    },
+    lowerBerthMultiplier: {
+      type: Number,
+      default: 1.1,
+      min: 0.5,
+      max: 3.0,
+    },
+    frontRowMultiplier: {
+      type: Number,
+      default: 1.05,
+      min: 0.5,
+      max: 3.0,
+    },
   },
   {
     timestamps: true,

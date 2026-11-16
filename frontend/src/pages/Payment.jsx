@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
-import { bookingApi, paymentApi } from '../services/api';
+import { bookingApi, paymentApi, offerApi } from '../services/api';
+import PaymentProcessingModal from '../components/common/PaymentProcessingModal';
 import {
   CreditCard,
   QrCode,
@@ -15,7 +16,11 @@ import {
   AlertCircle,
   Sparkles,
   Loader2,
-  Zap
+  Zap,
+  Tag,
+  Percent,
+  X,
+  Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -33,15 +38,81 @@ const Payment = () => {
   const [selectedBank, setSelectedBank] = useState('sbi');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [appliedOffer, setAppliedOffer] = useState(null);
+  const [availableOffers, setAvailableOffers] = useState([]);
 
   useEffect(() => {
+    let isMounted = true;
+    offerApi.getOffers().then((offers) => {
+      if (isMounted && Array.isArray(offers)) {
+        setAvailableOffers(offers);
+      }
+    }).catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      toast.error('Please log in to complete your booking.');
+      navigate('/login', { state: { from: '/booking/payment' } });
+      return;
+    }
     if (!selectedBus || selectedSeats.length === 0) {
       navigate('/buses');
     }
-  }, [selectedBus, selectedSeats]);
+  }, [selectedBus, selectedSeats, user]);
 
   const baseFare = selectedSeats.reduce((acc, curr) => acc + (curr.price || selectedBus?.fare || 0), 0);
-  const totalAmount = Math.round(baseFare * 1.05); // including 5% tax
+  const taxAmount = Math.round(baseFare * 0.05); // 5% tax
+  const grossAmount = baseFare + taxAmount;
+  const discountAmount = appliedOffer?.discount || 0;
+  const totalAmount = Math.max(0, grossAmount - discountAmount);
+
+  const handleApplyCoupon = async (codeToApply) => {
+    const code = (codeToApply || couponCode).trim();
+    if (!code) {
+      toast.error('Please enter a coupon code.');
+      return;
+    }
+    setIsValidatingCoupon(true);
+    try {
+      const isMongoId = (val) => Boolean(val && /^[0-9a-fA-F]{24}$/.test(val));
+      const tripId = isMongoId(selectedBus?.tripId)
+        ? selectedBus.tripId
+        : isMongoId(selectedBus?.id)
+        ? selectedBus.id
+        : undefined;
+
+      const res = await offerApi.validateOffer({
+        code,
+        tripId,
+        seats: selectedSeats.map((s) => s.number || s.seatNumber),
+        amount: grossAmount,
+      });
+
+      if (res.success && res.data) {
+        setAppliedOffer(res.data);
+        setCouponCode(res.data.code);
+        toast.success(res.message || `Coupon ${res.data.code} applied! Saved ₹${res.data.discount}`);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Invalid coupon code';
+      toast.error(msg);
+      setAppliedOffer(null);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedOffer(null);
+    setCouponCode('');
+    toast.success('Coupon removed.');
+  };
 
   const handleTestAutoFill = () => {
     setUpiId('demo.passenger@okhdfcbank');
@@ -54,6 +125,11 @@ const Payment = () => {
 
   const handleSimulatePayment = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (!user) {
+      toast.error('Please log in to complete your booking.');
+      navigate('/login', { state: { from: '/booking/payment' } });
+      return;
+    }
     setIsProcessing(true);
     setProcessingStep('Connecting to secure banking gateway...');
 
@@ -95,34 +171,45 @@ const Payment = () => {
                     age: 25,
                     gender: 'male'
                   })),
-            contactEmail: user?.email || 'rahul@yatra.com',
-            contactPhone: user?.phone || '9876543210'
+            contactEmail: user?.email || '',
+            contactPhone: user?.phone || ''
           };
 
           const bRes = await bookingApi.createBooking(bookingPayload);
           if (bRes?.success && bRes.data) {
             serverBooking = bRes.data;
+            const bId = serverBooking.bookingId || serverBooking.id || serverBooking._id;
             setProcessingStep('Authorizing payment transaction & generating digital ticket...');
-            await paymentApi.initiatePayment(serverBooking.id || serverBooking._id);
+            const initRes = await paymentApi.initiatePayment(bId);
             const verifyRes = await paymentApi.verifyPayment({
-              bookingId: serverBooking.id || serverBooking._id,
+              bookingId: bId,
+              orderId: initRes?.orderId,
               paymentId: `PAY-${Date.now()}`,
+              signature: 'mock_signature',
               paymentMethod: resolvedMethod
             });
             if (verifyRes?.ticket?.pnr) {
               serverBooking.pnr = verifyRes.ticket.pnr;
+            } else if (serverBooking.pnr) {
+              // PNR already exists
             }
           }
         } catch (apiErr) {
-          console.warn('Backend API booking failed, falling back to local confirmation:', apiErr?.message);
+          if (apiErr.response?.status === 401) {
+            setIsProcessing(false);
+            toast.error('Session expired. Please log in to complete your booking.');
+            navigate('/login', { state: { from: '/booking/payment' } });
+            return;
+          }
+          console.warn('Backend API booking notice:', apiErr?.message);
         }
       }
 
       setProcessingStep('Finalizing reservation & generating PNR...');
       const confirmed = confirmBooking({
         paymentMethod: resolvedMethod,
-        contactEmail: user?.email || 'rahul@yatra.com',
-        contactPhone: user?.phone || '9876543210'
+        contactEmail: user?.email || '',
+        contactPhone: user?.phone || ''
       });
 
       const finalPnr = serverBooking?.pnr || confirmed?.pnr || `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -140,6 +227,11 @@ const Payment = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 text-slate-800 dark:text-slate-100 transition-colors">
+      <PaymentProcessingModal
+        isOpen={isProcessing}
+        currentStepMessage={processingStep}
+        amount={totalAmount}
+      />
       {/* Header */}
       <div className="bg-[#071A4D] text-white py-6 px-4 sm:px-6 lg:px-8 border-b border-blue-900/60 shadow-md">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -421,6 +513,109 @@ const Payment = () => {
                   </div>
                 </div>
               )}
+
+              {/* Offers & Coupons Section */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-accent" />
+                    <h4 className="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider">
+                      Promo Code & Offers
+                    </h4>
+                  </div>
+                  {appliedOffer && (
+                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-400 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <Check className="w-3 h-3" /> {appliedOffer.code} Applied
+                    </span>
+                  )}
+                </div>
+
+                {/* Input box */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter coupon code (e.g. YATRAFIRST)"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    disabled={Boolean(appliedOffer) || isValidatingCoupon}
+                    className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-primary font-mono uppercase"
+                  />
+                  {appliedOffer ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="px-3 py-2 text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-xl transition flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" /> Remove
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCoupon()}
+                      disabled={isValidatingCoupon || !couponCode.trim()}
+                      className="px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-dark text-white rounded-xl transition disabled:opacity-50"
+                    >
+                      {isValidatingCoupon ? 'Validating...' : 'Apply'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick available offers list */}
+                {availableOffers.length > 0 && !appliedOffer && (
+                  <div className="pt-2">
+                    <span className="text-[11px] text-gray-500 dark:text-slate-400 block mb-1.5 font-medium">
+                      Available offers for this trip:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {availableOffers.slice(0, 4).map((off) => (
+                        <button
+                          key={off._id || off.code}
+                          type="button"
+                          onClick={() => handleApplyCoupon(off.code)}
+                          className="text-[11px] font-bold text-primary dark:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-50 border border-blue-200 dark:border-blue-900 px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-2xs"
+                        >
+                          <Tag className="w-3 h-3 text-accent" />
+                          <span>{off.code}</span>
+                          <span className="text-[10px] text-gray-500 dark:text-slate-400 font-normal">
+                            ({off.discountType === 'percent' ? `${off.value}% OFF` : `₹${off.value} OFF`})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Applied details breakdown */}
+                {appliedOffer && (
+                  <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold">{appliedOffer.title}</p>
+                      <p className="text-[11px] opacity-90">{appliedOffer.description}</p>
+                    </div>
+                    <span className="font-black text-sm text-emerald-600 dark:text-emerald-400">
+                      -₹{appliedOffer.discount}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Price Breakdown */}
+              <div className="space-y-1.5 text-xs text-gray-600 dark:text-slate-400 pt-2 border-t border-gray-100 dark:border-slate-800">
+                <div className="flex justify-between">
+                  <span>Base Seat Fare ({selectedSeats.length} seat{selectedSeats.length > 1 ? 's' : ''})</span>
+                  <span className="font-medium text-gray-900 dark:text-slate-200">₹{baseFare}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST & Service Taxes (5%)</span>
+                  <span className="font-medium text-gray-900 dark:text-slate-200">₹{taxAmount}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span>Coupon Discount ({appliedOffer?.code})</span>
+                    <span>-₹{discountAmount}</span>
+                  </div>
+                )}
+              </div>
 
               {/* Submit CTA */}
               <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

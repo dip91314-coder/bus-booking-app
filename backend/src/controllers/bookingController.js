@@ -1,28 +1,19 @@
-import { User } from '../models/User.js';
+import mongoose from 'mongoose';
 import { Booking } from '../models/Booking.js';
 import { Bus } from '../models/Bus.js';
 import { Seat } from '../models/Seat.js';
 import { Payment } from '../models/Payment.js';
 import { Cancellation } from '../models/Cancellation.js';
+import { SeatReservation } from '../models/SeatReservation.js';
 import { createPendingBooking } from '../services/bookingService.js';
-import { NotFoundError, ConflictError, ValidationError } from '../utils/customErrors.js';
+import { NotFoundError, ConflictError, ValidationError, UnauthorizedError } from '../utils/customErrors.js';
+import { normalizeYatraBus } from '../utils/yatraFleet.js';
 
 export async function createBooking(req, res, next) {
   try {
     let userId = req.user?.userId;
     if (!userId) {
-      const email = req.body.contactEmail || 'guest@bharatbus.com';
-      let guestUser = await User.findOne({ email });
-      if (!guestUser) {
-        guestUser = await User.create({
-          name: req.body.passengers?.[0]?.name || 'Guest Passenger',
-          email,
-          phone: req.body.contactPhone || '9876543210',
-          password: 'GuestPassword123!',
-          role: 'user'
-        });
-      }
-      userId = guestUser._id.toString();
+      throw new UnauthorizedError('Please sign in before booking a ticket.');
     }
 
     // OBTBS Trip-Centric Booking Flow
@@ -62,11 +53,31 @@ export async function createBooking(req, res, next) {
     }
 
     // Pre-flight check: Are any of these seats booked under confirmed bookings?
+    const normalizedSeats = [...new Set(seats.map((seat) => String(seat).toUpperCase().trim()))];
+    if (normalizedSeats.length !== seats.length) {
+      throw new ValidationError('Each seat can only be selected once.');
+    }
+
+    const now = new Date();
+    const activeHolds = await Seat.find({
+      busId,
+      journeyDate,
+      seatNumber: { $in: normalizedSeats },
+      status: 'held',
+      heldBy: userId,
+      heldUntil: { $gt: now },
+    }).select('seatNumber');
+    const activeSeatNumbers = new Set(activeHolds.map((seat) => seat.seatNumber));
+    const seatsWithoutHolds = normalizedSeats.filter((seat) => !activeSeatNumbers.has(seat));
+    if (seatsWithoutHolds.length > 0) {
+      throw new ConflictError(`Your seat hold has expired or is missing for: ${seatsWithoutHolds.join(', ')}.`);
+    }
+
     const existingConflict = await Booking.findOne({
       busId,
       journeyDate,
       bookingStatus: 'confirmed',
-      'passengers.seatNumber': { $in: seats },
+      'passengers.seatNumber': { $in: normalizedSeats },
     });
 
     if (existingConflict) {
@@ -98,8 +109,11 @@ export async function createBooking(req, res, next) {
         arrivalTime: bus.arrivalTime,
         boardingPoint,
         droppingPoint,
-        seats,
-        passengers,
+        seats: normalizedSeats,
+        passengers: passengers.map((passenger) => ({
+          ...passenger,
+          seatNumber: String(passenger.seatNumber).toUpperCase().trim(),
+        })),
         totalFare,
         bookingStatus: 'confirmed',
         paymentStatus: 'paid',
@@ -117,24 +131,36 @@ export async function createBooking(req, res, next) {
       throw err;
     }
 
-    // Create simulated payment record
-    await Payment.create({
-      bookingId: newBooking._id,
-      userId,
-      amount: totalFare,
-      currency: 'INR',
-      paymentMethod: paymentMethod?.includes('UPI') ? 'UPI' : 'Card',
-      transactionReference: `TXN-${randomCode}-${Date.now().toString().slice(-4)}`,
-      status: 'success',
-    });
+    let payment;
+    try {
+      payment = await Payment.create({
+        bookingId: newBooking._id,
+        userId,
+        amount: totalFare,
+        currency: 'INR',
+        paymentMethod: paymentMethod?.includes('UPI') ? 'UPI' : 'Card',
+        transactionReference: `TXN-${randomCode}-${Date.now().toString().slice(-4)}`,
+        status: 'success',
+      });
 
-    // Mark seats as booked
-    for (const seatNo of seats) {
-      await Seat.findOneAndUpdate(
-        { busId, journeyDate, seatNumber: seatNo },
-        { status: 'booked', $unset: { heldUntil: '', heldBy: '' } },
-        { upsert: true }
+      const seatUpdate = await Seat.updateMany(
+        {
+          busId,
+          journeyDate,
+          seatNumber: { $in: normalizedSeats },
+          status: 'held',
+          heldBy: userId,
+          heldUntil: { $gt: new Date() },
+        },
+        { $set: { status: 'booked' }, $unset: { heldUntil: '', heldBy: '' } }
       );
+      if (seatUpdate.modifiedCount !== normalizedSeats.length) {
+        throw new ConflictError('A seat hold expired during checkout. Please select your seats again.');
+      }
+    } catch (error) {
+      if (payment) await Payment.deleteOne({ _id: payment._id });
+      await Booking.deleteOne({ _id: newBooking._id });
+      throw error;
     }
 
     // Decrement available seats in bus document
@@ -145,7 +171,7 @@ export async function createBooking(req, res, next) {
     res.status(201).json({
       success: true,
       message: 'Booking confirmed successfully!',
-      data: newBooking,
+      data: normalizeYatraBus(newBooking),
     });
   } catch (error) {
     next(error);
@@ -161,7 +187,7 @@ export async function getMyBookings(req, res, next) {
     res.status(200).json({
       success: true,
       count: bookings.length,
-      data: bookings,
+      data: bookings.map(normalizeYatraBus),
     });
   } catch (error) {
     next(error);
@@ -171,10 +197,18 @@ export async function getMyBookings(req, res, next) {
 export async function getBookingByReference(req, res, next) {
   try {
     const { reference } = req.params;
+    const query = { userId: req.user.userId };
 
-    const booking = await Booking.findOne({
-      $or: [{ bookingReference: reference.toUpperCase() }, { _id: reference }],
-    });
+    if (mongoose.isValidObjectId(reference)) {
+      query.$or = [
+        { bookingReference: reference.toUpperCase() },
+        { _id: reference },
+      ];
+    } else {
+      query.bookingReference = reference.toUpperCase();
+    }
+
+    const booking = await Booking.findOne(query);
 
     if (!booking) {
       throw new NotFoundError(`Booking with reference ${reference} not found.`);
@@ -182,7 +216,7 @@ export async function getBookingByReference(req, res, next) {
 
     res.status(200).json({
       success: true,
-      data: booking,
+      data: normalizeYatraBus(booking),
     });
   } catch (error) {
     next(error);
@@ -212,6 +246,11 @@ export async function cancelBooking(req, res, next) {
     booking.paymentStatus = 'refunded';
     await booking.save();
 
+    await Payment.updateMany(
+      { bookingId: booking._id },
+      { $set: { status: 'refunded', refundStatus: 'Processed' } }
+    );
+
     // Log cancellation
     await Cancellation.create({
       bookingId: booking._id,
@@ -222,21 +261,32 @@ export async function cancelBooking(req, res, next) {
       refundStatus: 'processed',
     });
 
-    // Release seats
-    await Seat.updateMany(
-      { busId: booking.busId, journeyDate: booking.journeyDate, seatNumber: { $in: booking.seats } },
-      { status: 'available' }
-    );
+    if (booking.tripId) {
+      await SeatReservation.deleteMany({
+        tripId: booking.tripId,
+        bookingId: booking._id,
+        status: 'booked',
+      });
+    } else {
+      await Seat.updateMany(
+        {
+          busId: booking.busId,
+          journeyDate: booking.journeyDate,
+          seatNumber: { $in: booking.seats },
+          status: 'booked',
+        },
+        { $set: { status: 'available' }, $unset: { heldUntil: '', heldBy: '' } }
+      );
 
-    // Re-increment available seats in bus
-    await Bus.findByIdAndUpdate(booking.busId, {
-      $inc: { availableSeatsCount: booking.seats.length },
-    });
+      await Bus.findByIdAndUpdate(booking.busId, {
+        $inc: { availableSeatsCount: booking.seats.length },
+      });
+    }
 
     res.status(200).json({
       success: true,
       message: `Booking ${booking.bookingReference} cancelled. Refund of ₹${booking.totalFare} initiated.`,
-      data: booking,
+      data: normalizeYatraBus(booking),
     });
   } catch (error) {
     next(error);

@@ -368,14 +368,14 @@ The interactive seat map is the focal UX element of the application. It mimics a
 |  Route: Kolkata -> Siliguri  |  Date: 20-Nov-2026   [ Modify Search ] |
 |-----------------------------------------------------------------------|
 |  +-----------------------------------------------------------------+  |
-|  | Greenline Express (WB-04-E-5678)            [ AC Sleeper Badge ]|  |
+|  | YatraBus (WB-04-E-5678)                     [ AC Sleeper Badge ]|
 |  | Departure: 20:00 (Kolkata)  ---- 10h 00m ---->  06:00 (Siliguri)|  |
 |  | Fare: ₹950 per seat      Amenities: WiFi, Water, Blanket        |  |
 |  |                                                [ SELECT SEATS ➔]|  |
 |  +-----------------------------------------------------------------+  |
 |                                                                       |
 |  +-----------------------------------------------------------------+  |
-|  | Royal Cruiser (WB-02-B-1122)                     [ Seater Badge]|  |
+|  | YatraBus (WB-02-B-1122)                     [ Seater Badge]|  |
 |  | Departure: 21:30 (Kolkata)  ---- 11h 00m ---->  08:30 (Siliguri)|  |
 |  | Fare: ₹650 per seat      Amenities: Water Bottle                |  |
 |  |                                                [ SELECT SEATS ➔]|  |
@@ -386,7 +386,7 @@ The interactive seat map is the focal UX element of the application. It mimics a
 ### 8.3 Interactive Seat Selection Screen Wireframe
 ```text
 +-----------------------------------------------------------------------+
-|  Seat Selection: Greenline Express | Kolkata -> Siliguri (20-Nov-2026) |
+|  Seat Selection: YatraBus | Kolkata -> Siliguri (20-Nov-2026) |
 +-----------------------------------------------------------------------+
 |  [BUS SEAT MAP]                         |  [SELECTED SEATS SUMMARY]   |
 |                                         |                             |
@@ -412,7 +412,7 @@ The interactive seat map is the focal UX element of the application. It mimics a
 |  +-----------------------------------------------------------------+  |
 |  |  STATUS: CONFIRMED 🟢                       PNR: BK-98F42A7C    |  |
 |  |  -------------------------------------------------------------  |  |
-|  |  Bus: Greenline Express (WB-04-E-5678) - AC Sleeper             |  |
+|  |  Bus: YatraBus (WB-04-E-5678) - AC Sleeper                     |  |
 |  |  Route: Kolkata  ------------------------>  Siliguri            |  |
 |  |  Departure: 20-Nov-2026, 20:00     Arrival: 21-Nov-2026, 06:00  |  |
 |  |  -------------------------------------------------------------  |  |

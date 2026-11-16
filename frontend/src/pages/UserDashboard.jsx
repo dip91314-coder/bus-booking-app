@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
+import { journalApi } from '../services/api';
 import {
   User,
   Ticket,
@@ -41,12 +42,17 @@ const UserDashboard = () => {
     deleteSavedTraveller
   } = useBooking();
 
+  // Redirect admin users to /admin
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
   const activeTab = searchParams.get('tab') || 'bookings';
 
   // Profile Edit modal state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [profileName, setProfileName] = useState(user?.name || 'Rahul Sen');
-  const [profilePhone, setProfilePhone] = useState(user?.phone || '9876543210');
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profilePhone, setProfilePhone] = useState(user?.phone || '');
 
   // Add traveller modal state
   const [addTravellerOpen, setAddTravellerOpen] = useState(false);
@@ -58,6 +64,54 @@ const UserDashboard = () => {
   const [newMemoryTitle, setNewMemoryTitle] = useState('');
   const [newMemoryLocation, setNewMemoryLocation] = useState('');
   const [newMemoryStory, setNewMemoryStory] = useState('');
+
+  // Sync journal entries from API
+  useEffect(() => {
+    let active = true;
+    const fetchJournal = async () => {
+      try {
+        const liveEntries = await journalApi.getMyJournal();
+        if (active && Array.isArray(liveEntries) && liveEntries.length > 0) {
+          const mapped = liveEntries.map((e) => ({
+            id: e._id || e.id,
+            label: e.title,
+            image: e.image || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80',
+            alt: e.location || e.title,
+            paper: '#1e293b',
+            prints: e.prints?.length ? e.prints : [
+              {
+                src: e.image || 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+                caption: e.location || 'Journey Snapshot',
+                x: 14,
+                y: 20,
+                w: 26,
+                rotate: -3,
+                tape: true
+              }
+            ],
+            notes: e.notes?.length ? e.notes : [
+              {
+                x: 54,
+                y: 16,
+                w: 36,
+                title: e.title,
+                body: e.story,
+                rotate: 1,
+                style: 'card'
+              }
+            ]
+          }));
+          setSpreads(mapped);
+        }
+      } catch (err) {
+        console.warn('Could not load user journal from API:', err?.message);
+      }
+    };
+    fetchJournal();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Filter user bookings
   const upcomingBookings = bookings.filter((b) => b.bookingStatus === 'confirmed');
@@ -98,52 +152,64 @@ const UserDashboard = () => {
     setAddTravellerOpen(false);
   };
 
-  const handleAddMemorySubmit = (e) => {
+  const handleAddMemorySubmit = async (e) => {
     e.preventDefault();
     if (!newMemoryTitle.trim() || !newMemoryStory.trim()) {
       toast.error('Please enter a title and a story for your memory.');
       return;
     }
 
-    const newSpread = {
-      id: `custom-memory-${Date.now()}`,
-      label: newMemoryTitle,
+    const payload = {
+      title: newMemoryTitle,
+      location: newMemoryLocation,
+      story: newMemoryStory,
       image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80',
-      alt: newMemoryLocation || 'My Travel Destination',
-      paper: '#1e293b',
-      prints: [
-        {
-          src: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
-          caption: newMemoryLocation || 'Journey Snapshot',
-          x: 14,
-          y: 20,
-          w: 26,
-          rotate: -3,
-          tape: true
-        }
-      ],
-      notes: [
-        {
-          x: 54,
-          y: 16,
-          w: 36,
-          title: newMemoryTitle,
-          body: newMemoryStory,
-          rotate: 1,
-          style: 'card'
-        }
-      ]
     };
 
-    setSpreads([newSpread, ...spreads]);
-    toast.success('New travel memory added to your Journal!');
+    try {
+      const created = await journalApi.createJournalEntry(payload);
+      const newSpread = {
+        id: created?._id || `custom-memory-${Date.now()}`,
+        label: newMemoryTitle,
+        image: payload.image,
+        alt: newMemoryLocation || 'My Travel Destination',
+        paper: '#1e293b',
+        prints: [
+          {
+            src: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+            caption: newMemoryLocation || 'Journey Snapshot',
+            x: 14,
+            y: 20,
+            w: 26,
+            rotate: -3,
+            tape: true
+          }
+        ],
+        notes: [
+          {
+            x: 54,
+            y: 16,
+            w: 36,
+            title: newMemoryTitle,
+            body: newMemoryStory,
+            rotate: 1,
+            style: 'card'
+          }
+        ]
+      };
+
+      setSpreads([newSpread, ...spreads]);
+      toast.success('New travel memory added to your Journal!');
+    } catch {
+      toast.error('Failed to save memory to journal.');
+    }
     setNewMemoryTitle('');
     setNewMemoryLocation('');
     setNewMemoryStory('');
     setNewMemoryOpen(false);
   };
 
-  const handleJournalAction = (action, index) => {
+  const handleJournalAction = async (action, index) => {
     const current = spreads[index];
     if (action === 'share') {
       if (navigator.clipboard) {
@@ -159,12 +225,23 @@ const UserDashboard = () => {
         toast.error('You need to keep at least one travel memory.');
         return;
       }
+      try {
+        if (current.id && !String(current.id).startsWith('custom-')) {
+          await journalApi.deleteJournalEntry(current.id);
+        }
+      } catch (err) {
+        console.warn('Could not delete journal on server:', err?.message);
+      }
       setSpreads(spreads.filter((_, i) => i !== index));
       toast.success(`Deleted spread "${current?.label}".`);
     } else {
       toast(`Action ${action} for spread "${current?.label}"`);
     }
   };
+
+  const expressMiles = bookings.filter((b) => b.bookingStatus === 'confirmed' || b.bookingStatus === 'completed').length * 150;
+  const tierName = bookings.length >= 5 ? 'Platinum Tier Member' : bookings.length >= 2 ? 'Gold Tier Member' : 'Explorer Member';
+  const memberSince = user?.createdAt ? new Date(user.createdAt).getFullYear() : '2026';
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 font-sans text-slate-800 dark:text-slate-100 transition-colors">
@@ -182,25 +259,25 @@ const UserDashboard = () => {
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-white">{user?.name || 'Rahul Sen'}</h1>
+                <h1 className="text-2xl sm:text-3xl font-black text-white">{user?.name || 'Passenger'}</h1>
                 <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-400/40 uppercase tracking-wide flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-amber-300" />
                   Verified Passenger
                 </span>
                 <span className="text-[10px] bg-purple-400/20 text-purple-200 font-bold px-2.5 py-0.5 rounded-full border border-purple-400/30 uppercase tracking-wide flex items-center gap-1">
                   <Award className="w-3 h-3 text-amber-300" />
-                  Gold Tier Member
+                  {tierName}
                 </span>
               </div>
               <p className="text-xs text-purple-200 mt-1">
-                {user?.email || 'rahul.sen@example.com'} • +91 {user?.phone || '9876543210'}
+                {user?.email || ''} {user?.phone ? `• +91 ${user.phone}` : ''}
               </p>
               <p className="text-[11px] text-purple-300 mt-1 flex items-center gap-2">
-                <span>Member since {user?.memberSince || '2025'}</span>
+                <span>Member since {memberSince}</span>
                 <span>•</span>
                 <span className="text-amber-300 font-semibold flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  Travel Rewards: 450 Express Miles
+                  Travel Rewards: {expressMiles} Express Miles
                 </span>
               </p>
             </div>

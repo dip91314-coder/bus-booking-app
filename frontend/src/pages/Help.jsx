@@ -16,7 +16,7 @@ const Help = () => {
     },
     {
       q: 'What is the bus cancellation and refund policy?',
-      a: 'Most interstate operators offer free cancellation up to 6 hours before departure. Cancellations between 2 to 6 hours before departure are eligible for a 50% refund. In this demo platform, cancellations trigger an instant simulated refund to your dashboard.'
+      a: 'YatraBus tickets can be cancelled up to 6 hours before departure. Cancellations between 2 to 6 hours before departure are eligible for a 50% refund. Eligible refunds are shown in your dashboard.'
     },
     {
       q: 'Do I need to carry a printed ticket?',
@@ -24,7 +24,7 @@ const Help = () => {
     },
     {
       q: 'How much luggage can I bring on the bus?',
-      a: 'Passengers are entitled to carry up to 15 kg of personal luggage in the bus luggage compartment, plus a small cabin bag/backpack. Excessive commercial cargo may incur nominal operator baggage fees at the terminal.'
+      a: 'Passengers may carry up to 15 kg of personal luggage in the YatraBus luggage compartment, plus one small cabin bag or backpack. Please contact YatraBus Support if you need to bring additional luggage.'
     },
     {
       q: 'Are ladies seats reserved exclusively for female travelers?',

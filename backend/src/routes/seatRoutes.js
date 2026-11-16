@@ -8,6 +8,6 @@ const router = Router();
 
 router.get('/:busId', getSeatsByBus);
 router.post('/hold', authenticate, validateBody(holdSeatSchema), holdSeats);
-router.post('/release', authenticate, releaseSeats);
+router.post('/release', authenticate, validateBody(holdSeatSchema), releaseSeats);
 
 export default router;

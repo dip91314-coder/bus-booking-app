@@ -17,11 +17,32 @@ import { Trip } from '../models/Trip.js';
 import { Pricing } from '../models/Pricing.js';
 import { SeatReservation } from '../models/SeatReservation.js';
 import { Ticket } from '../models/Ticket.js';
+import { AuditLog } from '../models/AuditLog.js';
+import { TripNotification } from '../models/TripNotification.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
+import { normalizeYatraBus } from '../utils/yatraFleet.js';
+import { invalidate } from '../config/redis.js';
 
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
 const toObject = (document) => document.toObject({ virtuals: false });
+
+export async function recordAuditLog({ req, action, targetEntity, targetId = '', summary, diff = null }) {
+  try {
+    await AuditLog.create({
+      adminId: req?.user?.userId || null,
+      adminEmail: req?.user?.email || 'admin@yatrabus.com',
+      action,
+      targetEntity,
+      targetId: targetId ? targetId.toString() : '',
+      summary,
+      diff,
+      ipAddress: req?.ip || req?.socket?.remoteAddress || '',
+    });
+  } catch {
+    // Non-blocking
+  }
+}
 
 function requireDocument(document, label) {
   if (!document) throw new NotFoundError(`${label} not found.`);
@@ -31,6 +52,10 @@ function requireDocument(document, label) {
 function parseBusInput(input) {
   const { capacity, status, ...fields } = input;
   const updates = { ...fields };
+  updates.operator = 'YatraBus';
+  if (updates.busName !== undefined) {
+    updates.busName = normalizeYatraBus(updates).busName;
+  }
   if (capacity !== undefined) updates.totalSeats = capacity;
   if (status !== undefined) {
     updates.isActive = status === 'Active';
@@ -40,7 +65,7 @@ function parseBusInput(input) {
 }
 
 function formatBus(bus) {
-  const value = toObject(bus);
+  const value = normalizeYatraBus(bus);
   return {
     ...value,
     id: idOf(bus),
@@ -106,6 +131,8 @@ function formatBooking(booking) {
   const passenger = booking.passengers?.[0];
   return {
     ...value,
+    operator: 'YatraBus',
+    busName: normalizeYatraBus(value).busName,
     id: idOf(booking),
     pnr: booking.bookingReference,
     passengerName: passenger?.name || 'Passenger',
@@ -367,7 +394,55 @@ export async function getReports(req, res, next) {
 export async function getAdminBuses(req, res, next) {
   try {
     const buses = await Bus.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: buses.length, data: buses.map(formatBus) });
+    const busIds = buses.map((b) => b._id);
+
+    const [trips, pricings] = await Promise.all([
+      Trip.find({ busId: { $in: busIds } }).populate('routeId').select('busId routeId baseFare'),
+      Pricing.find({ busId: { $in: busIds } }).select('busId basePrice'),
+    ]);
+
+    const busRoutesMap = new Map();
+    const tripFareMap = new Map();
+    for (const trip of trips) {
+      const bId = trip.busId?.toString();
+      if (!bId) continue;
+      if (!busRoutesMap.has(bId)) busRoutesMap.set(bId, new Set());
+      if (trip.routeId) {
+        const origin = trip.routeId.origin || trip.routeId.source;
+        const dest = trip.routeId.destination;
+        if (origin && dest) {
+          busRoutesMap.get(bId).add(`${origin} ➔ ${dest}`);
+        }
+      }
+      if (trip.baseFare && !tripFareMap.has(bId)) {
+        tripFareMap.set(bId, trip.baseFare);
+      }
+    }
+
+    const pricingMap = new Map();
+    for (const p of pricings) {
+      if (p.busId && !pricingMap.has(p.busId.toString())) {
+        pricingMap.set(p.busId.toString(), p.basePrice);
+      }
+    }
+
+    const formattedBuses = buses.map((bus) => {
+      const base = formatBus(bus);
+      const bId = bus._id.toString();
+      const assigned = busRoutesMap.has(bId) ? Array.from(busRoutesMap.get(bId)) : [];
+      if (assigned.length === 0 && bus.origin && bus.destination) {
+        assigned.push(`${bus.origin} ➔ ${bus.destination}`);
+      }
+      const baseFare = pricingMap.get(bId) || tripFareMap.get(bId) || bus.fare;
+      return {
+        ...base,
+        assignedRoutes: assigned,
+        fare: baseFare,
+        baseFare,
+      };
+    });
+
+    res.status(200).json({ success: true, count: formattedBuses.length, data: formattedBuses });
   } catch (error) {
     next(error);
   }
@@ -379,6 +454,8 @@ export async function createAdminBus(req, res, next) {
       ...parseBusInput(req.body),
       availableSeatsCount: req.body.capacity,
     });
+    await invalidate('bus:');
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: formatBus(bus) });
   } catch (error) {
     next(error);
@@ -403,6 +480,8 @@ export async function updateAdminBus(req, res, next) {
       new: true,
       runValidators: true,
     });
+    await invalidate('bus:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: formatBus(requireDocument(bus, 'Bus')) });
   } catch (error) {
     next(error);
@@ -412,8 +491,30 @@ export async function updateAdminBus(req, res, next) {
 export async function deleteAdminBus(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Bus not found.');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const futureBookingsCount = await Booking.countDocuments({
+      busId: req.params.id,
+      journeyDate: { $gte: today },
+      bookingStatus: 'confirmed',
+    });
+    if (futureBookingsCount > 0) {
+      throw new ValidationError(`Cannot delete bus: ${futureBookingsCount} future trips scheduled with existing bookings.`);
+    }
+
     const bus = await Bus.findByIdAndDelete(req.params.id);
     requireDocument(bus, 'Bus');
+    await invalidate('bus:');
+    await invalidate('trips:');
+
+    await recordAuditLog({
+      req,
+      action: 'DELETE_BUS',
+      targetEntity: 'Bus',
+      targetId: req.params.id,
+      summary: `Deleted bus ${bus.busNumber} (${bus.busName})`,
+    });
+
     res.status(200).json({ success: true, message: 'Bus removed successfully.' });
   } catch (error) {
     next(error);
@@ -432,6 +533,8 @@ export async function getAdminRoutes(req, res, next) {
 export async function createAdminRoute(req, res, next) {
   try {
     const route = await Route.create(parseRouteInput(req.body));
+    await invalidate('routes:');
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: formatRoute(route) });
   } catch (error) {
     next(error);
@@ -445,6 +548,8 @@ export async function updateAdminRoute(req, res, next) {
       new: true,
       runValidators: true,
     });
+    await invalidate('routes:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: formatRoute(requireDocument(route, 'Route')) });
   } catch (error) {
     next(error);
@@ -456,6 +561,8 @@ export async function deleteAdminRoute(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Route not found.');
     const route = await Route.findByIdAndDelete(req.params.id);
     requireDocument(route, 'Route');
+    await invalidate('routes:');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Route removed successfully.' });
   } catch (error) {
     next(error);
@@ -476,7 +583,7 @@ function formatSchedule(schedule) {
     id: idOf(schedule),
     busId: bus ? idOf(bus) : String(schedule.busId),
     busNumber: bus?.busNumber || '',
-    busName: bus?.busName || '',
+    busName: bus ? normalizeYatraBus(bus).busName : '',
     routeId: route ? idOf(route) : String(schedule.routeId || ''),
     source: route?.origin || '',
     destination: route?.destination || '',
@@ -513,6 +620,7 @@ export async function createAdminSchedule(req, res, next) {
       { path: 'busId', select: 'busNumber busName' },
       { path: 'routeId', select: 'origin destination' },
     ]);
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: formatSchedule(schedule) });
   } catch (error) {
     next(error);
@@ -534,6 +642,7 @@ export async function updateAdminSchedule(req, res, next) {
     })
       .populate('busId', 'busNumber busName')
       .populate('routeId', 'origin destination');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: formatSchedule(requireDocument(schedule, 'Schedule')) });
   } catch (error) {
     next(error);
@@ -545,6 +654,7 @@ export async function deleteAdminSchedule(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Schedule not found.');
     const schedule = await BusSchedule.findByIdAndDelete(req.params.id);
     requireDocument(schedule, 'Schedule');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Schedule deleted successfully.' });
   } catch (error) {
     next(error);
@@ -569,6 +679,25 @@ export async function cancelAdminBooking(req, res, next) {
     booking.paymentStatus = 'refunded';
     await booking.save();
 
+    const seatRelease = booking.tripId
+      ? SeatReservation.deleteMany({
+          tripId: booking.tripId,
+          bookingId: booking._id,
+          status: 'booked',
+        })
+      : Promise.all([
+          Seat.updateMany(
+            {
+              busId: booking.busId,
+              journeyDate: booking.journeyDate,
+              seatNumber: { $in: booking.seats },
+              status: 'booked',
+            },
+            { $set: { status: 'available' }, $unset: { heldUntil: '', heldBy: '' } }
+          ),
+          Bus.findByIdAndUpdate(booking.busId, { $inc: { availableSeatsCount: booking.seats.length } }),
+        ]);
+
     await Promise.all([
       Cancellation.create({
         bookingId: booking._id,
@@ -578,15 +707,11 @@ export async function cancelAdminBooking(req, res, next) {
         refundAmount: booking.totalFare,
         refundStatus: 'processed',
       }),
-      Seat.updateMany(
-        { busId: booking.busId, journeyDate: booking.journeyDate, seatNumber: { $in: booking.seats } },
-        { status: 'available', $unset: { heldUntil: '', heldBy: '' } }
-      ),
+      seatRelease,
       Payment.updateMany(
         { bookingId: booking._id },
         { status: 'refunded', refundStatus: 'Processed' }
       ),
-      Bus.findByIdAndUpdate(booking.busId, { $inc: { availableSeatsCount: booking.seats.length } }),
     ]);
 
     res.status(200).json({
@@ -622,6 +747,7 @@ export async function getAdminPassengers(req, res, next) {
           city: user.city || '',
           totalBookings: totals?.totalBookings || 0,
           totalSpent: totals?.totalSpent || 0,
+          walletBalance: user.walletBalance || 0,
           status: user.status || 'Active',
           joinedDate: user.createdAt,
         };
@@ -828,6 +954,7 @@ export async function getAdminOffers(req, res, next) {
 export async function createAdminOffer(req, res, next) {
   try {
     const offer = await Offer.create(req.body);
+    await invalidate('offers:');
     res.status(201).json({ success: true, data: { ...toObject(offer), id: idOf(offer) } });
   } catch (error) {
     next(error);
@@ -838,6 +965,7 @@ export async function updateAdminOffer(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Offer not found.');
     const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    await invalidate('offers:');
     res.status(200).json({ success: true, data: { ...toObject(requireDocument(offer, 'Offer')), id: idOf(offer) } });
   } catch (error) {
     next(error);
@@ -849,6 +977,7 @@ export async function deleteAdminOffer(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Offer not found.');
     const offer = await Offer.findByIdAndDelete(req.params.id);
     requireDocument(offer, 'Offer');
+    await invalidate('offers:');
     res.status(200).json({ success: true, message: 'Offer deleted successfully.' });
   } catch (error) {
     next(error);
@@ -868,7 +997,7 @@ export async function getAdminReviews(req, res, next) {
         ...toObject(review),
         id: idOf(review),
         passengerName: review.userId?.name || review.userName,
-        busName: review.busId?.busName || '',
+        busName: review.busId ? normalizeYatraBus(review.busId).busName : '',
         route: review.busId ? `${review.busId.origin} ➔ ${review.busId.destination}` : '',
         date: review.createdAt,
       })),
@@ -1018,7 +1147,14 @@ export async function getAdminTrips(req, res, next) {
       .populate('routeId', 'origin destination source departurePoint arrivalPoint')
       .sort({ travelDate: -1, departureTime: 1 });
 
-    res.status(200).json({ success: true, count: trips.length, data: trips });
+    res.status(200).json({
+      success: true,
+      count: trips.length,
+      data: trips.map((trip) => ({
+        ...trip.toObject(),
+        busId: normalizeYatraBus(trip.busId),
+      })),
+    });
   } catch (error) {
     next(error);
   }
@@ -1028,7 +1164,11 @@ export async function createAdminTrip(req, res, next) {
   try {
     const trip = await Trip.create(req.body);
     const populated = await Trip.findById(trip._id).populate('busId routeId');
-    res.status(201).json({ success: true, data: populated });
+    await invalidate('trips:');
+    res.status(201).json({
+      success: true,
+      data: { ...populated.toObject(), busId: normalizeYatraBus(populated.busId) },
+    });
   } catch (error) {
     next(error);
   }
@@ -1037,10 +1177,51 @@ export async function createAdminTrip(req, res, next) {
 export async function updateAdminTrip(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Trip not found.');
+    const previousTrip = await Trip.findById(req.params.id);
+    requireDocument(previousTrip, 'Trip');
+
     const trip = await Trip.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate('busId routeId');
     requireDocument(trip, 'Trip');
-    res.status(200).json({ success: true, data: trip });
+    await invalidate('trips:');
+
+    const isCancelled = req.body.status === 'cancelled' && previousTrip.status !== 'cancelled';
+    const isDelayed = (req.body.status === 'delayed' && previousTrip.status !== 'delayed') ||
+      (req.body.departureTime && req.body.departureTime !== previousTrip.departureTime);
+
+    if (isCancelled || isDelayed) {
+      const bookings = await Booking.find({ tripId: trip._id, bookingStatus: 'confirmed' });
+      const notifPromises = bookings.map((b) =>
+        TripNotification.create({
+          tripId: trip._id,
+          bookingId: b._id,
+          userId: b.userId,
+          type: isCancelled ? 'CANCELLATION' : 'DELAY',
+          title: isCancelled
+            ? `Trip Cancelled: ${b.origin} to ${b.destination}`
+            : `Trip Delayed / Rescheduled: ${b.origin} to ${b.destination}`,
+          message: isCancelled
+            ? `Your scheduled journey on ${trip.travelDate} (PNR: ${b.pnr}) has been cancelled by operator.`
+            : `Your journey on ${trip.travelDate} has been rescheduled to depart at ${trip.departureTime}.`,
+          isRead: false,
+        })
+      );
+      await Promise.all(notifPromises).catch(() => {});
+    }
+
+    await recordAuditLog({
+      req,
+      action: 'UPDATE_TRIP',
+      targetEntity: 'Trip',
+      targetId: trip._id.toString(),
+      summary: `Updated trip ${trip._id} status to ${trip.status}`,
+      diff: req.body,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { ...trip.toObject(), busId: normalizeYatraBus(trip.busId) },
+    });
   } catch (error) {
     next(error);
   }
@@ -1051,6 +1232,7 @@ export async function deleteAdminTrip(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Trip not found.');
     const trip = await Trip.findByIdAndDelete(req.params.id);
     requireDocument(trip, 'Trip');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Trip deleted successfully.' });
   } catch (error) {
     next(error);
@@ -1079,6 +1261,7 @@ export async function getAdminPricing(req, res, next) {
 export async function createAdminPricing(req, res, next) {
   try {
     const pricing = await Pricing.create(req.body);
+    await invalidate('trips:');
     res.status(201).json({ success: true, data: pricing });
   } catch (error) {
     next(error);
@@ -1090,6 +1273,7 @@ export async function updateAdminPricing(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Pricing rule not found.');
     const pricing = await Pricing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     requireDocument(pricing, 'Pricing rule');
+    await invalidate('trips:');
     res.status(200).json({ success: true, data: pricing });
   } catch (error) {
     next(error);
@@ -1101,6 +1285,7 @@ export async function deleteAdminPricing(req, res, next) {
     if (!validId(req.params.id)) throw new NotFoundError('Pricing rule not found.');
     const pricing = await Pricing.findByIdAndDelete(req.params.id);
     requireDocument(pricing, 'Pricing rule');
+    await invalidate('trips:');
     res.status(200).json({ success: true, message: 'Pricing rule deleted successfully.' });
   } catch (error) {
     next(error);
@@ -1110,14 +1295,337 @@ export async function deleteAdminPricing(req, res, next) {
 export async function updateBusSeatLayout(req, res, next) {
   try {
     if (!validId(req.params.id)) throw new NotFoundError('Bus not found.');
+    const bus = await Bus.findById(req.params.id);
+    requireDocument(bus, 'Bus');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const futureBookingsCount = await Booking.countDocuments({
+      busId: req.params.id,
+      journeyDate: { $gte: today },
+      bookingStatus: 'confirmed',
+    });
+    if (futureBookingsCount > 0) {
+      throw new ValidationError(`Cannot modify layout: ${futureBookingsCount} future trips scheduled with existing bookings.`);
+    }
+
     const { seatLayout, totalSeats } = req.body;
+    const capacity = totalSeats !== undefined ? Number(totalSeats) : bus.totalSeats;
+    if (seatLayout && Array.isArray(seatLayout)) {
+      if (seatLayout.length !== capacity) {
+        throw new ValidationError(`Layout seat count (${seatLayout.length}) must match total seat capacity (${capacity}).`);
+      }
+    }
+
     const updates = {};
     if (seatLayout) updates.seatLayout = seatLayout;
-    if (totalSeats) updates.totalSeats = totalSeats;
+    if (totalSeats) updates.totalSeats = capacity;
 
-    const bus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
+    const updatedBus = await Bus.findByIdAndUpdate(req.params.id, updates, { new: true });
+    requireDocument(updatedBus, 'Bus');
+    await invalidate('bus:');
+    await invalidate('trips:');
+
+    await recordAuditLog({
+      req,
+      action: 'UPDATE_BUS_LAYOUT',
+      targetEntity: 'Bus',
+      targetId: req.params.id,
+      summary: `Updated seat layout and capacity (${capacity} seats) for bus ${bus.busNumber}`,
+      diff: updates,
+    });
+
+    res.status(200).json({ success: true, data: normalizeYatraBus(updatedBus) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function generateRecurringTrips(req, res, next) {
+  try {
+    const { routeId, busId, departureTime, arrivalTime, recurrence, startDate, endDate, specificDates, baseFare } = req.body;
+    if (!validId(routeId)) throw new ValidationError('Valid routeId is required.');
+    if (!validId(busId)) throw new ValidationError('Valid busId is required.');
+    if (!departureTime || !arrivalTime) throw new ValidationError('departureTime and arrivalTime are required.');
+
+    const [route, bus] = await Promise.all([
+      Route.findById(routeId),
+      Bus.findById(busId),
+    ]);
+    requireDocument(route, 'Route');
     requireDocument(bus, 'Bus');
-    res.status(200).json({ success: true, data: bus });
+
+    const datesToGenerate = [];
+    if (recurrence === 'specific_dates' && Array.isArray(specificDates)) {
+      datesToGenerate.push(...specificDates);
+    } else if (startDate && endDate) {
+      let current = new Date(startDate);
+      const end = new Date(endDate);
+      while (current <= end) {
+        const dayOfWeek = current.getDay(); // 0 is Sun, 6 is Sat
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isWeekday = !isWeekend;
+        if (
+          recurrence === 'daily' ||
+          (recurrence === 'weekdays' && isWeekday) ||
+          (recurrence === 'weekends' && isWeekend)
+        ) {
+          datesToGenerate.push(current.toISOString().slice(0, 10));
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    } else {
+      throw new ValidationError('Valid date range or specific dates must be provided.');
+    }
+
+    if (datesToGenerate.length === 0) {
+      throw new ValidationError('No valid dates match the specified recurrence criteria.');
+    }
+
+    const createdTrips = [];
+    const conflicts = [];
+
+    for (const travelDate of datesToGenerate) {
+      // Check bus conflict: Same bus cannot depart twice at the exact same travelDate and departureTime
+      const existing = await Trip.findOne({ busId, travelDate, departureTime });
+      if (existing) {
+        conflicts.push({ travelDate, departureTime, busNumber: bus.busNumber });
+        continue;
+      }
+
+      const trip = await Trip.create({
+        busId,
+        routeId,
+        travelDate,
+        departureTime,
+        arrivalTime,
+        baseFare: baseFare || bus.fare || 500,
+        status: 'scheduled',
+        boardingPoints: route.boardingPoints || [],
+        droppingPoints: route.droppingPoints || [],
+      });
+      createdTrips.push(trip);
+    }
+
+    await invalidate('trips:');
+
+    await recordAuditLog({
+      req,
+      action: 'GENERATE_RECURRING_TRIPS',
+      targetEntity: 'Trip',
+      targetId: busId,
+      summary: `Generated ${createdTrips.length} recurring trips for bus ${bus.busNumber} on route ${route.origin} - ${route.destination} (${conflicts.length} conflicts skipped)`,
+      diff: { recurrence, datesCount: datesToGenerate.length, createdCount: createdTrips.length, conflictsCount: conflicts.length },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${createdTrips.length} trips successfully.${conflicts.length > 0 ? ` ${conflicts.length} trips skipped due to scheduling conflicts.` : ''}`,
+      count: createdTrips.length,
+      conflicts,
+      data: createdTrips,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function previewPricing(req, res, next) {
+  try {
+    const { routeId, busId, date, seatType = 'seater', position = 'lower', row = 1 } = req.body;
+    let basePrice = 500;
+    let pricingRule = null;
+
+    if (routeId && validId(routeId)) {
+      pricingRule = await Pricing.findOne({
+        routeId,
+        isActive: true,
+        $or: [{ seatType }, { seatType: 'all' }],
+      }).sort({ seatType: seatType === 'all' ? 1 : -1 });
+    }
+
+    if (!pricingRule && busId && validId(busId)) {
+      pricingRule = await Pricing.findOne({
+        busId,
+        isActive: true,
+        $or: [{ seatType }, { seatType: 'all' }],
+      });
+    }
+
+    if (pricingRule) {
+      basePrice = pricingRule.basePrice;
+    } else if (busId && validId(busId)) {
+      const bus = await Bus.findById(busId);
+      if (bus?.fare) basePrice = bus.fare;
+    }
+
+    const appliedMultipliers = {};
+    let multiplierTotal = 1.0;
+
+    if (date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      if (day === 0 || day === 5 || day === 6) {
+        const weekendMult = pricingRule?.weekendMultiplier || 1.2;
+        appliedMultipliers.weekend = weekendMult;
+        multiplierTotal *= weekendMult;
+      }
+    }
+
+    if (seatType === 'sleeper') {
+      const sleeperMult = pricingRule?.sleeperMultiplier || 1.2;
+      appliedMultipliers.sleeper = sleeperMult;
+      multiplierTotal *= sleeperMult;
+    }
+
+    if (position === 'lower') {
+      const lowerMult = pricingRule?.lowerBerthMultiplier || 1.1;
+      appliedMultipliers.lowerBerth = lowerMult;
+      multiplierTotal *= lowerMult;
+    }
+
+    if (Number(row) === 1) {
+      const frontMult = pricingRule?.frontRowMultiplier || 1.05;
+      appliedMultipliers.frontRow = frontMult;
+      multiplierTotal *= frontMult;
+    }
+
+    const subtotal = Math.round(basePrice * multiplierTotal);
+    const taxPercent = pricingRule?.taxPercent || 5;
+    const taxAmount = Math.round(subtotal * (taxPercent / 100));
+    const finalFare = subtotal + taxAmount;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        basePrice,
+        multiplierTotal: Number(multiplierTotal.toFixed(2)),
+        appliedMultipliers,
+        subtotal,
+        taxPercent,
+        taxAmount,
+        finalFare,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function adjustAdminPassengerWallet(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+    if (!validId(id)) throw new NotFoundError('Passenger not found.');
+    if (typeof amount !== 'number') throw new ValidationError('Valid numeric amount is required.');
+
+    const user = await User.findById(id);
+    requireDocument(user, 'User');
+    user.walletBalance = Math.max(0, (user.walletBalance || 0) + amount);
+    await user.save();
+
+    await recordAuditLog({
+      req,
+      action: 'ADJUST_WALLET',
+      targetEntity: 'User',
+      targetId: user._id.toString(),
+      summary: `Adjusted wallet by ₹${amount} for ${user.email} (Reason: ${reason || 'Admin adjustment'})`,
+      diff: { amount, reason, newBalance: user.walletBalance },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Wallet updated. New balance: ₹${user.walletBalance}`,
+      data: { id: user._id, walletBalance: user.walletBalance },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function changeAdminBookingSeat(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { oldSeatNumber, newSeatNumber } = req.body;
+    if (!oldSeatNumber || !newSeatNumber) throw new ValidationError('Both oldSeatNumber and newSeatNumber are required.');
+
+    const booking = await Booking.findOne(
+      validId(id) ? { $or: [{ _id: id }, { bookingReference: id.toUpperCase() }] } : { bookingReference: id.toUpperCase() }
+    );
+    requireDocument(booking, 'Booking');
+
+    if (booking.bookingStatus !== 'confirmed') {
+      throw new ValidationError('Only confirmed bookings can have seats reassigned.');
+    }
+
+    if (!booking.seats.includes(oldSeatNumber)) {
+      throw new ValidationError(`Seat ${oldSeatNumber} is not part of this booking.`);
+    }
+
+    if (booking.tripId) {
+      const occupied = await SeatReservation.findOne({
+        tripId: booking.tripId,
+        seatNumber: newSeatNumber.toUpperCase(),
+        status: { $in: ['locked', 'booked'] },
+      });
+      if (occupied) {
+        throw new ValidationError(`Seat ${newSeatNumber} is already reserved or booked on this trip.`);
+      }
+
+      await SeatReservation.findOneAndUpdate(
+        { tripId: booking.tripId, seatNumber: oldSeatNumber.toUpperCase() },
+        { seatNumber: newSeatNumber.toUpperCase() }
+      );
+    }
+
+    booking.seats = booking.seats.map((s) => (s === oldSeatNumber ? newSeatNumber.toUpperCase() : s));
+    booking.passengers = booking.passengers.map((p) => {
+      if (p.seatNumber === oldSeatNumber) {
+        p.seatNumber = newSeatNumber.toUpperCase();
+      }
+      return p;
+    });
+
+    await booking.save();
+
+    await recordAuditLog({
+      req,
+      action: 'CHANGE_BOOKING_SEAT',
+      targetEntity: 'Booking',
+      targetId: booking._id.toString(),
+      summary: `Changed seat from ${oldSeatNumber} to ${newSeatNumber} for PNR ${booking.pnr || booking.bookingReference}`,
+      diff: { oldSeatNumber, newSeatNumber },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Seat changed successfully to ${newSeatNumber.toUpperCase()}.`,
+      data: formatBooking(booking),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminAuditLogs(req, res, next) {
+  try {
+    const { action, targetEntity, limit = 50, page = 1 } = req.query;
+    const filter = {};
+    if (action) filter.action = action;
+    if (targetEntity) filter.targetEntity = targetEntity;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      AuditLog.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      total,
+      page: Number(page),
+      count: logs.length,
+      data: logs,
+    });
   } catch (error) {
     next(error);
   }

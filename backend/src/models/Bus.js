@@ -34,6 +34,7 @@ const BusSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      default: 'YatraBus',
       index: true,
     },
     busType: {
@@ -155,7 +156,14 @@ const BusSchema = new mongoose.Schema(
   }
 );
 
-BusSchema.pre('save', function (next) {
+BusSchema.pre('validate', function (next) {
+  this.operator = 'YatraBus';
+  if (!/^YatraBus(?:\s|$)/i.test(this.busName || '')) {
+    this.busName = `YatraBus ${this.busType || 'Coach'}`;
+  } else {
+    this.busName = `YatraBus${this.busName.slice(8)}`;
+  }
+
   if (!this.seatLayout || this.seatLayout.length === 0) {
     const total = this.totalSeats || 36;
     const isDouble = this.deckType === 'double';

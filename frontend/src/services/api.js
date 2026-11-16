@@ -233,16 +233,20 @@ export const adminApi = {
       'trips',
       'pricing',
     ];
+    const errors = {};
     const values = await Promise.all(
       resources.map(async (resource) => {
         try {
           return await adminRequestData(apiClient.get(adminResourcePath(resource)));
-        } catch {
-          return [];
+        } catch (err) {
+          errors[resource] = err?.response?.data?.message || err?.message || 'Failed to fetch';
+          return null;
         }
       })
     );
-    return Object.fromEntries(resources.map((resource, index) => [resource, values[index]]));
+    const result = Object.fromEntries(resources.map((resource, index) => [resource, values[index]]));
+    result._errors = errors;
+    return result;
   },
   createResource: async (resource, data) =>
     adminRequestData(apiClient.post(adminResourcePath(resource), data)),
@@ -288,6 +292,114 @@ export const adminApi = {
     const res = await apiClient.put(`/admin/buses/${busId}/layout`, layoutData);
     return res.data?.data;
   },
+  generateRecurringTrips: async (data) => {
+    const res = await apiClient.post('/admin/trips/recurrence', data);
+    return res.data;
+  },
+  adjustPassengerWallet: async (id, amount, reason) => {
+    const res = await apiClient.patch(`/admin/passengers/${id}/wallet`, { amount, reason });
+    return res.data;
+  },
+  changeBookingSeat: async (id, oldSeatNumber, newSeatNumber) => {
+    const res = await apiClient.post(`/admin/bookings/${id}/change-seat`, { oldSeatNumber, newSeatNumber });
+    return res.data;
+  },
+  getAuditLogs: async (params) => {
+    const res = await apiClient.get('/admin/audit-logs', { params });
+    return res.data;
+  },
+  previewPricing: async (data) => {
+    const res = await apiClient.post('/admin/pricing/preview', data);
+    return res.data?.data;
+  },
+  uploadImage: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post('/admin/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+};
+
+// Destination Endpoints
+export const destinationApi = {
+  getDestinations: async (params) => {
+    const res = await apiClient.get('/destinations', { params });
+    return res.data?.data || [];
+  },
+  getDestination: async (id) => {
+    const res = await apiClient.get(`/destinations/${id}`);
+    return res.data?.data;
+  },
+  createDestination: async (data) => {
+    const res = await apiClient.post('/destinations', data);
+    return res.data?.data;
+  },
+  updateDestination: async (id, data) => {
+    const res = await apiClient.put(`/destinations/${id}`, data);
+    return res.data?.data;
+  },
+  deleteDestination: async (id) => {
+    const res = await apiClient.delete(`/destinations/${id}`);
+    return res.data?.data;
+  },
+};
+
+// Travel Journal Endpoints
+export const journalApi = {
+  getMyJournal: async () => {
+    const res = await apiClient.get('/journal');
+    return res.data?.data || [];
+  },
+  createJournalEntry: async (data) => {
+    const res = await apiClient.post('/journal', data);
+    return res.data?.data;
+  },
+  deleteJournalEntry: async (id) => {
+    const res = await apiClient.delete(`/journal/${id}`);
+    return res.data?.data;
+  },
+};
+
+// Saved Passengers Endpoints
+export const savedPassengerApi = {
+  getSavedPassengers: async () => {
+    const res = await apiClient.get('/users/saved-passengers');
+    return res.data?.data || [];
+  },
+  createSavedPassenger: async (data) => {
+    const res = await apiClient.post('/users/saved-passengers', data);
+    return res.data?.data;
+  },
+  deleteSavedPassenger: async (id) => {
+    const res = await apiClient.delete(`/users/saved-passengers/${id}`);
+    return res.data?.data;
+  },
+};
+
+// Health API
+export const healthApi = {
+  getHealth: async () => {
+    const res = await apiClient.get('/health');
+    return res.data;
+  },
+};
+
+// Offer / Promo Endpoints
+export const offerApi = {
+  getOffers: async () => {
+    try {
+      const res = await apiClient.get('/offers');
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
+  },
+  validateOffer: async (data) => {
+    const res = await apiClient.post('/offers/validate', data);
+    return res.data;
+  },
 };
 
 // Route Endpoints
@@ -300,6 +412,38 @@ export const routeApi = {
       if (USE_MOCKS) return POPULAR_ROUTES;
       throw err;
     }
+  },
+};
+
+// Tour Packages & Circuits Endpoints
+export const packageApi = {
+  getPackages: async (params) => {
+    try {
+      const res = await apiClient.get('/packages', { params });
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
+  },
+  getPackage: async (slug) => {
+    const res = await apiClient.get(`/packages/${slug}`);
+    return res.data?.data;
+  },
+  getAdminPackages: async () => {
+    const res = await apiClient.get('/packages/admin/all');
+    return res.data?.data || [];
+  },
+  createPackage: async (data) => {
+    const res = await apiClient.post('/packages/admin', data);
+    return res.data?.data;
+  },
+  updatePackage: async (id, data) => {
+    const res = await apiClient.put(`/packages/admin/${id}`, data);
+    return res.data?.data;
+  },
+  deletePackage: async (id) => {
+    const res = await apiClient.delete(`/packages/admin/${id}`);
+    return res.data;
   },
 };
 

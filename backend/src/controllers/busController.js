@@ -1,41 +1,37 @@
 import { Bus } from '../models/Bus.js';
 import { NotFoundError } from '../utils/customErrors.js';
+import { normalizeYatraBus } from '../utils/yatraFleet.js';
+import { getOrSet, invalidate } from '../config/redis.js';
+
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export async function getBuses(req, res, next) {
   try {
-    const { origin, destination, busType, minPrice, maxPrice, operator } = req.query;
+    const { origin, destination, busType, minPrice, maxPrice } = req.query;
 
     const query = { isActive: true };
 
     if (origin) {
-      query.origin = { $regex: new RegExp(String(origin), 'i') };
+      query.origin = { $regex: new RegExp(escapeRegex(origin), 'i') };
     }
     if (destination) {
-      query.destination = { $regex: new RegExp(String(destination), 'i') };
+      query.destination = { $regex: new RegExp(escapeRegex(destination), 'i') };
     }
     if (busType) {
-      query.busType = { $regex: new RegExp(String(busType), 'i') };
+      query.busType = { $regex: new RegExp(escapeRegex(busType), 'i') };
     }
-    if (operator) {
-      query.operator = { $regex: new RegExp(String(operator), 'i') };
-    }
-    if (minPrice || maxPrice) {
+    if (minPrice !== undefined || maxPrice !== undefined) {
       query.fare = {};
-      if (minPrice) query.fare.$gte = Number(minPrice);
-      if (maxPrice) query.fare.$lte = Number(maxPrice);
+      if (minPrice !== undefined) query.fare.$gte = minPrice;
+      if (maxPrice !== undefined) query.fare.$lte = maxPrice;
     }
 
-    let buses = await Bus.find(query).sort({ fare: 1 });
-
-    // Fallback: If no exact origin/destination match, return all active buses to support demo exploration
-    if (buses.length === 0 && (origin || destination)) {
-      buses = await Bus.find({ isActive: true }).sort({ fare: 1 });
-    }
+    const buses = await Bus.find(query).sort({ fare: 1 });
 
     res.status(200).json({
       success: true,
       count: buses.length,
-      data: buses,
+      data: buses.map(normalizeYatraBus),
     });
   } catch (error) {
     next(error);
@@ -45,15 +41,17 @@ export async function getBuses(req, res, next) {
 export async function getBusById(req, res, next) {
   try {
     const { id } = req.params;
-    const bus = await Bus.findById(id);
-
-    if (!bus) {
-      throw new NotFoundError(`Bus with ID ${id} not found.`);
-    }
+    const busData = await getOrSet(`bus:${id}`, 300, async () => {
+      const bus = await Bus.findById(id);
+      if (!bus) {
+        throw new NotFoundError(`Bus with ID ${id} not found.`);
+      }
+      return normalizeYatraBus(bus);
+    });
 
     res.status(200).json({
       success: true,
-      data: bus,
+      data: busData,
     });
   } catch (error) {
     next(error);
@@ -62,12 +60,14 @@ export async function getBusById(req, res, next) {
 
 export async function createBus(req, res, next) {
   try {
-    const bus = await Bus.create(req.body);
+    const bus = await Bus.create(normalizeYatraBus(req.body));
+    await invalidate('bus:');
+    await invalidate('trips:');
 
     res.status(201).json({
       success: true,
       message: 'Bus successfully added to schedule',
-      data: bus,
+      data: normalizeYatraBus(bus),
     });
   } catch (error) {
     next(error);
@@ -77,16 +77,27 @@ export async function createBus(req, res, next) {
 export async function updateBus(req, res, next) {
   try {
     const { id } = req.params;
-    const bus = await Bus.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const updates = { ...req.body, operator: 'YatraBus' };
+    if (updates.busName !== undefined) {
+      updates.busName = normalizeYatraBus(updates).busName;
+    }
+    const bus = await Bus.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    );
 
     if (!bus) {
       throw new NotFoundError(`Bus with ID ${id} not found.`);
     }
 
+    await invalidate('bus:');
+    await invalidate('trips:');
+
     res.status(200).json({
       success: true,
       message: 'Bus details updated successfully',
-      data: bus,
+      data: normalizeYatraBus(bus),
     });
   } catch (error) {
     next(error);
@@ -101,6 +112,9 @@ export async function deleteBus(req, res, next) {
     if (!bus) {
       throw new NotFoundError(`Bus with ID ${id} not found.`);
     }
+
+    await invalidate('bus:');
+    await invalidate('trips:');
 
     res.status(200).json({
       success: true,

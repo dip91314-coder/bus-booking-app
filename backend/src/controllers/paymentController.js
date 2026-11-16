@@ -24,16 +24,24 @@ export async function initiatePaymentHandler(req, res, next) {
 
 export async function verifyPaymentHandler(req, res, next) {
   try {
-    const { orderId, paymentId, signature } = req.body;
+    let { orderId, paymentId, signature, bookingId } = req.body;
 
-    if (!orderId || !paymentId) {
-      throw new ValidationError('orderId and paymentId are required to verify payment.');
+    if (!signature) {
+      throw new ValidationError('signature is required to verify payment.');
+    }
+    if (!orderId && !bookingId) {
+      throw new ValidationError('orderId or bookingId is required to verify payment.');
+    }
+
+    if (!paymentId) {
+      paymentId = `pay_sim_${Date.now()}`;
     }
 
     const result = await confirmPayment({
       gatewayOrderId: orderId,
       gatewayPaymentId: paymentId,
       gatewaySignature: signature,
+      bookingId,
       rawPayload: req.body,
     });
 
@@ -49,7 +57,7 @@ export async function verifyPaymentHandler(req, res, next) {
 export async function webhookHandler(req, res, next) {
   try {
     const signature = req.headers['x-razorpay-signature'];
-    const rawBody = req.body;
+    const rawBody = req.rawBody;
 
     const isValid = paymentGateway.verifyWebhookSignature({
       rawBody,
@@ -61,9 +69,8 @@ export async function webhookHandler(req, res, next) {
       return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
     }
 
-    // Extract payment details if payment.captured event
     const payload = req.body?.payload?.payment?.entity;
-    if (payload) {
+    if (req.body?.event === 'payment.captured' && payload?.status === 'captured') {
       await confirmPayment({
         gatewayOrderId: payload.order_id,
         gatewayPaymentId: payload.id,

@@ -5,11 +5,16 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/server.js",
+    "dev": "node --watch --watch-path=src src/server.js",
     "start": "node src/server.js",
     "seed": "node src/scripts/seed.js",
     "build": "echo \"Backend ready for execution\"",
-    "test": "vitest run"
+    "test": "node run-tests.js"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "version": "7.0.14"
+    }
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -22,9 +27,11 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "hpp": "^0.2.3",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.9.0",
     "mongoose": "^8.13.0",
+    "multer": "^2.5.0",
     "pdfkit": "^0.20.2",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",

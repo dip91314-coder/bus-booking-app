@@ -54,7 +54,13 @@ import {
   updateAdminPricing,
   deleteAdminPricing,
   updateBusSeatLayout,
+  generateRecurringTrips,
+  previewPricing,
+  adjustAdminPassengerWallet,
+  changeAdminBookingSeat,
+  getAdminAuditLogs,
 } from '../controllers/adminController.js';
+import { uploadImage } from '../config/upload.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
 import { validateBody } from '../middleware/validate.js';
@@ -156,5 +162,19 @@ router.delete('/notifications/:id', deleteAdminNotification);
 router.get('/settings', getAdminSettings);
 router.put('/settings', validateBody(adminSettingsSchema), updateAdminSettings);
 router.post('/change-password', validateBody(adminPasswordSchema), changeAdminPassword);
+
+router.post('/trips/recurrence', generateRecurringTrips);
+router.post('/pricing/preview', previewPricing);
+router.patch('/passengers/:id/wallet', adjustAdminPassengerWallet);
+router.post('/bookings/:id/change-seat', changeAdminBookingSeat);
+router.get('/audit-logs', getAdminAuditLogs);
+
+router.post('/upload', uploadImage.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded or invalid file format.' });
+  }
+  const url = `/uploads/${req.file.filename}`;
+  res.status(200).json({ success: true, url, filename: req.file.filename });
+});
 
 export default router;

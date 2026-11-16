@@ -29,8 +29,8 @@ const PassengerDetails = () => {
   } = useBooking();
 
   // Contact details
-  const [contactEmail, setContactEmail] = useState(user?.email || 'rahul@yatra.com');
-  const [contactPhone, setContactPhone] = useState(user?.phone || '9876543210');
+  const [contactEmail, setContactEmail] = useState(user?.email || '');
+  const [contactPhone, setContactPhone] = useState(user?.phone || '');
 
   // Passenger state per seat
   const [passengerList, setPassengerList] = useState(() => {
@@ -49,10 +49,15 @@ const PassengerDetails = () => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
+    if (!user) {
+      toast.error('Please log in to enter passenger details and book your ticket.');
+      navigate('/login', { state: { from: '/booking/passengers' } });
+      return;
+    }
     if (!selectedBus || selectedSeats.length === 0) {
       navigate('/buses');
     }
-  }, [selectedBus, selectedSeats]);
+  }, [selectedBus, selectedSeats, user]);
 
   const handleInputChange = (idx, field, value) => {
     setPassengerList((prev) => {
@@ -138,6 +143,12 @@ const PassengerDetails = () => {
         }
       }
     });
+
+    if (!user) {
+      toast.error('Please log in to proceed to payment.');
+      navigate('/login', { state: { from: '/booking/passengers' } });
+      return;
+    }
 
     setPassengers(passengerList);
     navigate('/booking/payment');

@@ -14,7 +14,7 @@ const About = () => {
             Revolutionizing Road Transit Across India
           </h1>
           <p className="text-sm sm:text-base text-blue-100 max-w-2xl mx-auto leading-relaxed">
-            Born as a college full-stack engineering capstone, YatraBus is built to eliminate duplicate seat bookings, modernize bus discovery, and connect India's vibrant transit corridors.
+            YatraBus is an independent intercity bus company. Every route, coach, and ticket on this platform is operated and managed by YatraBus.
           </p>
         </div>
       </div>
@@ -35,8 +35,8 @@ const About = () => {
             },
             {
               icon: <HeartHandshake className="w-8 h-8 text-emerald-600" />,
-              title: 'Empowering Fleet Partners',
-              desc: 'Equipping private and state transport operators with modern digital scheduling and seat inventory management tools.'
+              title: 'One YatraBus Fleet',
+              desc: 'We operate our own fleet and manage routes, schedules, seats, and customer support directly. Every booking is for a YatraBus coach.'
             }
           ].map((pillar, idx) => (
             <div
@@ -52,36 +52,32 @@ const About = () => {
           ))}
         </div>
 
-        {/* Academic Project Credits Banner */}
+        {/* Direct YatraBus Service */}
         <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-card border border-gray-100 space-y-6">
           <div className="max-w-3xl">
             <span className="text-xs font-bold uppercase tracking-wider text-primary bg-blue-50 px-3 py-1 rounded-full">
-              Engineering Architecture & Team
+              Direct YatraBus Service
             </span>
             <h2 className="text-2xl font-black text-gray-900 mt-2">
-              Pan-India Bus Booking Capstone Project
+              One Company, Every Journey
             </h2>
             <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mt-2">
-              This application was architected over a structured 4-week development timeline by an 8-member student engineering team led by Dip Bhattacharjee. Emphasizing clean software design, role-based access control, responsive interfaces, and production-grade MongoDB concurrency invariants.
+              Book directly with YatraBus for intercity journeys across India. We manage our own buses and schedules, so you can choose your seat and travel with one consistent YatraBus service from booking to arrival.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-gray-100 text-xs text-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100 text-xs text-gray-700">
             <div>
-              <span className="text-gray-400 block font-medium">Frontend Stack</span>
-              <strong className="text-gray-900">React 18 + Vite + Tailwind + SCSS</strong>
+              <span className="text-gray-400 block font-medium">Bus Service</span>
+              <strong className="text-gray-900">YatraBus only</strong>
             </div>
             <div>
-              <span className="text-gray-400 block font-medium">Backend Ready</span>
-              <strong className="text-gray-900">Node.js + Express.js + Mongoose</strong>
+              <span className="text-gray-400 block font-medium">Route Network</span>
+              <strong className="text-gray-900">Intercity journeys across India</strong>
             </div>
             <div>
-              <span className="text-gray-400 block font-medium">Map Engine</span>
-              <strong className="text-gray-900">OpenStreetMap + Leaflet</strong>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Target Timeline</span>
-              <strong className="text-emerald-700">Phase 1 (Frontend Complete)</strong>
+              <span className="text-gray-400 block font-medium">Booking</span>
+              <strong className="text-gray-900">Direct with YatraBus</strong>
             </div>
           </div>
         </div>

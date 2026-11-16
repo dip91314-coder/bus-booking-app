@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { tripApi } from '../services/api';
 import BusCard from '../components/bus/BusCard';
 import BusFilters from '../components/bus/BusFilters';
 import BusSearchForm from '../components/bus/BusSearchForm';
+import { getAvailableSeatCount, normalizeYatraFleetItems } from '../utils/yatraFleet';
+import { TripCardSkeleton } from '../components/common/Skeletons';
 import {
   Search,
   SlidersHorizontal,
@@ -15,7 +17,8 @@ import {
   RefreshCw,
   AlertCircle,
   Bus,
-  Loader2
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 
 const SearchResults = () => {
@@ -23,8 +26,8 @@ const SearchResults = () => {
   const navigate = useNavigate();
   const { buses, searchParams, setSearchParams } = useBooking();
 
-  const originQuery = urlParams.get('origin') || searchParams.origin || 'Kolkata';
-  const destQuery = urlParams.get('destination') || searchParams.destination || 'Siliguri';
+  const originQuery = urlParams.get('from') || urlParams.get('origin') || searchParams.origin || 'Kolkata';
+  const destQuery = urlParams.get('to') || urlParams.get('destination') || searchParams.destination || 'Siliguri';
   const dateQuery = urlParams.get('date') || searchParams.journeyDate || new Date().toISOString().split('T')[0];
 
   const [liveTrips, setLiveTrips] = useState(null);
@@ -32,44 +35,69 @@ const SearchResults = () => {
   const [showModifySearch, setShowModifySearch] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState('price-asc'); // price-asc, duration-asc, departure-asc, rating-desc
+  const [searchText, setSearchText] = useState('');
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [availabilityUpdatedAt, setAvailabilityUpdatedAt] = useState(null);
+  const liveRefreshEnabled = useRef(false);
 
-  // Fetch live trips from tripApi if available
-  useEffect(() => {
-    let active = true;
-    setIsLoadingTrips(true);
-    tripApi
-      .searchTrips({
+  const dynamicMaxPrice = useMemo(() => {
+    const sourcePool = liveTrips && liveTrips.length > 0 ? liveTrips : buses;
+    const fares = sourcePool.map((b) => b.fare || 0).filter((f) => f > 0);
+    return fares.length > 0 ? Math.max(...fares) : 2500;
+  }, [liveTrips, buses]);
+
+  const refreshTrips = useCallback(async ({ showLoading = true } = {}) => {
+    if (showLoading) setIsLoadingTrips(true);
+
+    try {
+      const trips = await tripApi.searchTrips({
         from: originQuery,
         to: destQuery,
         date: dateQuery
-      })
-      .then((trips) => {
-        if (!active) return;
-        if (Array.isArray(trips) && trips.length > 0) {
-          setLiveTrips(trips);
-        } else {
-          setLiveTrips(null);
-        }
-      })
-      .catch((err) => {
-        console.warn('Could not query live trips, using inventory:', err?.message);
-        if (active) setLiveTrips(null);
-      })
-      .finally(() => {
-        if (active) setIsLoadingTrips(false);
       });
+
+      if (Array.isArray(trips) && trips.length > 0) {
+        setLiveTrips(normalizeYatraFleetItems(trips));
+        liveRefreshEnabled.current = true;
+        setAvailabilityUpdatedAt(new Date());
+      } else {
+        setLiveTrips(null);
+        liveRefreshEnabled.current = false;
+        setAvailabilityUpdatedAt(null);
+      }
+    } catch (err) {
+      console.warn('Could not query live trips, using inventory:', err?.message);
+      setLiveTrips(null);
+      liveRefreshEnabled.current = false;
+      setAvailabilityUpdatedAt(null);
+    } finally {
+      if (showLoading) setIsLoadingTrips(false);
+    }
+  }, [originQuery, destQuery, dateQuery]);
+
+  useEffect(() => {
+    let active = true;
+    const loadTrips = async (options) => {
+      if (active) await refreshTrips(options);
+    };
+
+    loadTrips();
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible' && liveRefreshEnabled.current) {
+        loadTrips({ showLoading: false });
+      }
+    }, 30000);
 
     return () => {
       active = false;
+      clearInterval(intervalId);
     };
-  }, [originQuery, destQuery, dateQuery]);
+  }, [refreshTrips]);
 
-  // Filter state
   const [filters, setFilters] = useState({
     busTypes: [],
     timeSlots: [],
     maxPrice: 2500,
-    operators: [],
     minRating: 0
   });
 
@@ -78,9 +106,10 @@ const SearchResults = () => {
       busTypes: [],
       timeSlots: [],
       maxPrice: 2500,
-      operators: [],
       minRating: 0
     });
+    setSearchText('');
+    setAvailableOnly(false);
   };
 
   // Filter & Sort Logic
@@ -97,7 +126,7 @@ const SearchResults = () => {
     // If zero match on exact query, provide all buses with a clear banner
     const isExactMatch = list.length > 0;
     if (!isExactMatch) {
-      list = sourcePool; // fallback to demonstrate UI
+      list = [...sourcePool]; // fallback to demonstrate UI
     }
 
     // 2. Bus type filter
@@ -107,12 +136,7 @@ const SearchResults = () => {
       );
     }
 
-    // 3. Operators filter
-    if (filters.operators.length > 0) {
-      list = list.filter((b) => filters.operators.includes(b.operator));
-    }
-
-    // 4. Max price filter
+    // 3. Max price filter
     if (filters.maxPrice) {
       list = list.filter((b) => b.fare <= filters.maxPrice);
     }
@@ -136,6 +160,26 @@ const SearchResults = () => {
       });
     }
 
+    const query = searchText.trim().toLowerCase();
+    if (query) {
+      list = list.filter((bus) => {
+        const searchableValues = [
+          bus.busName,
+          bus.busType,
+          bus.origin,
+          bus.destination,
+          ...(bus.amenities || []),
+          ...(bus.boardingPoints || []).map((point) => point.name),
+          ...(bus.droppingPoints || []).map((point) => point.name)
+        ];
+        return searchableValues.some((value) => String(value || '').toLowerCase().includes(query));
+      });
+    }
+
+    if (availableOnly) {
+      list = list.filter((bus) => getAvailableSeatCount(bus) > 0);
+    }
+
     // 7. Sorting
     list.sort((a, b) => {
       if (sortBy === 'price-asc') return a.fare - b.fare;
@@ -146,7 +190,7 @@ const SearchResults = () => {
     });
 
     return { list, isExactMatch };
-  }, [buses, originQuery, destQuery, filters, sortBy]);
+  }, [buses, liveTrips, originQuery, destQuery, filters, sortBy, searchText, availableOnly]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B0F19] pb-24 font-sans text-slate-800 dark:text-slate-100 transition-colors">
@@ -211,6 +255,7 @@ const SearchResults = () => {
               filters={filters}
               setFilters={setFilters}
               onReset={handleResetFilters}
+              maxPrice={dynamicMaxPrice}
             />
           </div>
 
@@ -231,6 +276,7 @@ const SearchResults = () => {
                   filters={filters}
                   setFilters={setFilters}
                   onReset={handleResetFilters}
+                  maxPrice={dynamicMaxPrice}
                 />
               </div>
             </div>
@@ -267,22 +313,71 @@ const SearchResults = () => {
               </div>
             </div>
 
+            <div className="rounded-2xl border border-purple-100 dark:border-purple-900/50 bg-gradient-to-r from-white to-purple-50/70 dark:from-[#111622] dark:to-purple-950/20 p-4 shadow-sm">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <label className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="search"
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                    placeholder="Search bus type, amenities, or boarding point"
+                    aria-label="Search buses by type, amenities, or boarding point"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#161D2E] py-2.5 pl-10 pr-4 text-sm text-slate-800 dark:text-white placeholder:text-slate-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-900/50"
+                  />
+                </label>
+                <button
+                  type="button"
+                  aria-pressed={availableOnly}
+                  onClick={() => setAvailableOnly((current) => !current)}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition ${
+                    availableOnly
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-700 dark:bg-[#161D2E] dark:text-slate-300'
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Seats available
+                </button>
+                <button
+                  type="button"
+                  onClick={() => refreshTrips()}
+                  disabled={isLoadingTrips}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5B21B6] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#4C1D95] disabled:cursor-wait disabled:opacity-70"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isLoadingTrips ? 'animate-spin' : ''}`} />
+                  Refresh availability
+                </button>
+              </div>
+              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400" role="status" aria-live="polite">
+                {availabilityUpdatedAt
+                  ? `Live YatraBus availability · updated ${availabilityUpdatedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                  : 'Showing YatraBus inventory · refresh to check for updated seats'}
+              </p>
+            </div>
+
             {/* In case no exact route found notice */}
             {!filteredBuses.isExactMatch && (
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-bold">Showing All Active Indian Bus Schedules</h4>
+                  <h4 className="font-bold">Showing Other Active YatraBus Routes</h4>
                   <p className="mt-0.5">
                     No direct buses were scheduled strictly between <strong>{originQuery}</strong> and{' '}
-                    <strong>{destQuery}</strong> for this date. We've listed other active intercity bus options across India below so you can explore and book.
+                    <strong>{destQuery}</strong> for this date. We've listed other active YatraBus routes below so you can explore and book.
                   </p>
                 </div>
               </div>
             )}
 
             {/* Bus Cards List */}
-            {filteredBuses.list.length > 0 ? (
+            {isLoadingTrips ? (
+              <div className="space-y-4">
+                <TripCardSkeleton />
+                <TripCardSkeleton />
+                <TripCardSkeleton />
+              </div>
+            ) : filteredBuses.list.length > 0 ? (
               <div className="space-y-4">
                 {filteredBuses.list.map((bus) => (
                   <BusCard key={bus.id} bus={bus} />

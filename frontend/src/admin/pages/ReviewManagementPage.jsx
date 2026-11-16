@@ -18,7 +18,7 @@ import {
 import toast from 'react-hot-toast';
 
 const ReviewManagementPage = () => {
-  const { reviews, updateReviewStatus, deleteReview } = useAdmin();
+  const { reviews, updateReviewStatus, deleteReview, isLoading, error, refetch } = useAdmin();
 
   // Filters
   const [ratingFilter, setRatingFilter] = useState('ALL');
@@ -267,6 +267,9 @@ const ReviewManagementPage = () => {
       <DataTable
         columns={columns}
         data={filteredReviews}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search passenger, bus, route, keywords in feedback..."
         searchKeys={['passengerName', 'busName', 'route', 'comment', 'id']}
         exportFileName="passenger_reviews_audit"

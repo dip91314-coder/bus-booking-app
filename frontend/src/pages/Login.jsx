@@ -56,7 +56,7 @@ const Login = () => {
     let targetPassword = '';
     if (type === 'agent') {
       setLoginType('agent');
-      targetEmail = 'admin@bharatbus.com';
+      targetEmail = 'admin@yatrabus.com';
       targetPassword = 'admin123';
     } else {
       setLoginType('user');
@@ -99,16 +99,16 @@ const Login = () => {
             />
           </Link>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            {loginType === 'agent' ? 'Agent & Fleet Partner Portal' : 'Sign In to Your Account'}
+            {loginType === 'agent' ? 'YatraBus Staff & Admin Portal' : 'Sign In to Your Account'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             {loginType === 'agent'
-              ? 'Access terminal manifests, route schedules, and agent commissions.'
-              : 'Access your bus bookings, manage digital tickets, and use Purple Wallet.'}
+              ? 'Manage YatraBus fleet operations, schedules, and bookings.'
+              : 'Access your YatraBus bookings, manage digital tickets, and use your YatraBus Wallet.'}
           </p>
         </div>
 
-        {/* Tab Switcher: Passenger vs Agent Login */}
+        {/* Tab Switcher: Passenger vs YatraBus staff login */}
         <div className="bg-purple-50/80 p-1.5 rounded-2xl border border-purple-100 flex items-center mb-6">
           <button
             type="button"
@@ -132,7 +132,7 @@ const Login = () => {
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Agent / Admin</span>
+            <span>Staff / Admin</span>
           </button>
         </div>
 
@@ -154,7 +154,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={loginType === 'agent' ? 'admin@bharatbus.com' : 'name@example.com'}
+                placeholder={loginType === 'agent' ? 'admin@yatrabus.com' : 'name@example.com'}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
               />
             </div>
@@ -198,7 +198,7 @@ const Login = () => {
             ) : (
               <>
                 <LogIn className="w-4 h-4 text-amber-300" />
-                <span>{loginType === 'agent' ? 'Login to Agent Portal' : 'Sign In'}</span>
+                <span>{loginType === 'agent' ? 'Login to Staff Portal' : 'Sign In'}</span>
               </>
             )}
           </button>
@@ -236,9 +236,9 @@ const Login = () => {
         <div className="mt-6 pt-5 border-t border-purple-50 text-center text-xs text-slate-500">
           {loginType === 'agent' ? (
             <>
-              Need partner agency registration?{' '}
+              Need staff access?{' '}
               <Link to="/contact" className="font-bold text-[#7E22CE] hover:underline">
-                Contact Partner Support
+                Contact YatraBus Support
               </Link>
             </>
           ) : (

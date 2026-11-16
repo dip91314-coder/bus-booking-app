@@ -65,9 +65,10 @@ export async function confirmPayment({
   gatewayOrderId,
   gatewayPaymentId,
   gatewaySignature,
+  bookingId,
   rawPayload = null,
 }) {
-  logger.info({ gatewayOrderId, gatewayPaymentId }, 'Executing idempotent confirmPayment service');
+  logger.info({ gatewayOrderId, gatewayPaymentId, bookingId }, 'Executing idempotent confirmPayment service');
 
   // 1. Idempotency Check: if this payment was already processed successfully, return existing result
   if (gatewayPaymentId) {
@@ -86,12 +87,20 @@ export async function confirmPayment({
   }
 
   // 2. Find associated Payment record
-  const payment = await Payment.findOne({
-    $or: [{ gatewayOrderId }, { gatewayPaymentId }],
-  });
+  const searchConditions = [];
+  if (gatewayOrderId) searchConditions.push({ gatewayOrderId });
+  if (gatewayPaymentId) searchConditions.push({ gatewayPaymentId });
+  if (bookingId) searchConditions.push({ bookingId });
+
+  const payment = searchConditions.length > 0
+    ? await Payment.findOne({ $or: searchConditions }).sort({ createdAt: -1 })
+    : null;
 
   if (!payment) {
     throw new NotFoundError('Payment transaction record not found.');
+  }
+  if (gatewayOrderId && payment.gatewayOrderId !== gatewayOrderId) {
+    throw new ValidationError('Payment order does not match the recorded transaction.');
   }
 
   const booking = await Booking.findById(payment.bookingId);
@@ -137,12 +146,21 @@ export async function confirmPayment({
 
     // CRITICAL SRS RULE: A successful payment is NEVER proof of seat availability.
     // Check if any seat was taken over by another user or expired & lost
+    const now = new Date();
     const takenOverSeats = locks.filter(
       (l) => l.status === 'booked' && String(l.bookingId) !== String(booking._id)
     );
 
+    const validBookingSeats = new Set(
+      locks
+        .filter((lock) =>
+          String(lock.bookingId) === String(booking._id) &&
+          (lock.status === 'booked' || (lock.status === 'locked' && lock.lockExpiresAt > now))
+        )
+        .map((lock) => lock.seatNumber)
+    );
     const lostLocks = booking.seats.filter(
-      (seatNo) => !locks.some((l) => l.seatNumber === seatNo && String(l.bookingId) === String(booking._id))
+      (seatNo) => !validBookingSeats.has(seatNo)
     );
 
     if (takenOverSeats.length > 0 || lostLocks.length > 0) {

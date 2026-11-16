@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate, Link } from 'react-router-do
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import ApiHealthBadge from '../../components/common/ApiHealthBadge';
 import {
   LayoutDashboard,
   Bus,
@@ -30,7 +31,13 @@ import {
   AlertTriangle,
   User,
   Sun,
-  Moon
+  Moon,
+  MapPin,
+  Compass,
+  DollarSign,
+  History,
+  Package,
+  Plus
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -44,6 +51,7 @@ const AdminLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
   // Grouped Navigation Modules
   const navSections = [
@@ -58,7 +66,15 @@ const AdminLayout = () => {
       items: [
         { path: '/admin/buses', label: 'Bus Management', icon: Bus },
         { path: '/admin/routes', label: 'Route Management', icon: Milestone },
-        { path: '/admin/schedules', label: 'Schedule Management', icon: CalendarClock }
+        { path: '/admin/schedules', label: 'Schedule Management', icon: CalendarClock },
+        { path: '/admin/pricing', label: 'Pricing Management', icon: DollarSign }
+      ]
+    },
+    {
+      label: 'EXPERIENCES & DESTINATIONS',
+      items: [
+        { path: '/admin/destinations', label: 'Destinations', icon: MapPin },
+        { path: '/admin/packages', label: 'Tour Packages', icon: Package }
       ]
     },
     {
@@ -88,6 +104,7 @@ const AdminLayout = () => {
           icon: Bell,
           badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null
         },
+        { path: '/admin/audit-logs', label: 'Audit Logs', icon: History },
         { path: '/admin/settings', label: 'Admin Settings', icon: Settings }
       ]
     }
@@ -138,7 +155,7 @@ const AdminLayout = () => {
               <div className="flex flex-col truncate">
                 <div className="flex items-center gap-1.5">
                   <span className="font-black text-sm tracking-tight text-white">
-                    BharatBus
+                    {settings?.brandName || 'YatraBus'}
                   </span>
                   <span className="text-[10px] font-black uppercase px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-400/30">
                     Ops
@@ -289,7 +306,7 @@ const AdminLayout = () => {
 
             {/* Breadcrumb location */}
             <div className="hidden sm:flex items-center gap-2 text-xs font-semibold">
-              <span className="text-slate-400">BharatBus Control</span>
+              <span className="text-slate-400">YatraBus Operations</span>
               <span className="text-slate-300 dark:text-slate-600">/</span>
               <span className="text-blue-600 dark:text-blue-400 font-bold capitalize">
                 {location.pathname.replace('/admin', '').replace('/', '') || 'Dashboard'}
@@ -299,6 +316,79 @@ const AdminLayout = () => {
 
           {/* Right Header Tools */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Action Add Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setQuickCreateOpen(!quickCreateOpen)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+                title="Quick Add Resource"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span className="hidden sm:inline">Add / Create</span>
+              </button>
+
+              {quickCreateOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#111622] rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-2 z-50 animate__animated animate__fadeIn animate__faster space-y-1"
+                  onClick={() => setQuickCreateOpen(false)}
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                    Quick Operations
+                  </div>
+                  <Link
+                    to="/admin/buses?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition"
+                  >
+                    <Bus className="w-4 h-4 text-blue-500" />
+                    <span>Add New Bus</span>
+                  </Link>
+                  <Link
+                    to="/admin/schedules?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition"
+                  >
+                    <CalendarClock className="w-4 h-4 text-indigo-500" />
+                    <span>Schedule Trip</span>
+                  </Link>
+                  <Link
+                    to="/admin/destinations?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl transition"
+                  >
+                    <MapPin className="w-4 h-4 text-emerald-500" />
+                    <span>Add Destination</span>
+                  </Link>
+                  <Link
+                    to="/admin/packages?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 dark:hover:text-purple-400 rounded-xl transition"
+                  >
+                    <Package className="w-4 h-4 text-purple-500" />
+                    <span>Add Tour Package</span>
+                  </Link>
+                  <Link
+                    to="/admin/offers?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-600 dark:hover:text-amber-400 rounded-xl transition"
+                  >
+                    <Percent className="w-4 h-4 text-amber-500" />
+                    <span>Create Promo Offer</span>
+                  </Link>
+                  <Link
+                    to="/admin/routes?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/60 hover:text-sky-600 dark:hover:text-sky-400 rounded-xl transition"
+                  >
+                    <Milestone className="w-4 h-4 text-sky-500" />
+                    <span>Create Route</span>
+                  </Link>
+                  <Link
+                    to="/admin/pricing?action=new"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl transition"
+                  >
+                    <DollarSign className="w-4 h-4 text-rose-500" />
+                    <span>Set Dynamic Pricing</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
             {/* Customer Site Shortcut */}
             <Link
               to="/"
@@ -477,23 +567,16 @@ const AdminLayout = () => {
         </header>
 
         {/* PAGE CONTENT OUTLET */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 pt-6 sm:pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
           <Outlet />
         </main>
 
         {/* ADMIN FOOTER */}
         <footer className="px-6 py-4 border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#0E1526] text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 transition-colors">
           <span>
-            © {new Date().getFullYear()} <strong>BharatBus Enterprise Operations</strong>. All rights reserved.
+            © {new Date().getFullYear()} <strong>{settings?.companyName || 'YatraBus India Private Limited'}</strong>. All rights reserved.
           </span>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              API Server Online
-            </span>
-            <span className="text-slate-300 dark:text-slate-700">|</span>
-            <span className="font-mono text-slate-400">v2.4.0-stable</span>
-          </div>
+          <ApiHealthBadge showVersion={true} />
         </footer>
       </div>
     </div>

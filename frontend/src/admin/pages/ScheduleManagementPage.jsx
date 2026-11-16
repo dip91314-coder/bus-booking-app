@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
@@ -13,17 +14,22 @@ import {
   Clock,
   Calendar,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Repeat
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { adminApi } from '../../services/api';
 
 const ScheduleManagementPage = () => {
-  const { schedules, buses, routes, addSchedule, updateSchedule, deleteSchedule } = useAdmin();
+  const { schedules, buses, routes, addSchedule, updateSchedule, deleteSchedule, isLoading, error, refetch } = useAdmin();
 
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [recurringModalOpen, setRecurringModalOpen] = useState(false);
+  const [recurringLoading, setRecurringLoading] = useState(false);
 
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [scheduleToDelete, setScheduleToDelete] = useState(null);
@@ -42,8 +48,32 @@ const ScheduleManagementPage = () => {
     status: 'Scheduled'
   };
 
+  const defaultRecurringForm = {
+    routeId: routes[0]?.id || '',
+    busId: buses[0]?.id || '',
+    departureTime: '06:00',
+    arrivalTime: '11:30',
+    recurrence: 'daily',
+    startDate: today,
+    endDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+    baseFare: 650,
+  };
+  const [recurringForm, setRecurringForm] = useState(defaultRecurringForm);
+
   const [formData, setFormData] = useState(defaultForm);
   const [formErrors, setFormErrors] = useState({});
+
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'new' || params.get('create') === 'true') {
+      setFormData(defaultForm);
+      setFormErrors({});
+      setAddModalOpen(true);
+    } else if (params.get('recurrence') === 'true') {
+      setRecurringModalOpen(true);
+    }
+  }, [location.search]);
 
   const validate = () => {
     const errs = {};
@@ -150,6 +180,21 @@ const ScheduleManagementPage = () => {
       totalSeats: Number(formData.totalSeats)
     });
     setEditModalOpen(false);
+  };
+
+  const handleGenerateRecurring = async (e) => {
+    e.preventDefault();
+    setRecurringLoading(true);
+    try {
+      const res = await adminApi.generateRecurringTrips(recurringForm);
+      toast.success(res?.message || 'Recurring trips generated successfully');
+      setRecurringModalOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to generate recurring trips');
+    } finally {
+      setRecurringLoading(false);
+    }
   };
 
   // Columns definition
@@ -292,20 +337,33 @@ const ScheduleManagementPage = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm transition self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Publish New Schedule</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setRecurringModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 shadow-sm transition"
+          >
+            <Repeat className="w-4 h-4" />
+            <span>Generate Recurring Trips</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenAdd}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Publish Single Schedule</span>
+          </button>
+        </div>
       </div>
 
       {/* Main DataTable */}
       <DataTable
         columns={columns}
         data={schedules}
+        isLoading={isLoading}
+        error={error}
+        onRetry={refetch}
         searchPlaceholder="Search by schedule ID, bus name, city..."
         searchKeys={['id', 'busName', 'busNumber', 'source', 'destination', 'journeyDate']}
         exportFileName="bus_trip_schedules"
@@ -444,6 +502,142 @@ const ScheduleManagementPage = () => {
         </form>
       </Modal>
 
+      {/* RECURRING TRIPS GENERATION MODAL */}
+      <Modal
+        isOpen={recurringModalOpen}
+        onClose={() => setRecurringModalOpen(false)}
+        title="Automated Recurring Trip Schedule Generator"
+      >
+        <form onSubmit={handleGenerateRecurring} className="space-y-4 text-xs">
+          <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-indigo-900">
+            <span className="font-bold block mb-1">📅 Mass Trip Dispatch Automation</span>
+            <p className="text-[11px] leading-relaxed">
+              Generate multiple trip instances automatically across a specified calendar range (e.g. Daily, Weekdays, or Weekends).
+              Built-in concurrency protection automatically skips duplicate departures for the same vehicle.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Route</label>
+              <select
+                value={recurringForm.routeId}
+                onChange={(e) => setRecurringForm({ ...recurringForm, routeId: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              >
+                <option value="">Select Route</option>
+                {routes.map((r) => (
+                  <option key={r.id} value={r.id}>{r.origin} ➔ {r.destination}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Bus Coach</label>
+              <select
+                value={recurringForm.busId}
+                onChange={(e) => setRecurringForm({ ...recurringForm, busId: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              >
+                <option value="">Select Bus</option>
+                {buses.map((b) => (
+                  <option key={b.id} value={b.id}>{b.busNumber} ({b.busName})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Departure Time</label>
+              <input
+                type="text"
+                value={recurringForm.departureTime}
+                onChange={(e) => setRecurringForm({ ...recurringForm, departureTime: e.target.value })}
+                placeholder="06:00"
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Arrival Time</label>
+              <input
+                type="text"
+                value={recurringForm.arrivalTime}
+                onChange={(e) => setRecurringForm({ ...recurringForm, arrivalTime: e.target.value })}
+                placeholder="11:30"
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Base Fare (₹)</label>
+              <input
+                type="number"
+                value={recurringForm.baseFare}
+                onChange={(e) => setRecurringForm({ ...recurringForm, baseFare: Number(e.target.value) })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Recurrence Pattern</label>
+              <select
+                value={recurringForm.recurrence}
+                onChange={(e) => setRecurringForm({ ...recurringForm, recurrence: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+              >
+                <option value="daily">Daily (All Days)</option>
+                <option value="weekdays">Weekdays Only (Mon-Fri)</option>
+                <option value="weekends">Weekends Only (Sat-Sun)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Start Date</label>
+              <input
+                type="date"
+                value={recurringForm.startDate}
+                onChange={(e) => setRecurringForm({ ...recurringForm, startDate: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">End Date</label>
+              <input
+                type="date"
+                value={recurringForm.endDate}
+                onChange={(e) => setRecurringForm({ ...recurringForm, endDate: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setRecurringModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+              disabled={recurringLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={recurringLoading}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition"
+            >
+              {recurringLoading ? 'Generating Trips...' : 'Run Generation'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* EDIT SCHEDULE MODAL */}
       <Modal
         isOpen={editModalOpen}
@@ -538,6 +732,142 @@ const ScheduleManagementPage = () => {
               className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
             >
               Save Schedule
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* RECURRING TRIPS GENERATION MODAL */}
+      <Modal
+        isOpen={recurringModalOpen}
+        onClose={() => setRecurringModalOpen(false)}
+        title="Automated Recurring Trip Schedule Generator"
+      >
+        <form onSubmit={handleGenerateRecurring} className="space-y-4 text-xs">
+          <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-indigo-900">
+            <span className="font-bold block mb-1">📅 Mass Trip Dispatch Automation</span>
+            <p className="text-[11px] leading-relaxed">
+              Generate multiple trip instances automatically across a specified calendar range (e.g. Daily, Weekdays, or Weekends).
+              Built-in concurrency protection automatically skips duplicate departures for the same vehicle.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Route</label>
+              <select
+                value={recurringForm.routeId}
+                onChange={(e) => setRecurringForm({ ...recurringForm, routeId: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              >
+                <option value="">Select Route</option>
+                {routes.map((r) => (
+                  <option key={r.id} value={r.id}>{r.origin} ➔ {r.destination}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Bus Coach</label>
+              <select
+                value={recurringForm.busId}
+                onChange={(e) => setRecurringForm({ ...recurringForm, busId: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              >
+                <option value="">Select Bus</option>
+                {buses.map((b) => (
+                  <option key={b.id} value={b.id}>{b.busNumber} ({b.busName})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Departure Time</label>
+              <input
+                type="text"
+                value={recurringForm.departureTime}
+                onChange={(e) => setRecurringForm({ ...recurringForm, departureTime: e.target.value })}
+                placeholder="06:00"
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Arrival Time</label>
+              <input
+                type="text"
+                value={recurringForm.arrivalTime}
+                onChange={(e) => setRecurringForm({ ...recurringForm, arrivalTime: e.target.value })}
+                placeholder="11:30"
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Base Fare (₹)</label>
+              <input
+                type="number"
+                value={recurringForm.baseFare}
+                onChange={(e) => setRecurringForm({ ...recurringForm, baseFare: Number(e.target.value) })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Recurrence Pattern</label>
+              <select
+                value={recurringForm.recurrence}
+                onChange={(e) => setRecurringForm({ ...recurringForm, recurrence: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+              >
+                <option value="daily">Daily (All Days)</option>
+                <option value="weekdays">Weekdays Only (Mon-Fri)</option>
+                <option value="weekends">Weekends Only (Sat-Sun)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Start Date</label>
+              <input
+                type="date"
+                value={recurringForm.startDate}
+                onChange={(e) => setRecurringForm({ ...recurringForm, startDate: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">End Date</label>
+              <input
+                type="date"
+                value={recurringForm.endDate}
+                onChange={(e) => setRecurringForm({ ...recurringForm, endDate: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg p-2 font-medium"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setRecurringModalOpen(false)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+              disabled={recurringLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={recurringLoading}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition"
+            >
+              {recurringLoading ? 'Generating Trips...' : 'Run Generation'}
             </button>
           </div>
         </form>

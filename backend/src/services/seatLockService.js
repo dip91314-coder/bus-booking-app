@@ -3,6 +3,7 @@ import { Trip, Bus, SeatReservation, Booking, Pricing } from '../models/index.js
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { NotFoundError, ConflictError, ValidationError } from '../utils/customErrors.js';
+import { getRedisClient } from '../config/redis.js';
 
 const MAX_SEATS_PER_BOOKING = 6;
 const LOCK_DURATION_MS = (env.LOCK_MINUTES || 8) * 60 * 1000;
@@ -152,6 +153,33 @@ export async function lockSeats({ tripId, seatNumbers, userId }) {
   const now = new Date();
   const lockExpiresAt = new Date(now.getTime() + LOCK_DURATION_MS);
 
+  // Fast first gate: Redis short-lived distributed mutex (optional optimization)
+  const redisClient = getRedisClient();
+  const acquiredRedisLocks = [];
+  if (redisClient && (redisClient.status === 'ready' || redisClient.status === 'connected')) {
+    try {
+      for (const seatNumber of normalizedSeats) {
+        const redisLockKey = `lock:trip:${trip._id}:seat:${seatNumber}`;
+        const acquired = await redisClient.set(redisLockKey, String(userId), 'NX', 'PX', 5000);
+        if (!acquired) {
+          for (const acquiredKey of acquiredRedisLocks) {
+            await redisClient.del(acquiredKey).catch(() => {});
+          }
+          throw new ConflictError(
+            `Seat ${seatNumber} is currently undergoing a reservation attempt. Please select another seat.`,
+            { conflictingSeats: [seatNumber] }
+          );
+        }
+        acquiredRedisLocks.push(redisLockKey);
+      }
+    } catch (redisErr) {
+      if (redisErr instanceof ConflictError) {
+        throw redisErr;
+      }
+      logger.warn({ err: redisErr?.message }, 'Redis lock gate skipped; relying on MongoDB authority.');
+    }
+  }
+
   const useTransaction = canUseTransactions();
   const session = useTransaction ? await mongoose.startSession() : null;
 
@@ -254,6 +282,11 @@ export async function lockSeats({ tripId, seatNumbers, userId }) {
     }
     throw error;
   } finally {
+    if (redisClient && acquiredRedisLocks.length > 0) {
+      for (const key of acquiredRedisLocks) {
+        redisClient.del(key).catch(() => {});
+      }
+    }
     if (session) {
       await session.endSession();
     }

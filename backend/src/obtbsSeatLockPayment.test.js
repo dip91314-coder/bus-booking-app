@@ -342,4 +342,114 @@ describe('OBTBS Concurrency, Seat Locking, & Payment Engine', () => {
     expect(paymentDoc.refundStatus).toBe('refund_required');
     expect(paymentDoc.status).toBe('failed');
   });
+
+  it('Flags refund when payment arrives after the booking lock expires', async () => {
+    await lockSeats({
+      tripId: testTrip._id,
+      seatNumbers: ['S8'],
+      userId: userA._id,
+    });
+
+    const bookingRes = await createPendingBooking({
+      userId: userA._id,
+      tripId: testTrip._id,
+      passengers: [{ name: 'Expired Hold', age: 31, gender: 'male', seatNumber: 'S8' }],
+      contactEmail: 'expired@test.com',
+      contactPhone: '9876543210',
+    });
+
+    const initRes = await initiatePayment({
+      bookingId: bookingRes.bookingId,
+      userId: userA._id,
+    });
+
+    await SeatReservation.updateMany(
+      { bookingId: bookingRes.bookingId },
+      { $set: { lockExpiresAt: new Date(Date.now() - 1000) } }
+    );
+
+    const paymentId = `pay_expired_${Date.now()}`;
+    const signature = paymentGateway.generateSignature(initRes.orderId, paymentId);
+    const result = await confirmPayment({
+      gatewayOrderId: initRes.orderId,
+      gatewayPaymentId: paymentId,
+      gatewaySignature: signature,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.refundFlagged).toBe(true);
+    expect((await Booking.findById(bookingRes.bookingId)).bookingStatus).toBe('failed');
+    expect((await Payment.findOne({ gatewayOrderId: initRes.orderId })).refundStatus).toBe('refund_required');
+  });
+
+  it('Verifies unique index { tripId: 1, seatNumber: 1 } exists on SeatReservation collection', async () => {
+    const indexes = await SeatReservation.collection.getIndexes();
+    expect(indexes).toHaveProperty('tripId_1_seatNumber_1');
+  });
+
+  it('20 parallel lock requests for the exact same seat: exactly one succeeds, 19 get 409 Conflict', async () => {
+    // Generate 20 distinct users
+    const parallelUsers = await Promise.all(
+      Array.from({ length: 20 }, (_, idx) =>
+        User.create({
+          name: `Concurrent User ${idx + 1}`,
+          email: `concurrent_${idx + 1}@yatrabus.test`,
+          password: 'password123',
+          phone: `90000000${String(idx + 1).padStart(2, '0')}`,
+        })
+      )
+    );
+
+    // All 20 simultaneously attempt to lock seat 'S12' on testTrip
+    const results = await Promise.allSettled(
+      parallelUsers.map((u) =>
+        lockSeats({
+          tripId: testTrip._id,
+          seatNumbers: ['S12'],
+          userId: u._id,
+        })
+      )
+    );
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(19);
+
+    for (const r of rejected) {
+      expect(r.reason.statusCode).toBe(409);
+    }
+
+    // Verify only 1 reservation document exists in DB for this seat
+    const reservationsInDb = await SeatReservation.find({
+      tripId: testTrip._id,
+      seatNumber: 'S12',
+    });
+    expect(reservationsInDb.length).toBe(1);
+    expect(reservationsInDb[0].userId.toString()).toBe(fulfilled[0].value.userId ? fulfilled[0].value.userId.toString() : reservationsInDb[0].userId.toString());
+  });
+
+  it('Confirmed seat cannot be locked again', async () => {
+    // Seed an already booked and confirmed seat 'S14'
+    await SeatReservation.create({
+      tripId: testTrip._id,
+      busId: testBus._id,
+      travelDate: testTrip.travelDate,
+      seatNumber: 'S14',
+      userId: userA._id,
+      status: 'booked',
+    });
+
+    // User B attempts to lock the confirmed seat S14
+    await expect(
+      lockSeats({
+        tripId: testTrip._id,
+        seatNumbers: ['S14'],
+        userId: userB._id,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 409,
+    });
+  });
 });
