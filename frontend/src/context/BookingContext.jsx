@@ -4,11 +4,13 @@ import { MOCK_BUSES, INITIAL_USER_BOOKINGS, INITIAL_SAVED_TRAVELLERS } from '../
 import { normalizeYatraFleetItems } from '../utils/yatraFleet';
 import { bookingApi, savedPassengerApi } from '../services/api';
 import toast from 'react-hot-toast';
+import { useNotifications } from './NotificationContext';
 
 const BookingContext = createContext(null);
 
 export const BookingProvider = ({ children }) => {
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   // Bus inventory
   const [buses, setBuses] = useState(() => {
@@ -214,7 +216,7 @@ export const BookingProvider = ({ children }) => {
   };
 
   // Confirm booking
-  const confirmBooking = ({ paymentMethod, contactEmail, contactPhone }) => {
+  const confirmBooking = ({ paymentMethod, contactEmail, contactPhone, bookingReference }) => {
     if (!selectedBus || selectedSeats.length === 0) {
       toast.error('No active booking details found.');
       return null;
@@ -222,7 +224,7 @@ export const BookingProvider = ({ children }) => {
 
     // Generate unique PNR
     const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const pnr = `BK-${randomHex}`;
+    const pnr = bookingReference || `BK-${randomHex}`;
 
     const totalFare = selectedSeats.reduce((acc, curr) => acc + (curr.price || selectedBus.fare), 0);
     const taxAndGst = Math.round(totalFare * 0.05); // 5% GST
@@ -237,11 +239,17 @@ export const BookingProvider = ({ children }) => {
       busType: selectedBus.busType,
       origin: selectedBus.origin,
       destination: selectedBus.destination,
+      from_location: selectedBus.origin || searchParams.origin,
+      to_location: selectedBus.destination || searchParams.destination,
       journeyDate: searchParams.journeyDate || today,
       departureTime: selectedBus.departureTime,
       arrivalTime: selectedBus.arrivalTime,
       boardingPoint: selectedBoardingPoint ? selectedBoardingPoint.name : (selectedBus.boardingPoints?.[0]?.name || 'Central Bus Station'),
       droppingPoint: selectedDroppingPoint ? selectedDroppingPoint.name : (selectedBus.droppingPoints?.[0]?.name || 'City Drop Terminal'),
+      pickup_point: selectedBoardingPoint?.name || selectedBus.boardingPoints?.[0]?.name || 'Central Bus Station',
+      drop_point: selectedDroppingPoint?.name || selectedBus.droppingPoints?.[0]?.name || 'City Drop Terminal',
+      latitude: selectedBoardingPoint?.latitude ?? null,
+      longitude: selectedBoardingPoint?.longitude ?? null,
       seats: selectedSeats.map((s) => s.seatNumber || s.number),
       passengers: passengers.length > 0 ? passengers : selectedSeats.map((s, idx) => ({
         name: `Passenger ${idx + 1}`,
@@ -288,6 +296,11 @@ export const BookingProvider = ({ children }) => {
 
     // Save to user bookings
     setBookings((prev) => [newBooking, ...prev]);
+    addNotification({
+      title: 'New booking created',
+      message: `Booking ${pnr} for ${newBooking.from_location} to ${newBooking.to_location} is confirmed.`,
+      type: 'booking'
+    });
 
     return newBooking;
   };
@@ -297,6 +310,11 @@ export const BookingProvider = ({ children }) => {
     setBookings((prev) =>
       prev.map((b) => (b.pnr === pnr ? { ...b, bookingStatus: 'cancelled' } : b))
     );
+    addNotification({
+      title: 'Booking cancelled',
+      message: `Booking ${pnr} was cancelled. Your refund has been initiated.`,
+      type: 'cancellation'
+    });
     toast.success(`Booking ${pnr} has been cancelled successfully. Refund initiated.`);
   };
 

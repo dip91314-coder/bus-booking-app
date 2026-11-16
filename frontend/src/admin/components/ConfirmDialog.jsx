@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Modal from './Modal';
-import { AlertTriangle, Trash2, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Trash2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import Button from '../../components/common/Button';
 
 const ConfirmDialog = ({
   isOpen,
@@ -13,6 +15,24 @@ const ConfirmDialog = ({
   type = 'danger', // danger, warning, info
   loading = false
 }) => {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const isLoading = loading || isConfirming;
+
+  const handleConfirm = async () => {
+    try {
+      const result = onConfirm();
+      if (result && typeof result.then === 'function') {
+        setIsConfirming(true);
+        await result;
+      }
+      onClose();
+    } catch (error) {
+      toast.error(error?.message || 'Could not complete the action.');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-md">
       <div className="space-y-4">
@@ -36,29 +56,25 @@ const ConfirmDialog = ({
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-          <button
+          <Button
             type="button"
             onClick={onClose}
-            disabled={loading}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+            disabled={isLoading}
+            variant="secondary"
+            size="sm"
           >
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            disabled={loading}
-            className={`px-4 py-2 text-xs font-bold text-white rounded-xl shadow-sm transition flex items-center gap-1.5 ${
-              type === 'danger'
-                ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-200'
-                : 'bg-primary hover:bg-primary-dark shadow-blue-200'
-            }`}
+            onClick={handleConfirm}
+            disabled={isLoading}
+            loading={isLoading}
+            variant={type === 'danger' ? 'danger' : 'primary'}
+            size="sm"
           >
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

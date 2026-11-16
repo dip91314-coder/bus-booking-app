@@ -216,4 +216,49 @@ describe('OBTBS Models & Schema Validations', () => {
     expect(tripPrice.basePrice).toBe(900);
     expect(tripPrice.additionalCharges).toBe(50);
   });
+
+  it('stores booking location fields and rejects matching From and To locations', async () => {
+    const bookingFields = {
+      bookingReference: 'LOC-TEST-01',
+      userId: new mongoose.Types.ObjectId(),
+      busId: new mongoose.Types.ObjectId(),
+      busName: 'Test Coach',
+      operator: 'YatraBus',
+      busNumber: 'WB-TEST-01',
+      busType: 'AC Sleeper',
+      origin: 'Kolkata',
+      destination: 'Siliguri',
+      journeyDate: '2026-11-20',
+      departureTime: '20:00',
+      arrivalTime: '06:30',
+      boardingPoint: 'Esplanade',
+      droppingPoint: 'Siliguri Junction',
+      seats: ['A1'],
+      passengers: [{ name: 'Test Passenger', age: 30, gender: 'other', seatNumber: 'A1' }],
+      totalFare: 1000,
+      contactEmail: 'passenger@example.com',
+      contactPhone: '9876543210',
+      latitude: 22.5726,
+      longitude: 88.3639,
+    };
+
+    const booking = new Booking(bookingFields);
+    await booking.validate();
+    expect(booking).toMatchObject({
+      from_location: 'Kolkata',
+      to_location: 'Siliguri',
+      pickup_point: 'Esplanade',
+      drop_point: 'Siliguri Junction',
+      latitude: 22.5726,
+      longitude: 88.3639,
+    });
+
+    const invalidBooking = new Booking({
+      ...bookingFields,
+      bookingReference: 'LOC-TEST-02',
+      from_location: 'Kolkata',
+      to_location: 'kolkata',
+    });
+    await expect(invalidBooking.validate()).rejects.toThrow('From and To locations must be different.');
+  });
 });

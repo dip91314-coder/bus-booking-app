@@ -16,6 +16,7 @@ import {
   INITIAL_SETTINGS
 } from '../data/mockAdminData';
 import { normalizeYatraFleetItems } from '../../utils/yatraFleet';
+import { useNotifications } from '../../context/NotificationContext';
 
 const AdminContext = createContext(null);
 
@@ -35,6 +36,7 @@ const getAdminErrorMessage = (error) =>
   'The admin request failed.';
 
 export const AdminProvider = ({ children }) => {
+  const { addNotification: addAppNotification } = useNotifications();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -318,7 +320,14 @@ export const AdminProvider = ({ children }) => {
   const updateSchedule = (id, updatedData) => {
     return runAdminRequest(
       () => adminApi.updateResource('schedules', id, updatedData),
-      (schedule) => setSchedules((prev) => prev.map((item) => (item.id === id ? schedule : item))),
+      (schedule) => {
+        setSchedules((prev) => prev.map((item) => (item.id === id ? schedule : item)));
+        addAppNotification({
+          title: 'Bus schedule changed',
+          message: `${schedule.busName || updatedData.busName || 'Bus schedule'} was updated for ${schedule.journeyDate || updatedData.journeyDate || 'an upcoming trip'}.`,
+          type: 'schedule'
+        });
+      },
       () => {
         setSchedules((prev) => prev.map((schedule) => (schedule.id === id ? { ...schedule, ...updatedData } : schedule)));
         toast.success('Schedule updated.');
@@ -377,6 +386,11 @@ export const AdminProvider = ({ children }) => {
         title: 'Booking Cancelled',
         message: `Booking ${id} was cancelled. Refund processed automatically.`,
         category: 'cancellation'
+      });
+      addAppNotification({
+        title: 'Booking cancelled',
+        message: `Booking ${id} was cancelled by the operations team.`,
+        type: 'cancellation'
       });
     };
 

@@ -11,6 +11,10 @@ export function generateTicketPdf(ticket) {
       doc.on('error', (err) => reject(err));
 
       const { journeySnapshot = {}, passengerSnapshot = [], priceBreakdown = {}, pnr, bookingId } = ticket;
+      const fromLocation = journeySnapshot.from_location || journeySnapshot.source || 'N/A';
+      const toLocation = journeySnapshot.to_location || journeySnapshot.destination || 'N/A';
+      const pickupPoint = journeySnapshot.pickup_point || journeySnapshot.boardingPoint || 'Main Stand';
+      const dropPoint = journeySnapshot.drop_point || journeySnapshot.droppingPoint || 'City Drop';
 
       // Header Banner
       doc
@@ -85,21 +89,21 @@ export function generateTicketPdf(ticket) {
       doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.busType || 'AC Sleeper', col3, jRow1 + 10);
 
       // Row 2
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('ORIGIN / FROM', col1, jRow2);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.source || 'N/A', col1, jRow2 + 10);
+      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('FROM', col1, jRow2);
+      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(fromLocation, col1, jRow2 + 10);
 
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('DESTINATION / TO', col2, jRow2);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.destination || 'N/A', col2, jRow2 + 10);
+      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('TO', col2, jRow2);
+      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(toLocation, col2, jRow2 + 10);
 
       doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('JOURNEY DATE', col3, jRow2);
       doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.travelDate || 'N/A', col3, jRow2 + 10);
 
       // Row 3
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('DEPARTURE TIME & POINT', col1, jRow3);
-      doc.fontSize(9).fillColor('#111827').font('Helvetica-Bold').text(`${journeySnapshot.departureTime} - ${journeySnapshot.boardingPoint || 'Main Stand'}`, col1, jRow3 + 10);
+      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('PICKUP POINT / DEPARTURE', col1, jRow3);
+      doc.fontSize(9).fillColor('#111827').font('Helvetica-Bold').text(`${journeySnapshot.departureTime} - ${pickupPoint}`, col1, jRow3 + 10);
 
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('ARRIVAL TIME & POINT', col3, jRow3);
-      doc.fontSize(9).fillColor('#111827').font('Helvetica-Bold').text(`${journeySnapshot.arrivalTime} - ${journeySnapshot.droppingPoint || 'City Drop'}`, col3, jRow3 + 10);
+      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('DROP POINT / ARRIVAL', col3, jRow3);
+      doc.fontSize(9).fillColor('#111827').font('Helvetica-Bold').text(`${journeySnapshot.arrivalTime} - ${dropPoint}`, col3, jRow3 + 10);
 
       // Passengers Table
       const passY = 300;

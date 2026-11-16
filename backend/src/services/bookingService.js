@@ -8,6 +8,12 @@ export async function createPendingBooking({
   tripId,
   boardingPoint,
   droppingPoint,
+  from_location,
+  to_location,
+  pickup_point,
+  drop_point,
+  latitude,
+  longitude,
   passengers,
   contactEmail,
   contactPhone,
@@ -27,6 +33,13 @@ export async function createPendingBooking({
 
   const bus = trip.busId;
   const route = trip.routeId;
+  const resolvedFrom = from_location || route?.source || route?.origin || bus.origin;
+  const resolvedTo = to_location || route?.destination || bus.destination;
+  if (resolvedFrom.trim().toLowerCase() === resolvedTo.trim().toLowerCase()) {
+    throw new ValidationError('From and To locations must be different.');
+  }
+  const resolvedPickup = pickup_point || boardingPoint || trip.boardingPoints?.[0]?.name || bus.boardingPoints?.[0]?.name || 'Main Stand';
+  const resolvedDrop = drop_point || droppingPoint || trip.droppingPoints?.[0]?.name || bus.droppingPoints?.[0]?.name || 'City Junction';
   const now = new Date();
 
   const requestedSeats = passengers.map((p) => String(p.seatNumber).toUpperCase().trim());
@@ -88,13 +101,19 @@ export async function createPendingBooking({
     operator: bus.operator,
     busNumber: bus.busNumber,
     busType: bus.busType,
-    origin: route?.source || route?.origin || bus.origin,
-    destination: route?.destination || bus.destination,
+    origin: resolvedFrom,
+    destination: resolvedTo,
+    from_location: resolvedFrom,
+    to_location: resolvedTo,
+    pickup_point: resolvedPickup,
+    drop_point: resolvedDrop,
+    latitude,
+    longitude,
     journeyDate: trip.travelDate,
     departureTime: trip.departureTime,
     arrivalTime: trip.arrivalTime,
-    boardingPoint: boardingPoint || trip.boardingPoints?.[0]?.name || bus.boardingPoints?.[0]?.name || 'Main Stand',
-    droppingPoint: droppingPoint || trip.droppingPoints?.[0]?.name || bus.droppingPoints?.[0]?.name || 'City Junction',
+    boardingPoint: resolvedPickup,
+    droppingPoint: resolvedDrop,
     seats: requestedSeats,
     passengers: passengers.map((p) => ({
       name: p.name.trim(),

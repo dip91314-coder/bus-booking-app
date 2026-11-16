@@ -4,6 +4,7 @@ import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import ApiHealthBadge from '../../components/common/ApiHealthBadge';
+import NotificationBell from '../../components/common/NotificationBell';
 import {
   LayoutDashboard,
   Bus,
@@ -27,13 +28,9 @@ import {
   Search,
   LogOut,
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  User,
   Sun,
   Moon,
   MapPin,
-  Compass,
   DollarSign,
   History,
   Package,
@@ -41,7 +38,7 @@ import {
 } from 'lucide-react';
 
 const AdminLayout = () => {
-  const { notifications, unreadNotificationsCount, markAsRead, markAllAsRead, settings } = useAdmin();
+  const { unreadNotificationsCount, settings } = useAdmin();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
@@ -49,7 +46,6 @@ const AdminLayout = () => {
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const adminName = user?.name || user?.email || 'Administrator';
@@ -142,14 +138,14 @@ const AdminLayout = () => {
 
       {/* ================= SIDEBAR ================= */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-[#071330] text-slate-300 flex flex-col transition-all duration-300 ease-in-out border-r border-slate-800/80 shadow-2xl ${
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-[#0F172A] text-slate-200 flex flex-col transition-all duration-300 ease-in-out border-r border-slate-700 shadow-2xl ${
           collapsed ? 'w-20' : 'w-64'
         } ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Sidebar Brand Header */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800/80 bg-[#050E24]">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-700 bg-[#020617]">
           <Link
             to="/admin"
             className="flex items-center gap-3 overflow-hidden text-white group"
@@ -179,6 +175,7 @@ const AdminLayout = () => {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close admin menu"
             className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
           >
             <X className="w-5 h-5" />
@@ -187,7 +184,7 @@ const AdminLayout = () => {
 
         {/* Live Status indicator */}
         {!collapsed && (
-          <div className="px-4 py-2.5 bg-blue-950/40 border-b border-slate-800/60 flex items-center justify-between text-[11px]">
+          <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-700 flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -221,8 +218,8 @@ const AdminLayout = () => {
                     title={collapsed ? item.label : undefined}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group ${
                       active
-                        ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                        ? 'bg-[#2563EB] text-white font-bold shadow-md shadow-blue-600/30'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800'
                     }`}
                   >
                     <IconComponent
@@ -257,7 +254,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Sidebar Footer Controls */}
-        <div className="p-3 border-t border-slate-800/80 bg-[#050E24] flex items-center justify-between gap-2">
+        <div className="p-3 border-t border-slate-700 bg-[#020617] flex items-center justify-between gap-2">
           {!collapsed ? (
             <Link
               to="/"
@@ -306,6 +303,7 @@ const AdminLayout = () => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open admin menu"
               className="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
             >
               <Menu className="w-5 h-5" />
@@ -420,95 +418,7 @@ const AdminLayout = () => {
               )}
             </button>
 
-            {/* Notifications Popover */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                title="System Notifications"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadNotificationsCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center animate-pulse">
-                    {unreadNotificationsCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Dropdown Panel */}
-              {notifDropdownOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-[#111622] rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 z-50 overflow-hidden animate__animated animate__fadeIn animate__faster"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#161D2E] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">Notifications</h4>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                        {unreadNotificationsCount} unread
-                      </span>
-                    </div>
-                    {unreadNotificationsCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={markAllAsRead}
-                        className="text-[11px] font-semibold text-primary dark:text-blue-400 hover:underline"
-                      >
-                        Mark all read
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                    {notifications.slice(0, 5).map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => markAsRead(n.id)}
-                        className={`p-3 text-xs flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition ${
-                          !n.read ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
-                        }`}
-                      >
-                        <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                            n.category === 'booking'
-                              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                              : n.category === 'payment'
-                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
-                              : n.category === 'cancellation'
-                              ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400'
-                              : 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
-                          }`}
-                        >
-                          {n.category === 'cancellation' ? (
-                            <AlertTriangle className="w-4 h-4" />
-                          ) : (
-                            <CheckCircle2 className="w-4 h-4" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{n.title}</p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                            {n.message}
-                          </p>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">{n.time}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-[#161D2E] text-center">
-                    <Link
-                      to="/admin/notifications"
-                      onClick={() => setNotifDropdownOpen(false)}
-                      className="text-xs font-bold text-primary dark:text-blue-400 hover:underline"
-                    >
-                      View All System Alerts ➔
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationBell />
 
             {/* Admin Profile Dropdown */}
             <div className="relative">

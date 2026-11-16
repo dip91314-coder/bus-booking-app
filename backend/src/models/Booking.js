@@ -86,6 +86,12 @@ const BookingSchema = new mongoose.Schema(
     busType: { type: String, required: true },
     origin: { type: String, required: true, index: true },
     destination: { type: String, required: true, index: true },
+    from_location: { type: String, trim: true },
+    to_location: { type: String, trim: true },
+    pickup_point: { type: String, trim: true },
+    drop_point: { type: String, trim: true },
+    latitude: { type: Number, min: -90, max: 90 },
+    longitude: { type: Number, min: -180, max: 180 },
     journeyDate: { type: String, required: true, index: true },
     departureTime: { type: String, required: true },
     arrivalTime: { type: String, required: true },
@@ -144,6 +150,16 @@ const BookingSchema = new mongoose.Schema(
 
 BookingSchema.pre('validate', function (next) {
   this.operator = 'YatraBus';
+  this.from_location = (this.from_location || this.origin || '').trim();
+  this.to_location = (this.to_location || this.destination || '').trim();
+  this.pickup_point = (this.pickup_point || this.boardingPoint || '').trim();
+  this.drop_point = (this.drop_point || this.droppingPoint || '').trim();
+  if (this.from_location && this.to_location && this.from_location.toLowerCase() === this.to_location.toLowerCase()) {
+    this.invalidate('to_location', 'From and To locations must be different.');
+  }
+  if ((this.latitude === undefined) !== (this.longitude === undefined)) {
+    this.invalidate('latitude', 'Pickup latitude and longitude must be provided together.');
+  }
   if (!/^YatraBus(?:\s|$)/i.test(this.busName || '')) {
     this.busName = `YatraBus ${this.busType || 'Coach'}`;
   } else {

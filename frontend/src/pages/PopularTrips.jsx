@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { POPULAR_TRIPS_DATA, TRAVEL_STATS, PROMO_DEALS } from '../data/popularTripsData';
 import { destinationApi, routeApi, offerApi } from '../services/api';
-import OptimizedImage from '../components/common/OptimizedImage';
+import TravelImage from '../components/common/TravelImage';
 import toast from 'react-hot-toast';
 
 const PopularTrips = () => {
@@ -531,7 +531,8 @@ const PopularTrips = () => {
                   >
                     {/* Top Image Box */}
                     <div className="relative h-44 overflow-hidden">
-                      <OptimizedImage
+                      <TravelImage
+                        query={`${dest.name}, ${dest.state || ''}`}
                         src={dest.image}
                         alt={dest.name}
                         fallbackSrc={dest.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'}
@@ -640,7 +641,8 @@ const PopularTrips = () => {
                   className="bg-white dark:bg-[#111622] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-slate-200/80 dark:border-slate-800 group cursor-pointer transition-all duration-300 flex flex-col justify-between"
                 >
                   <div className="relative h-44 overflow-hidden">
-                    <OptimizedImage
+                    <TravelImage
+                      query={`${dest.name}, ${dest.state || ''}`}
                       src={dest.image}
                       alt={dest.name}
                       fallbackSrc={dest.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'}
@@ -848,13 +850,13 @@ const PopularTrips = () => {
             >
               {/* Modal Image Header */}
               <div className="relative h-64 w-full overflow-hidden">
-                <img
+                <TravelImage
+                  query={`${selectedModalTrip.name}, ${selectedModalTrip.state || ''}`}
                   src={selectedModalTrip.image}
                   alt={selectedModalTrip.name}
+                  containerClassName="w-full h-full"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = selectedModalTrip.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
-                  }}
+                  fallbackSrc={selectedModalTrip.fallbackImage || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'}
                 />
                 <button
                   type="button"

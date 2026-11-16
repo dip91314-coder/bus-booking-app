@@ -455,4 +455,11 @@ export const packageApi = {
   },
 };
 
+export const imageApi = {
+  searchDestinationPhoto: async (query) => {
+    const res = await apiClient.get('/images/search', { params: { query } });
+    return res.data?.data || null;
+  },
+};
+
 export default apiClient;

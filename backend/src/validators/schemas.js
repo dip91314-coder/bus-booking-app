@@ -70,7 +70,38 @@ export const holdSeatSchema = z.object({
   seatNumbers: z.array(z.string()).min(1, 'At least 1 seat required').max(6, 'Maximum 6 seats allowed'),
 });
 
+const locationFields = {
+  from_location: z.string().trim().min(2).max(100).optional(),
+  to_location: z.string().trim().min(2).max(100).optional(),
+  pickup_point: z.string().trim().min(1).max(200).optional(),
+  drop_point: z.string().trim().min(1).max(200).optional(),
+  latitude: z.number().finite().min(-90).max(90).optional(),
+  longitude: z.number().finite().min(-180).max(180).optional(),
+};
+
+const validateBookingLocations = (booking, context) => {
+  if (
+    booking.from_location &&
+    booking.to_location &&
+    booking.from_location.toLowerCase() === booking.to_location.toLowerCase()
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['to_location'],
+      message: 'From and To locations must be different.',
+    });
+  }
+  if ((booking.latitude === undefined) !== (booking.longitude === undefined)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['latitude'],
+      message: 'Pickup latitude and longitude must be provided together.',
+    });
+  }
+};
+
 const tripBookingSchema = z.object({
+  ...locationFields,
   tripId: z.string().min(1, 'Trip ID is required'),
   boardingPoint: z.string().optional(),
   droppingPoint: z.string().optional(),
@@ -89,9 +120,10 @@ const tripBookingSchema = z.object({
     .max(6),
   contactEmail: z.string().email(),
   contactPhone: z.string().regex(/^[0-9]{10}$/),
-});
+}).superRefine(validateBookingLocations);
 
 const legacyBookingSchema = z.object({
+  ...locationFields,
   busId: z.string().min(1, 'Bus ID is required'),
   journeyDate: z.string().min(1, 'Journey date is required'),
   boardingPoint: z.string().min(1, 'Boarding point is required'),
@@ -112,6 +144,7 @@ const legacyBookingSchema = z.object({
   contactEmail: z.string().email(),
   contactPhone: z.string().regex(/^[0-9]{10}$/),
 }).superRefine((booking, context) => {
+  validateBookingLocations(booking, context);
   const requestedSeats = booking.seats.map((seat) => seat.toUpperCase().trim());
   const passengerSeats = booking.passengers.map((passenger) => passenger.seatNumber.toUpperCase().trim());
   if (new Set(requestedSeats).size !== requestedSeats.length) {

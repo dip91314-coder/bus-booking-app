@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import NotificationBell from './NotificationBell';
 import {
   Menu,
   X,
@@ -97,6 +98,7 @@ const Navbar = () => {
 
         {/* Right CTA / Auth controls */}
         <div className="hidden md:flex items-center gap-3">
+          <NotificationBell />
           {/* Dark / Light Mode Switcher */}
           <button
             type="button"
@@ -198,6 +200,7 @@ const Navbar = () => {
 
         {/* Mobile menu trigger */}
         <div className="flex md:hidden items-center gap-2">
+          <NotificationBell />
           {/* Mobile Theme Switcher */}
           <button
             type="button"

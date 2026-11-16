@@ -15,6 +15,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Button from '../../components/common/Button';
 
 const DataTable = ({
   columns = [],
@@ -32,6 +33,7 @@ const DataTable = ({
   initialSortOrder = 'asc',
   pageSizeOptions = [5, 10, 20, 50],
   defaultPageSize = 10,
+  compact = false,
   enableExport = true,
   exportFileName = 'export'
 }) => {
@@ -146,7 +148,7 @@ const DataTable = ({
     <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
       {/* Header Bar */}
       {(title || actions || filterSlot || enableExport) && (
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className={`${compact ? 'p-3' : 'p-5'} border-b border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4`}>
           <div>
             {title && <h3 className="text-base font-bold text-slate-900 dark:text-white">{title}</h3>}
             {description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>}
@@ -156,15 +158,16 @@ const DataTable = ({
             {filterSlot}
 
             {enableExport && (
-              <button
+              <Button
                 type="button"
                 onClick={handleExportCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition cursor-pointer"
+                variant="secondary"
+                size="sm"
                 title="Download CSV report"
               >
                 <Download className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                 <span>Export CSV</span>
-              </button>
+              </Button>
             )}
 
             {actions}
@@ -173,7 +176,7 @@ const DataTable = ({
       )}
 
       {/* Search and Rows per page bar */}
-      <div className="px-5 py-3.5 bg-slate-50/60 dark:bg-[#161F33] border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className={`${compact ? 'px-3 py-2' : 'px-5 py-3.5'} bg-slate-50/60 dark:bg-[#161F33] border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3`}>
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -184,16 +187,19 @@ const DataTable = ({
               setCurrentPage(1);
             }}
             placeholder={searchPlaceholder}
-            className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+            className={`w-full pl-9 pr-8 ${compact ? 'py-1.5' : 'py-2'} text-xs bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition`}
           />
           {searchTerm && (
-            <button
+            <Button
               type="button"
               onClick={() => setSearchTerm('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold"
+              variant="text"
+              size="icon"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 min-h-7 min-w-7 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Clear search"
             >
               ×
-            </button>
+            </Button>
           )}
         </div>
 
@@ -217,7 +223,7 @@ const DataTable = ({
       </div>
 
       {/* Table Content */}
-      <div className="overflow-x-auto min-h-[220px]">
+      <div className={`${compact ? 'max-h-[480px] overflow-auto min-h-[180px]' : 'overflow-x-auto min-h-[220px]'}`}>
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50/80 dark:bg-[#151D2E] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-800 text-[11px]">
             <tr>
@@ -228,7 +234,7 @@ const DataTable = ({
                 return (
                   <th
                     key={col.key || idx}
-                    className={`py-3.5 px-4 ${col.className || ''} ${
+                    className={`${compact ? 'py-2 px-3' : 'py-3.5 px-4'} ${compact ? 'sticky top-0 z-10' : ''} ${col.className || ''} ${
                       isSortable ? 'cursor-pointer select-none hover:text-slate-800' : ''
                     }`}
                     onClick={() => isSortable && handleSort(col.key)}
@@ -259,7 +265,7 @@ const DataTable = ({
               Array.from({ length: 5 }).map((_, rIdx) => (
                 <tr key={`skeleton-${rIdx}`} className="animate-pulse">
                   {columns.map((col, cIdx) => (
-                    <td key={`skel-col-${cIdx}`} className="py-3.5 px-4">
+                    <td key={`skel-col-${cIdx}`} className={`${compact ? 'py-2 px-3' : 'py-3.5 px-4'}`}>
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-3/4"></div>
                     </td>
                   ))}
@@ -277,14 +283,14 @@ const DataTable = ({
                       {typeof error === 'string' ? error : 'An error occurred while fetching records.'}
                     </p>
                     {onRetry && (
-                      <button
+                      <Button
                         type="button"
                         onClick={onRetry}
-                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-dark transition flex items-center gap-1.5 shadow-sm"
+                        size="sm"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Retry</span>
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </td>
@@ -298,7 +304,7 @@ const DataTable = ({
                   {columns.map((col, colIdx) => (
                     <td
                       key={col.key || colIdx}
-                      className={`py-3.5 px-4 ${col.cellClassName || ''}`}
+                      className={`${compact ? 'py-2 px-3' : 'py-3.5 px-4'} ${col.cellClassName || ''}`}
                     >
                       {col.render ? col.render(row, rowIdx) : row[col.key]}
                     </td>
@@ -327,7 +333,7 @@ const DataTable = ({
       </div>
 
       {/* Pagination Footer */}
-      <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+      <div className={`${compact ? 'px-3 py-2' : 'px-5 py-3'} border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400`}>
         <div>
           {totalItems > 0 ? (
             <span>
@@ -347,47 +353,55 @@ const DataTable = ({
         </div>
 
         <div className="flex items-center gap-1">
-          <button
+          <Button
             type="button"
             disabled={safeCurrentPage <= 1}
             onClick={() => setCurrentPage(1)}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            variant="secondary"
+            size="icon"
             title="First page"
+            aria-label="First page"
           >
             <ChevronsLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={safeCurrentPage <= 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            variant="secondary"
+            size="icon"
             title="Previous page"
+            aria-label="Previous page"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
+          </Button>
 
           <span className="px-3 py-1 font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
             Page {safeCurrentPage} of {totalPages}
           </span>
 
-          <button
+          <Button
             type="button"
             disabled={safeCurrentPage >= totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            variant="secondary"
+            size="icon"
             title="Next page"
+            aria-label="Next page"
           >
             <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={safeCurrentPage >= totalPages}
             onClick={() => setCurrentPage(totalPages)}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            variant="secondary"
+            size="icon"
             title="Last page"
+            aria-label="Last page"
           >
             <ChevronsRight className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

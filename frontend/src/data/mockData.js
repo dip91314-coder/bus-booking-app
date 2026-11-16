@@ -19,6 +19,7 @@ export const POPULAR_CITIES = [
   { name: 'Manali', state: 'Himachal Pradesh', lat: 32.2432, lng: 77.1892, terminals: ['Private Bus Stand Manali', 'Mall Road Barrier', 'Patlikuhl'] },
   { name: 'Goa (Panaji)', state: 'Goa', lat: 15.4909, lng: 73.8278, terminals: ['Panaji KTC Bus Stand', 'Mapusa Bus Stand', 'Margao KTC'] },
   { name: 'Shillong', state: 'Meghalaya', lat: 25.5788, lng: 91.8933, terminals: ['Police Bazar Stand', 'Anjali Point', 'Dhankheti'] },
+  { name: 'Dhaka', state: 'Dhaka Division', lat: 23.8103, lng: 90.4125, terminals: ['Sayedabad Bus Terminal', 'Gabtoli Bus Terminal', 'Mohakhali Bus Terminal'] },
 ];
 
 export const MOCK_BUSES = [

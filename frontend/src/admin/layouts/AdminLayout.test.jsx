@@ -8,6 +8,7 @@ import AdminLayout from './AdminLayout';
 import { useAdmin } from '../context/AdminContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { NotificationProvider } from '../../context/NotificationContext';
 
 vi.mock('../context/AdminContext', () => ({ useAdmin: vi.fn() }));
 vi.mock('../../context/AuthContext', () => ({ useAuth: vi.fn() }));
@@ -36,7 +37,9 @@ describe('AdminLayout account identity', () => {
   it('shows the signed-in admin instead of a platform-wide profile', () => {
     render(
       <MemoryRouter>
-        <AdminLayout />
+        <NotificationProvider>
+          <AdminLayout />
+        </NotificationProvider>
       </MemoryRouter>
     );
 

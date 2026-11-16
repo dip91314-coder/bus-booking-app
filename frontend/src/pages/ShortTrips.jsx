@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { packageApi } from '../services/api';
 import { INITIAL_PACKAGES } from '../data/packagesData';
-import OptimizedImage from '../components/common/OptimizedImage';
+import TravelImage from '../components/common/TravelImage';
 import { PackageCardSkeleton } from '../components/common/Skeletons';
 import {
   Compass,
@@ -133,7 +133,8 @@ const ShortTrips = () => {
               >
                 <div>
                   <div className="relative h-48 overflow-hidden">
-                    <OptimizedImage
+                    <TravelImage
+                      query={pkg.destinationCity || pkg.title}
                       src={pkg.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800'}
                       alt={pkg.title}
                       containerClassName="w-full h-full"
@@ -213,9 +214,11 @@ const ShortTrips = () => {
               className="bg-white dark:bg-[#121829] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[85vh] flex flex-col"
             >
               <div className="relative h-44 shrink-0">
-                <img
+                <TravelImage
+                  query={activePackage.destinationCity || activePackage.title}
                   src={activePackage.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800'}
                   alt={activePackage.title}
+                  containerClassName="w-full h-full"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>

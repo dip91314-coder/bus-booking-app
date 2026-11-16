@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { AdminProvider } from './context/AdminContext';
+import { NotificationProvider } from '../context/NotificationContext';
 import {
   INITIAL_BUSES,
   INITIAL_ROUTES,
@@ -67,7 +68,9 @@ describe('Admin Panel Data & Module Integrity', () => {
     pages.forEach(({ name, component }) => {
       const html = renderToString(
         <MemoryRouter>
-          <AdminProvider>{component}</AdminProvider>
+          <NotificationProvider>
+            <AdminProvider>{component}</AdminProvider>
+          </NotificationProvider>
         </MemoryRouter>
       );
       expect(html.length, `Expected ${name} to render HTML`).toBeGreaterThan(100);
