@@ -52,6 +52,13 @@ const AdminLayout = () => {
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const adminName = user?.name || user?.email || 'Administrator';
+  const adminInitials = adminName
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   // Grouped Navigation Modules
   const navSections = [
@@ -511,14 +518,14 @@ const AdminLayout = () => {
                 className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
-                  {settings.adminName?.split(' ').map((n) => n[0]).join('') || 'VD'}
+                  {adminInitials}
                 </div>
                 <div className="hidden sm:block text-left">
                   <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block leading-tight">
-                    {settings.adminName || 'Vikram Das'}
+                    {adminName}
                   </span>
                   <span className="text-[10px] text-slate-400 font-semibold">
-                    {settings.adminRole || 'Super Admin'}
+                    Administrator
                   </span>
                 </div>
               </button>
@@ -529,9 +536,9 @@ const AdminLayout = () => {
                   onClick={() => setUserDropdownOpen(false)}
                 >
                   <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                    <p className="text-slate-900 dark:text-white font-bold">{settings.adminName}</p>
+                    <p className="text-slate-900 dark:text-white font-bold">{adminName}</p>
                     <p className="text-[11px] text-slate-400 font-normal truncate">
-                      {settings.adminEmail}
+                      {user?.email}
                     </p>
                   </div>
 

@@ -66,7 +66,7 @@ export async function createPackage(req, res, next) {
 
     await AuditLog.create({
       adminId: req.user?.userId || null,
-      adminEmail: req.user?.email || 'admin@yatrabus.com',
+      adminEmail: req.user?.email || '',
       action: 'CREATE_PACKAGE',
       targetEntity: 'TripPackage',
       targetId: pkg._id.toString(),
@@ -95,7 +95,7 @@ export async function updatePackage(req, res, next) {
 
     await AuditLog.create({
       adminId: req.user?.userId || null,
-      adminEmail: req.user?.email || 'admin@yatrabus.com',
+      adminEmail: req.user?.email || '',
       action: 'UPDATE_PACKAGE',
       targetEntity: 'TripPackage',
       targetId: pkg._id.toString(),
@@ -121,7 +121,7 @@ export async function deletePackage(req, res, next) {
 
     await AuditLog.create({
       adminId: req.user?.userId || null,
-      adminEmail: req.user?.email || 'admin@yatrabus.com',
+      adminEmail: req.user?.email || '',
       action: 'DELETE_PACKAGE',
       targetEntity: 'TripPackage',
       targetId: pkg._id.toString(),

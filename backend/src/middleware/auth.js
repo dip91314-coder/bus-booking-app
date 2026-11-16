@@ -24,7 +24,7 @@ export async function authenticate(req, res, next) {
 
   let user;
   try {
-    user = await User.findById(decoded.userId).select('role status');
+    user = await User.findById(decoded.userId).select('role status email name');
   } catch (error) {
     return next(error);
   }
@@ -32,7 +32,12 @@ export async function authenticate(req, res, next) {
     return next(new UnauthorizedError('This account is unavailable.'));
   }
 
-  req.user = { userId: user._id.toString(), role: user.role };
+  req.user = {
+    userId: user._id.toString(),
+    role: user.role,
+    email: user.email,
+    name: user.name,
+  };
   return next();
 }
 
@@ -51,9 +56,14 @@ export async function optionalAuthenticate(req, res, next) {
 
   try {
     const decoded = verifyAccessToken(token);
-    const user = await User.findById(decoded.userId).select('role status');
+    const user = await User.findById(decoded.userId).select('role status email name');
     if (user && user.status !== 'Suspended') {
-      req.user = { userId: user._id.toString(), role: user.role };
+      req.user = {
+        userId: user._id.toString(),
+        role: user.role,
+        email: user.email,
+        name: user.name,
+      };
     }
   } catch (err) {
     // Gracefully ignore token errors for optional routes

@@ -31,7 +31,7 @@ export async function recordAuditLog({ req, action, targetEntity, targetId = '',
   try {
     await AuditLog.create({
       adminId: req?.user?.userId || null,
-      adminEmail: req?.user?.email || 'admin@yatrabus.com',
+      adminEmail: req?.user?.email || '',
       action,
       targetEntity,
       targetId: targetId ? targetId.toString() : '',
