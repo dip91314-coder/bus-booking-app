@@ -206,12 +206,29 @@ export const ticketApi = {
       responseType: 'blob',
     });
     const blob = new Blob([res.data], { type: 'application/pdf' });
+    const objectUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = window.URL.createObjectURL(blob);
+    link.href = objectUrl;
     link.download = `ticket-${identifier}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+  },
+};
+
+export const notificationApi = {
+  getMyNotifications: async () => {
+    const res = await apiClient.get('/notifications');
+    return res.data?.data || [];
+  },
+  markAsRead: async (id) => {
+    const res = await apiClient.patch(`/notifications/${id}/read`);
+    return res.data?.data;
+  },
+  markAllAsRead: async () => {
+    const res = await apiClient.patch('/notifications/read-all');
+    return res.data;
   },
 };
 

@@ -8,6 +8,7 @@ import { SeatReservation } from '../models/SeatReservation.js';
 import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError, UnauthorizedError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
+import { publishUserNotification } from '../services/notificationService.js';
 
 export async function createBooking(req, res, next) {
   try {
@@ -185,6 +186,13 @@ export async function createBooking(req, res, next) {
     await Bus.findByIdAndUpdate(busId, {
       $inc: { availableSeatsCount: -seats.length },
     });
+    await publishUserNotification({
+      userId,
+      bookingId: newBooking._id,
+      category: 'booking',
+      title: 'Booking confirmed',
+      message: `Your booking ${newBooking.bookingReference} from ${newBooking.origin} to ${newBooking.destination} is confirmed.`,
+    });
 
     res.status(201).json({
       success: true,
@@ -300,6 +308,16 @@ export async function cancelBooking(req, res, next) {
         $inc: { availableSeatsCount: booking.seats.length },
       });
     }
+
+    await publishUserNotification({
+      userId: booking.userId,
+      tripId: booking.tripId,
+      bookingId: booking._id,
+      type: 'CANCELLATION',
+      category: 'cancellation',
+      title: 'Booking cancelled',
+      message: `Your booking ${booking.bookingReference} has been cancelled. A refund of Rs. ${booking.totalFare} has been initiated.`,
+    });
 
     res.status(200).json({
       success: true,

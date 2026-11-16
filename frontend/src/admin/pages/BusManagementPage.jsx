@@ -70,6 +70,7 @@ const BusManagementPage = () => {
   const [activeDeck, setActiveDeck] = useState('lower');
   const [activeBrush, setActiveBrush] = useState('regular');
   const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const [isSavingBus, setIsSavingBus] = useState(false);
 
   // Form State
   const defaultFormState = {
@@ -117,12 +118,23 @@ const BusManagementPage = () => {
   // Form validation
   const validateForm = () => {
     const errors = {};
-    if (!formData.busNumber.trim()) errors.busNumber = 'Bus Number is required';
-    if (!formData.busName.trim()) errors.busName = 'Bus Name is required';
-    if (!formData.capacity || Number(formData.capacity) <= 0) errors.capacity = 'Capacity must be > 0';
-    if (!formData.fare || Number(formData.fare) <= 0) errors.fare = 'Fare must be > 0';
-    if (!formData.origin.trim()) errors.origin = 'Origin city is required';
-    if (!formData.destination.trim()) errors.destination = 'Destination is required';
+    if (formData.busNumber.trim().length < 4) errors.busNumber = 'Enter a valid registration number';
+    if (formData.busName.trim().length < 2) errors.busName = 'Bus name must be at least 2 characters';
+    if (!Number.isInteger(Number(formData.capacity)) || Number(formData.capacity) < 1 || Number(formData.capacity) > 100) {
+      errors.capacity = 'Capacity must be between 1 and 100';
+    }
+    if (!Number.isFinite(Number(formData.fare)) || Number(formData.fare) < 1) errors.fare = 'Fare must be at least ₹1';
+    if (formData.origin.trim().length < 2) errors.origin = 'Enter a valid origin city';
+    if (formData.destination.trim().length < 2) errors.destination = 'Enter a valid destination city';
+    if (
+      formData.origin.trim() &&
+      formData.destination.trim() &&
+      formData.origin.trim().toLowerCase() === formData.destination.trim().toLowerCase()
+    ) {
+      errors.destination = 'Origin and destination must be different';
+    }
+    if (!formData.departureTime) errors.departureTime = 'Departure time is required';
+    if (!formData.arrivalTime) errors.arrivalTime = 'Arrival time is required';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -165,34 +177,46 @@ const BusManagementPage = () => {
     setDeleteConfirmOpen(true);
   };
 
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
+    if (isSavingBus) return;
     if (!validateForm()) {
       toast.error('Please fix validation errors.');
       return;
     }
 
-    addBus({
-      ...formData,
-      capacity: Number(formData.capacity),
-      fare: Number(formData.fare)
-    });
-    setAddModalOpen(false);
+    setIsSavingBus(true);
+    try {
+      const savedBus = await addBus({
+        ...formData,
+        capacity: Number(formData.capacity),
+        fare: Number(formData.fare)
+      });
+      if (savedBus) setAddModalOpen(false);
+    } finally {
+      setIsSavingBus(false);
+    }
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (isSavingBus) return;
     if (!validateForm()) {
       toast.error('Please fix validation errors.');
       return;
     }
 
-    updateBus(selectedBus.id, {
-      ...formData,
-      capacity: Number(formData.capacity),
-      fare: Number(formData.fare)
-    });
-    setEditModalOpen(false);
+    setIsSavingBus(true);
+    try {
+      const savedBus = await updateBus(selectedBus.id || selectedBus._id, {
+        ...formData,
+        capacity: Number(formData.capacity),
+        fare: Number(formData.fare)
+      });
+      if (savedBus) setEditModalOpen(false);
+    } finally {
+      setIsSavingBus(false);
+    }
   };
 
   const handleAmenityToggle = (amenity) => {
@@ -610,21 +634,23 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
                 Seat Capacity *
               </label>
               <input
                 type="number"
-                min="10"
-                max="60"
+                min="1"
+                max="100"
+                required
                 value={formData.capacity}
                 onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                 className={`w-full px-3 py-2 rounded-xl border ${
                   formErrors.capacity ? 'border-rose-500' : 'border-slate-200'
                 }`}
               />
+              {formErrors.capacity && <p className="mt-1 text-[11px] text-rose-500">{formErrors.capacity}</p>}
             </div>
 
             <div>
@@ -633,13 +659,15 @@ const BusManagementPage = () => {
               </label>
               <input
                 type="number"
-                min="100"
+                min="1"
+                required
                 value={formData.fare}
                 onChange={(e) => setFormData({ ...formData, fare: e.target.value })}
                 className={`w-full px-3 py-2 rounded-xl border font-bold text-primary ${
                   formErrors.fare ? 'border-rose-500' : 'border-slate-200'
                 }`}
               />
+              {formErrors.fare && <p className="mt-1 text-[11px] text-rose-500">{formErrors.fare}</p>}
             </div>
 
             <div>
@@ -656,7 +684,7 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">Origin City *</label>
               <input
@@ -666,6 +694,7 @@ const BusManagementPage = () => {
                 className="w-full px-3 py-2 rounded-xl border border-slate-200"
                 placeholder="e.g. Kolkata"
               />
+              {formErrors.origin && <p className="mt-1 text-[11px] text-rose-500">{formErrors.origin}</p>}
             </div>
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
@@ -678,7 +707,32 @@ const BusManagementPage = () => {
                 className="w-full px-3 py-2 rounded-xl border border-slate-200"
                 placeholder="e.g. Siliguri"
               />
+              {formErrors.destination && <p className="mt-1 text-[11px] text-rose-500">{formErrors.destination}</p>}
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              ['departureTime', 'Departure Time'],
+              ['arrivalTime', 'Arrival Time'],
+            ].map(([field, label]) => (
+              <div key={field}>
+                <label htmlFor={`add-${field}`} className="mb-1 block font-bold uppercase text-slate-700">
+                  {label} *
+                </label>
+                <input
+                  id={`add-${field}`}
+                  type="time"
+                  required
+                  value={formData[field]}
+                  onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+                  className={`w-full rounded-xl border px-3 py-2 ${
+                    formErrors[field] ? 'border-rose-500' : 'border-slate-200'
+                  }`}
+                />
+                {formErrors[field] && <p className="mt-1 text-[11px] text-rose-500">{formErrors[field]}</p>}
+              </div>
+            ))}
           </div>
 
           {/* Amenities Multi-Check */}
@@ -707,19 +761,21 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white/95 px-4 pb-4 pt-3 shadow-[0_-8px_18px_-18px_rgba(15,23,42,0.5)] backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 sm:pb-6">
             <button
               type="button"
               onClick={() => setAddModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              disabled={isSavingBus}
+              className="min-h-10 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
+              disabled={isSavingBus}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-dark focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
             >
-              Register Bus to Fleet
+              {isSavingBus ? 'Saving bus...' : 'Save Bus'}
             </button>
           </div>
         </form>
@@ -741,6 +797,7 @@ const BusManagementPage = () => {
               </label>
               <input
                 type="text"
+                required
                 value={formData.busNumber}
                 onChange={(e) => setFormData({ ...formData, busNumber: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border font-mono border-slate-200"
@@ -753,6 +810,7 @@ const BusManagementPage = () => {
               </label>
               <input
                 type="text"
+                required
                 value={formData.busName}
                 onChange={(e) => setFormData({ ...formData, busName: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200"
@@ -797,13 +855,16 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1">
                 Seat Capacity *
               </label>
               <input
                 type="number"
+                min="1"
+                max="100"
+                required
                 value={formData.capacity}
                 onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200"
@@ -816,6 +877,8 @@ const BusManagementPage = () => {
               </label>
               <input
                 type="number"
+                min="1"
+                required
                 value={formData.fare}
                 onChange={(e) => setFormData({ ...formData, fare: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border font-bold text-primary border-slate-200"
@@ -834,6 +897,30 @@ const BusManagementPage = () => {
                 <option value="Inactive">Inactive</option>
               </select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              ['departureTime', 'Departure Time'],
+              ['arrivalTime', 'Arrival Time'],
+            ].map(([field, label]) => (
+              <div key={field}>
+                <label htmlFor={`edit-${field}`} className="mb-1 block font-bold uppercase text-slate-700">
+                  {label} *
+                </label>
+                <input
+                  id={`edit-${field}`}
+                  type="time"
+                  required
+                  value={formData[field]}
+                  onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+                  className={`w-full rounded-xl border px-3 py-2 ${
+                    formErrors[field] ? 'border-rose-500' : 'border-slate-200'
+                  }`}
+                />
+                {formErrors[field] && <p className="mt-1 text-[11px] text-rose-500">{formErrors[field]}</p>}
+              </div>
+            ))}
           </div>
 
           <div>
@@ -861,19 +948,21 @@ const BusManagementPage = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-wrap justify-end gap-3 border-t border-slate-100 bg-white/95 px-4 pb-4 pt-3 shadow-[0_-8px_18px_-18px_rgba(15,23,42,0.5)] backdrop-blur sm:-mx-6 sm:-mb-6 sm:px-6 sm:pb-6">
             <button
               type="button"
               onClick={() => setEditModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              disabled={isSavingBus}
+              className="min-h-10 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
+              disabled={isSavingBus}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-primary px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-primary-dark focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed"
             >
-              Save Changes
+              {isSavingBus ? 'Saving changes...' : 'Save Changes'}
             </button>
           </div>
         </form>
@@ -1139,11 +1228,12 @@ const BusManagementPage = () => {
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          if (busToDelete) {
-            deleteBus(busToDelete.id);
-            setBusToDelete(null);
-          }
+        onConfirm={async () => {
+          if (!busToDelete) return false;
+          const deleted = await deleteBus(busToDelete.id || busToDelete._id);
+          if (!deleted) return false;
+          setBusToDelete(null);
+          return true;
         }}
         title="Delete Bus from Fleet"
         message={`Are you sure you want to remove bus ${busToDelete?.busNumber} (${busToDelete?.busName})? This will decommission the vehicle from active booking schedules.`}

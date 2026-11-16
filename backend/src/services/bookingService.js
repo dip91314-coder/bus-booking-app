@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Trip, Bus, Route, Booking, SeatReservation, Pricing } from '../models/index.js';
 import { ValidationError, NotFoundError, ConflictError } from '../utils/customErrors.js';
 import { logger } from '../config/logger.js';
+import { publishUserNotification } from './notificationService.js';
 
 export async function createPendingBooking({
   userId,
@@ -143,6 +144,14 @@ export async function createPendingBooking({
   );
 
   logger.info({ bookingId: booking._id, pnr, totalFare: finalTotalAmount }, 'Created pending booking');
+  await publishUserNotification({
+    userId,
+    tripId: trip._id,
+    bookingId: booking._id,
+    category: 'booking',
+    title: 'Booking created',
+    message: `Booking ${booking.pnr} was created for ${resolvedFrom} to ${resolvedTo}. Complete payment to confirm your seats.`,
+  });
 
   return {
     bookingId: booking._id,

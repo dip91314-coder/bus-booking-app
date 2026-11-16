@@ -11,6 +11,7 @@ import {
   Booking,
   Payment,
   Ticket,
+  TripNotification,
 } from './models/index.js';
 import { getTripSeats, lockSeats, releaseLocks } from './services/seatLockService.js';
 import { createPendingBooking } from './services/bookingService.js';
@@ -47,6 +48,7 @@ describe('OBTBS Concurrency, Seat Locking, & Payment Engine', () => {
       Booking.deleteMany({}),
       Payment.deleteMany({}),
       Ticket.deleteMany({}),
+      TripNotification.deleteMany({}),
     ]);
 
     userA = await User.create({
@@ -206,6 +208,11 @@ describe('OBTBS Concurrency, Seat Locking, & Payment Engine', () => {
     expect(confirmRes.success).toBe(true);
     expect(confirmRes.booking.bookingStatus).toBe('confirmed');
     expect(confirmRes.ticket.pnr).toBe(bookingRes.pnr);
+    expect(await TripNotification.findOne({
+      userId: userA._id,
+      bookingId: bookingRes.bookingId,
+      category: 'payment',
+    })).toMatchObject({ title: 'Payment received' });
 
     // Verify seats are permanently booked
     const reservations = await SeatReservation.find({

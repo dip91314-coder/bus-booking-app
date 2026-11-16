@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import ApiHealthBadge from '../../components/common/ApiHealthBadge';
 import NotificationBell from '../../components/common/NotificationBell';
+import './adminTheme.css';
 import {
   LayoutDashboard,
   Bus,
@@ -55,7 +56,6 @@ const AdminLayout = () => {
     .join('')
     .slice(0, 2)
     .toUpperCase();
-
   // Grouped Navigation Modules
   const navSections = [
     {
@@ -120,6 +120,9 @@ const AdminLayout = () => {
     }
     return location.pathname.startsWith(itemPath);
   };
+  const activeItem = navSections
+    .flatMap((section) => section.items)
+    .find((item) => isRouteActive(item.path, item.exact));
 
   const handleLogout = async () => {
     await logout();
@@ -127,7 +130,7 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex">
+    <div className="admin-console flex min-h-screen bg-[#F4F7FB] text-slate-800 dark:bg-[#070C16] dark:text-slate-100">
       {/* Mobile Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -139,7 +142,7 @@ const AdminLayout = () => {
       {/* ================= SIDEBAR ================= */}
       <aside
         className={`fixed top-0 bottom-0 left-0 z-40 bg-[#0F172A] text-slate-200 flex flex-col transition-all duration-300 ease-in-out border-r border-slate-700 shadow-2xl ${
-          collapsed ? 'w-20' : 'w-64'
+          collapsed ? 'w-64 lg:w-20' : 'w-64'
         } ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
@@ -154,7 +157,7 @@ const AdminLayout = () => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0 group-hover:scale-105 transition">
               <Bus className="w-5 h-5 text-white" />
             </div>
-            {!collapsed && (
+            {(!collapsed || mobileMenuOpen) && (
               <div className="flex flex-col truncate">
                 <div className="flex items-center gap-1.5">
                   <span className="font-black text-sm tracking-tight text-white">
@@ -183,7 +186,7 @@ const AdminLayout = () => {
         </div>
 
         {/* Live Status indicator */}
-        {!collapsed && (
+        {(!collapsed || mobileMenuOpen) && (
           <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-700 flex items-center justify-between text-[11px]">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -200,7 +203,7 @@ const AdminLayout = () => {
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 custom-scrollbar">
           {navSections.map((sec, idx) => (
             <div key={idx} className="space-y-1">
-              {!collapsed && (
+              {(!collapsed || mobileMenuOpen) && (
                 <div className="px-3 pb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
                   {sec.label}
                 </div>
@@ -227,23 +230,23 @@ const AdminLayout = () => {
                         active ? 'text-white' : 'text-slate-400 group-hover:scale-110'
                       }`}
                     />
-                    {!collapsed && (
+                    {(!collapsed || mobileMenuOpen) && (
                       <span className="truncate flex-1">{item.label}</span>
                     )}
 
                     {/* Badge */}
-                    {!collapsed && item.badge && (
+                    {(!collapsed || mobileMenuOpen) && item.badge && (
                       <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
                         {item.badge}
                       </span>
                     )}
 
-                    {collapsed && item.badge && (
+                    {collapsed && !mobileMenuOpen && item.badge && (
                       <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500" />
                     )}
 
                     {/* Active Pip when collapsed */}
-                    {collapsed && active && (
+                    {collapsed && !mobileMenuOpen && active && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-400 rounded-r" />
                     )}
                   </NavLink>
@@ -314,7 +317,7 @@ const AdminLayout = () => {
               <span className="text-slate-400">YatraBus Operations</span>
               <span className="text-slate-300 dark:text-slate-600">/</span>
               <span className="text-blue-600 dark:text-blue-400 font-bold capitalize">
-                {location.pathname.replace('/admin', '').replace('/', '') || 'Dashboard'}
+                {activeItem?.label || 'Dashboard'}
               </span>
             </div>
           </div>
@@ -484,7 +487,7 @@ const AdminLayout = () => {
         </header>
 
         {/* PAGE CONTENT OUTLET */}
-        <main className="flex-1 pt-6 sm:pt-8 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <main className="admin-page-content mx-auto w-full max-w-[1600px] flex-1 px-4 pb-12 pt-6 sm:px-6 sm:pt-8 lg:px-8">
           <Outlet />
         </main>
 

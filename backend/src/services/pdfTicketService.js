@@ -1,192 +1,185 @@
 import PDFDocument from 'pdfkit';
 
-export function generateTicketPdf(ticket) {
+const PAGE_MARGIN = 40;
+const CONTENT_WIDTH = 515;
+const INK = '#0F172A';
+const MUTED = '#64748B';
+const BORDER = '#E2E8F0';
+const BRAND = '#12345B';
+
+function drawHeader(doc, pageTitle = 'DIGITAL BUS TICKET') {
+  const y = PAGE_MARGIN;
+  doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 72, 10).fill(BRAND);
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(22)
+    .fillColor('#FFFFFF')
+    .text('YATRA BUS', PAGE_MARGIN + 18, y + 13, { characterSpacing: 1.2 });
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor('#DCE8F5')
+    .text(pageTitle, PAGE_MARGIN + 19, y + 44, { characterSpacing: 0.6 });
+}
+
+function ensureSpace(doc, cursorY, height) {
+  if (cursorY + height <= doc.page.height - PAGE_MARGIN) return cursorY;
+  doc.addPage();
+  drawHeader(doc, 'YATRA BUS | BOOKING DETAILS');
+  return 132;
+}
+
+function drawSection(doc, title, cursorY) {
+  cursorY = ensureSpace(doc, cursorY, 32);
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(INK).text(title, PAGE_MARGIN, cursorY);
+  doc.moveTo(PAGE_MARGIN, cursorY + 19).lineTo(PAGE_MARGIN + CONTENT_WIDTH, cursorY + 19).lineWidth(0.7).strokeColor(BORDER).stroke();
+  return cursorY + 28;
+}
+
+function drawFieldRow(doc, fields, cursorY) {
+  const gap = 14;
+  const width = (CONTENT_WIDTH - gap * (fields.length - 1)) / fields.length;
+  const values = fields.map((field) => String(field.value ?? 'N/A'));
+  const heights = values.map((value) => {
+    doc.font('Helvetica-Bold').fontSize(10);
+    return doc.heightOfString(value, { width, lineGap: 1 });
+  });
+  const rowHeight = 11 + Math.max(...heights, 12) + 10;
+  cursorY = ensureSpace(doc, cursorY, rowHeight);
+  values.forEach((value, index) => {
+    const x = PAGE_MARGIN + index * (width + gap);
+    doc.font('Helvetica').fontSize(7).fillColor(MUTED).text(fields[index].label.toUpperCase(), x, cursorY, { width });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(INK).text(value, x, cursorY + 11, { width, lineGap: 1 });
+  });
+  return cursorY + rowHeight;
+}
+
+function drawPassengers(doc, passengers, seats, cursorY) {
+  cursorY = drawSection(doc, 'Passenger & Seat Details', cursorY);
+  const columns = [
+    { label: 'Passenger Name', x: PAGE_MARGIN + 10, width: 205 },
+    { label: 'Age', x: PAGE_MARGIN + 224, width: 40 },
+    { label: 'Gender', x: PAGE_MARGIN + 277, width: 82 },
+    { label: 'Seat No.', x: PAGE_MARGIN + 372, width: 128 },
+  ];
+
+  const drawTableHeader = (y) => {
+    doc.roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 23, 4).fill('#EAF0F7');
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(BRAND);
+    columns.forEach((column) => doc.text(column.label, column.x, y + 7, { width: column.width }));
+    return y + 23;
+  };
+
+  cursorY = ensureSpace(doc, cursorY, 28);
+  cursorY = drawTableHeader(cursorY);
+  const entries = passengers.length > 0
+    ? passengers
+    : seats.map((seatNumber) => ({ name: 'Passenger', age: '—', gender: '—', seatNumber }));
+
+  entries.forEach((passenger, index) => {
+    const name = String(passenger.name || 'Passenger');
+    const seatNumber = String(passenger.seatNumber || seats[index] || 'N/A');
+    doc.font('Helvetica').fontSize(9);
+    const rowHeight = Math.max(
+      24,
+      doc.heightOfString(name, { width: columns[0].width, lineGap: 1 }) + 12
+    );
+    cursorY = ensureSpace(doc, cursorY, rowHeight);
+    if (cursorY === 132) cursorY = drawTableHeader(cursorY);
+    if (index % 2 === 0) {
+      doc.rect(PAGE_MARGIN, cursorY, CONTENT_WIDTH, rowHeight).fill('#F8FAFC');
+    }
+    doc.font('Helvetica').fontSize(9).fillColor(INK);
+    doc.text(name, columns[0].x, cursorY + 6, { width: columns[0].width, lineGap: 1 });
+    doc.text(String(passenger.age ?? '—'), columns[1].x, cursorY + 6, { width: columns[1].width });
+    doc.text(String(passenger.gender || '—'), columns[2].x, cursorY + 6, { width: columns[2].width });
+    doc.font('Helvetica-Bold').text(seatNumber, columns[3].x, cursorY + 6, { width: columns[3].width });
+    cursorY += rowHeight;
+  });
+  return cursorY + 12;
+}
+
+export function generateTicketPdf(ticket = {}) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      const doc = new PDFDocument({ margin: PAGE_MARGIN, size: 'A4' });
       const buffers = [];
-
       doc.on('data', (chunk) => buffers.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(buffers)));
-      doc.on('error', (err) => reject(err));
+      doc.on('error', reject);
 
-      const { journeySnapshot = {}, passengerSnapshot = [], priceBreakdown = {}, pnr, bookingId } = ticket;
-      const fromLocation = journeySnapshot.from_location || journeySnapshot.source || 'N/A';
-      const toLocation = journeySnapshot.to_location || journeySnapshot.destination || 'N/A';
-      const pickupPoint = journeySnapshot.pickup_point || journeySnapshot.boardingPoint || 'Main Stand';
-      const dropPoint = journeySnapshot.drop_point || journeySnapshot.droppingPoint || 'City Drop';
+      const journey = ticket.journeySnapshot || {};
+      const passengers = Array.isArray(ticket.passengerSnapshot) ? ticket.passengerSnapshot : [];
+      const seats = Array.isArray(ticket.seats) ? ticket.seats : passengers.map((passenger) => passenger.seatNumber);
+      const prices = ticket.priceBreakdown || {};
+      const passengerNames = passengers.map((passenger) => passenger.name).filter(Boolean).join(', ') || 'N/A';
+      const bookingId = ticket.bookingId?.toString?.() || ticket.bookingId || ticket._id || 'N/A';
+      const pnr = ticket.pnr || ticket.bookingReference || 'N/A';
+      const status = ticket.bookingStatus === 'completed'
+        ? 'Completed'
+        : ticket.bookingStatus === 'cancelled'
+          ? 'Cancelled'
+          : ticket.bookingStatus === 'failed'
+            ? 'Failed'
+            : 'Confirmed';
+      const totalFare = prices.totalAmount ?? ticket.totalFare ?? 0;
+      const money = `Rs. ${Number(totalFare).toLocaleString('en-IN')}`;
 
-      // Header Banner
-      doc
-        .rect(40, 40, 515, 60)
-        .fill('#4C1D95');
+      drawHeader(doc);
+      doc.roundedRect(PAGE_MARGIN, 126, CONTENT_WIDTH, 43, 7).fill('#F1F5F9');
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(BRAND)
+        .text(`PNR: ${pnr}`, PAGE_MARGIN + 12, 137, { width: 250 });
+      doc.font('Helvetica').fontSize(8).fillColor(MUTED)
+        .text(`Booking ID: ${bookingId}`, PAGE_MARGIN + 12, 152, { width: CONTENT_WIDTH - 24 });
+      doc.font('Helvetica-Bold').fontSize(9)
+        .fillColor(status === 'Confirmed' || status === 'Completed' ? '#047857' : '#B91C1C')
+        .text(status.toUpperCase(), PAGE_MARGIN + 390, 142, { width: 110, align: 'right' });
 
-      doc
-        .fontSize(20)
-        .fillColor('#FFFFFF')
-        .font('Helvetica-Bold')
-        .text('OBTBS - DIGITAL BUS TICKET', 55, 55);
+      let cursorY = 188;
+      cursorY = drawSection(doc, 'Journey Details', cursorY);
+      cursorY = drawFieldRow(doc, [
+        { label: 'Bus Name', value: journey.busName },
+        { label: 'Bus Number', value: journey.busNumber },
+        { label: 'Bus Type', value: journey.busType },
+      ], cursorY);
+      cursorY = drawFieldRow(doc, [
+        { label: 'From', value: journey.from_location || journey.source },
+        { label: 'To', value: journey.to_location || journey.destination },
+        { label: 'Journey Date', value: journey.travelDate },
+      ], cursorY);
+      cursorY = drawFieldRow(doc, [
+        { label: 'Departure', value: journey.departureTime },
+        { label: 'Arrival', value: journey.arrivalTime },
+        { label: 'Pickup Point', value: journey.pickup_point || journey.boardingPoint },
+      ], cursorY);
+      cursorY = drawFieldRow(doc, [
+        { label: 'Drop Point', value: journey.drop_point || journey.droppingPoint },
+        { label: 'Seat Number(s)', value: seats.join(', ') || 'N/A' },
+        { label: 'Passenger(s)', value: passengerNames },
+      ], cursorY);
+      cursorY = drawPassengers(doc, passengers, seats, cursorY);
 
-      doc
-        .fontSize(10)
-        .font('Helvetica')
-        .text('Official Electronic Reservation Slip (ERS)', 55, 80);
+      cursorY = drawSection(doc, 'Fare & Payment', cursorY);
+      cursorY = drawFieldRow(doc, [
+        { label: 'Total Fare', value: money },
+        { label: 'Booking Status', value: status },
+        { label: 'Payment Status', value: ticket.paymentStatus || 'Successful' },
+      ], cursorY);
+      cursorY = drawFieldRow(doc, [
+        { label: 'Payment Method', value: ticket.paymentMethod || 'Online Payment' },
+        { label: 'Ticket Issued', value: new Date(ticket.generatedAt || ticket.bookedAt || Date.now()).toLocaleDateString('en-IN') },
+      ], cursorY);
 
-      // PNR and Booking Bar
-      doc.moveDown(2);
-      const topMetaY = 115;
-      doc
-        .rect(40, topMetaY, 515, 45)
-        .fillAndStroke('#F5F3FF', '#DDD6FE');
-
-      doc
-        .fillColor('#4C1D95')
-        .fontSize(11)
-        .font('Helvetica-Bold')
-        .text(`PNR: ${pnr}`, 55, topMetaY + 10)
-        .fillColor('#374151')
-        .fontSize(9)
-        .font('Helvetica')
-        .text(`Booking ID: ${bookingId}`, 55, topMetaY + 26);
-
-      doc
-        .fillColor('#059669')
-        .fontSize(11)
-        .font('Helvetica-Bold')
-        .text('STATUS: CONFIRMED', 380, topMetaY + 10)
-        .fillColor('#6B7280')
-        .fontSize(9)
-        .font('Helvetica')
-        .text(`Issued: ${new Date(ticket.generatedAt || Date.now()).toLocaleDateString()}`, 380, topMetaY + 26);
-
-      // Journey Information
-      const journeyY = 175;
-      doc
-        .fontSize(13)
-        .font('Helvetica-Bold')
-        .fillColor('#1F2937')
-        .text('Journey Details', 40, journeyY);
-
-      doc
-        .rect(40, journeyY + 18, 515, 95)
-        .fillAndStroke('#F9FAFB', '#E5E7EB');
-
-      const col1 = 55;
-      const col2 = 220;
-      const col3 = 380;
-      const jRow1 = journeyY + 28;
-      const jRow2 = journeyY + 54;
-      const jRow3 = journeyY + 80;
-
-      // Row 1
-      doc.fontSize(8).fillColor('#6B7280').text('BUS OPERATOR / NAME', col1, jRow1);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.busName || 'Express Bus', col1, jRow1 + 10);
-
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('BUS NUMBER', col2, jRow1);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.busNumber || 'N/A', col2, jRow1 + 10);
-
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('BUS TYPE', col3, jRow1);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.busType || 'AC Sleeper', col3, jRow1 + 10);
-
-      // Row 2
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('FROM', col1, jRow2);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(fromLocation, col1, jRow2 + 10);
-
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('TO', col2, jRow2);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(toLocation, col2, jRow2 + 10);
-
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('JOURNEY DATE', col3, jRow2);
-      doc.fontSize(10).fillColor('#111827').font('Helvetica-Bold').text(journeySnapshot.travelDate || 'N/A', col3, jRow2 + 10);
-
-      // Row 3
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('PICKUP POINT / DEPARTURE', col1, jRow3);
-      doc.fontSize(9).fillColor('#111827').font('Helvetica-Bold').text(`${journeySnapshot.departureTime} - ${pickupPoint}`, col1, jRow3 + 10);
-
-      doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text('DROP POINT / ARRIVAL', col3, jRow3);
-      doc.fontSize(9).fillColor('#111827').font('Helvetica-Bold').text(`${journeySnapshot.arrivalTime} - ${dropPoint}`, col3, jRow3 + 10);
-
-      // Passengers Table
-      const passY = 300;
-      doc
-        .fontSize(13)
-        .font('Helvetica-Bold')
-        .fillColor('#1F2937')
-        .text('Passenger Information', 40, passY);
-
-      // Table Header
-      const thY = passY + 18;
-      doc
-        .rect(40, thY, 515, 22)
-        .fill('#EDE9FE');
-
-      doc
-        .fontSize(9)
-        .font('Helvetica-Bold')
-        .fillColor('#4C1D95')
-        .text('Passenger Name', 55, thY + 6)
-        .text('Age', 260, thY + 6)
-        .text('Gender', 340, thY + 6)
-        .text('Seat Number', 440, thY + 6);
-
-      let rowY = thY + 22;
-      passengerSnapshot.forEach((p, idx) => {
-        const bg = idx % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
-        doc.rect(40, rowY, 515, 20).fill(bg);
-
-        doc
-          .fontSize(9)
-          .font('Helvetica')
-          .fillColor('#1F2937')
-          .text(p.name, 55, rowY + 5)
-          .text(String(p.age), 260, rowY + 5)
-          .text(p.gender.toUpperCase(), 340, rowY + 5)
-          .font('Helvetica-Bold')
-          .text(p.seatNumber, 440, rowY + 5);
-
-        rowY += 20;
-      });
-
-      // Price Breakdown & Summary
-      const priceY = rowY + 20;
-      doc
-        .fontSize(13)
-        .font('Helvetica-Bold')
-        .fillColor('#1F2937')
-        .text('Fare & Payment Summary', 40, priceY);
-
-      const pBoxY = priceY + 18;
-      doc
-        .rect(40, pBoxY, 515, 55)
-        .fillAndStroke('#F3F4F6', '#E5E7EB');
-
-      doc
-        .fontSize(9)
-        .font('Helvetica')
-        .fillColor('#4B5563')
-        .text(`Base Fare: Rs. ${priceBreakdown.basePrice || 0}`, 55, pBoxY + 10)
-        .text(`Additional Charges: Rs. ${priceBreakdown.additionalCharges || 0}`, 55, pBoxY + 26)
-        .text(`Taxes & GST (5%): Rs. ${priceBreakdown.taxAmount || 0}`, 220, pBoxY + 10)
-        .text(`Payment Status: ${ticket.paymentStatus || 'Successful'}`, 220, pBoxY + 26)
-        .fontSize(12)
-        .font('Helvetica-Bold')
-        .fillColor('#059669')
-        .text(`Total Paid: Rs. ${priceBreakdown.totalAmount || 0}`, 380, pBoxY + 18);
-
-      // Footer Instructions
-      const footerY = 560;
-      doc
-        .fontSize(8)
-        .font('Helvetica-Bold')
-        .fillColor('#6B7280')
-        .text('TERMS & CONDITIONS FOR TRAVEL:', 40, footerY);
-
-      doc
-        .fontSize(7)
-        .font('Helvetica')
-        .fillColor('#9CA3AF')
-        .text('1. Please carry a valid government-issued photo ID (Aadhaar, Passport, Driving License) along with this digital ticket.', 40, footerY + 12)
-        .text('2. Please arrive at the boarding point at least 15 minutes before the scheduled departure time.', 40, footerY + 22)
-        .text('3. This ticket is generated by the OBTBS system and is valid for travel on the specified scheduled trip.', 40, footerY + 32);
+      cursorY = ensureSpace(doc, cursorY, 58);
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(MUTED)
+        .text('TRAVEL NOTES', PAGE_MARGIN, cursorY);
+      doc.font('Helvetica').fontSize(7).fillColor(MUTED)
+        .text(
+          'Please carry a valid government-issued photo ID and arrive at your pickup point at least 15 minutes before departure. Keep this ticket available during your journey.',
+          PAGE_MARGIN,
+          cursorY + 12,
+          { width: CONTENT_WIDTH, lineGap: 2 }
+        );
 
       doc.end();
     } catch (error) {

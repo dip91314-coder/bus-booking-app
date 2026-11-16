@@ -207,7 +207,12 @@ export function createApp() {
       const notifs = await TripNotification.find({ userId: req.user.userId })
         .sort({ createdAt: -1 })
         .limit(50);
-      res.status(200).json({ success: true, count: notifs.length, data: notifs });
+      res.status(200).json({
+        success: true,
+        count: notifs.length,
+        unreadCount: notifs.filter((notification) => !notification.isRead).length,
+        data: notifs,
+      });
     } catch (err) {
       next(err);
     }
@@ -222,6 +227,9 @@ export function createApp() {
         { isRead: true },
         { new: true }
       );
+      if (!notif) {
+        return res.status(404).json({ success: false, message: 'Notification not found.' });
+      }
       res.status(200).json({ success: true, data: notif });
     } catch (err) {
       next(err);
@@ -229,6 +237,20 @@ export function createApp() {
   };
   app.patch('/api/notifications/:id/read', authenticate, readNotificationHandler);
   app.patch('/notifications/:id/read', authenticate, readNotificationHandler);
+
+  const markAllNotificationsReadHandler = async (req, res, next) => {
+    try {
+      const result = await TripNotification.updateMany(
+        { userId: req.user.userId, isRead: false },
+        { $set: { isRead: true } }
+      );
+      res.status(200).json({ success: true, updatedCount: result.modifiedCount });
+    } catch (error) {
+      next(error);
+    }
+  };
+  app.patch('/api/notifications/read-all', authenticate, markAllNotificationsReadHandler);
+  app.patch('/notifications/read-all', authenticate, markAllNotificationsReadHandler);
 
   // API Route mounting: mount under both /api/<path> and /<path>
   // This guarantees requests reach endpoints whether VITE_API_URL includes /api or not

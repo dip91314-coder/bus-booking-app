@@ -22,6 +22,7 @@ import { TripNotification } from '../models/TripNotification.js';
 import { NotFoundError, ValidationError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { invalidate } from '../config/redis.js';
+import { publishUserNotification } from '../services/notificationService.js';
 
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
@@ -714,6 +715,16 @@ export async function cancelAdminBooking(req, res, next) {
       ),
     ]);
 
+    await publishUserNotification({
+      userId: booking.userId,
+      tripId: booking.tripId,
+      bookingId: booking._id,
+      type: 'CANCELLATION',
+      category: 'cancellation',
+      title: 'Booking cancelled by administrator',
+      message: `Your booking ${booking.bookingReference} was cancelled by the operator. A refund of Rs. ${booking.totalFare} has been processed.`,
+    });
+
     res.status(200).json({
       success: true,
       message: `Booking ${booking.bookingReference} cancelled and refund processed.`,
@@ -1056,6 +1067,18 @@ export async function getAdminNotifications(req, res, next) {
 export async function createAdminNotification(req, res, next) {
   try {
     const notification = await AdminNotification.create(req.body);
+    const customers = await User.find({ role: 'user', status: 'Active' }).select('_id').lean();
+    if (customers.length > 0) {
+      await TripNotification.insertMany(
+        customers.map(({ _id: userId }) => ({
+          userId,
+          type: 'GENERAL',
+          category: notification.category,
+          title: notification.title,
+          message: notification.message,
+        }))
+      );
+    }
     res.status(201).json({ success: true, data: formatNotification(notification) });
   } catch (error) {
     next(error);
@@ -1186,27 +1209,34 @@ export async function updateAdminTrip(req, res, next) {
     await invalidate('trips:');
 
     const isCancelled = req.body.status === 'cancelled' && previousTrip.status !== 'cancelled';
+    const departureChanged = req.body.departureTime &&
+      req.body.departureTime !== previousTrip.departureTime;
+    const arrivalChanged = req.body.arrivalTime &&
+      req.body.arrivalTime !== previousTrip.arrivalTime;
     const isDelayed = (req.body.status === 'delayed' && previousTrip.status !== 'delayed') ||
-      (req.body.departureTime && req.body.departureTime !== previousTrip.departureTime);
+      departureChanged || arrivalChanged;
 
     if (isCancelled || isDelayed) {
       const bookings = await Booking.find({ tripId: trip._id, bookingStatus: 'confirmed' });
-      const notifPromises = bookings.map((b) =>
-        TripNotification.create({
+      const scheduleDetails = [
+        departureChanged && `departure changed from ${previousTrip.departureTime} to ${trip.departureTime}`,
+        arrivalChanged && `arrival changed from ${previousTrip.arrivalTime} to ${trip.arrivalTime}`,
+      ].filter(Boolean).join('; ');
+      await Promise.all(bookings.map((booking) =>
+        publishUserNotification({
           tripId: trip._id,
-          bookingId: b._id,
-          userId: b.userId,
-          type: isCancelled ? 'CANCELLATION' : 'DELAY',
+          bookingId: booking._id,
+          userId: booking.userId,
+          type: isCancelled ? 'CANCELLATION' : 'SCHEDULE_CHANGE',
+          category: isCancelled ? 'cancellation' : 'schedule',
           title: isCancelled
-            ? `Trip Cancelled: ${b.origin} to ${b.destination}`
-            : `Trip Delayed / Rescheduled: ${b.origin} to ${b.destination}`,
+            ? `Trip Cancelled: ${booking.origin} to ${booking.destination}`
+            : `Trip Schedule Changed: ${booking.origin} to ${booking.destination}`,
           message: isCancelled
-            ? `Your scheduled journey on ${trip.travelDate} (PNR: ${b.pnr}) has been cancelled by operator.`
-            : `Your journey on ${trip.travelDate} has been rescheduled to depart at ${trip.departureTime}.`,
-          isRead: false,
+            ? `Your scheduled journey on ${trip.travelDate} (PNR: ${booking.pnr}) has been cancelled by operator.`
+            : `Your journey on ${trip.travelDate} has changed${scheduleDetails ? `: ${scheduleDetails}` : ` and now departs at ${trip.departureTime}`}.`,
         })
-      );
-      await Promise.all(notifPromises).catch(() => {});
+      ));
     }
 
     await recordAuditLog({

@@ -5,7 +5,6 @@ const TripNotificationSchema = new mongoose.Schema(
     tripId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Trip',
-      required: true,
       index: true,
     },
     bookingId: {
@@ -25,6 +24,11 @@ const TripNotificationSchema = new mongoose.Schema(
       enum: ['DELAY', 'CANCELLATION', 'SCHEDULE_CHANGE', 'GENERAL'],
       default: 'GENERAL',
       index: true,
+    },
+    category: {
+      type: String,
+      enum: ['booking', 'payment', 'cancellation', 'ticket', 'schedule', 'alert'],
+      default: 'alert',
     },
     title: {
       type: String,

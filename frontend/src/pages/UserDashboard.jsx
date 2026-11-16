@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
-import { journalApi } from '../services/api';
+import { journalApi, ticketApi } from '../services/api';
 import {
   User,
   Ticket,
@@ -26,6 +26,7 @@ import {
   Award,
   ChevronRight,
   RefreshCw,
+  Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import JournalSpreadCarousel from '../components/ui/journal-spread-carousel';
@@ -44,6 +45,7 @@ const UserDashboard = () => {
     addSavedTraveller,
     deleteSavedTraveller
   } = useBooking();
+  const [downloadingTicket, setDownloadingTicket] = useState('');
 
   // Redirect admin users to /admin
   if (user?.role === 'admin') {
@@ -126,9 +128,30 @@ const UserDashboard = () => {
   }, [user, isDemo]);
 
   // Filter user bookings
-  const upcomingBookings = bookings.filter((b) => b.bookingStatus === 'confirmed');
-  const pastBookings = bookings.filter((b) => b.bookingStatus === 'completed');
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingBookings = bookings.filter(
+    (booking) => booking.bookingStatus === 'confirmed' && booking.journeyDate >= today
+  );
+  const pastBookings = bookings.filter(
+    (booking) => booking.bookingStatus === 'completed' ||
+      (booking.bookingStatus === 'confirmed' && booking.journeyDate < today)
+  );
   const cancelledBookings = bookings.filter((b) => b.bookingStatus === 'cancelled');
+
+  const handleDownloadTicket = async (booking) => {
+    const identifier = booking.pnr || booking.bookingReference || booking.id || booking._id;
+    if (!identifier || downloadingTicket) return;
+
+    setDownloadingTicket(String(identifier));
+    try {
+      await ticketApi.downloadPdf(identifier);
+      toast.success('Ticket PDF downloaded.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not download this ticket.');
+    } finally {
+      setDownloadingTicket('');
+    }
+  };
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -498,7 +521,7 @@ const UserDashboard = () => {
             {upcomingBookings.length > 0 ? (
               upcomingBookings.map((b) => (
                 <div
-                  key={b.pnr}
+                  key={b.pnr || b.bookingReference || b._id}
                   className="bg-white rounded-2xl p-6 shadow-card hover:shadow-hover border border-gray-100 transition duration-300"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-4">
@@ -563,6 +586,17 @@ const UserDashboard = () => {
                     <div className="flex items-center gap-3">
                       <Button
                         type="button"
+                        onClick={() => handleDownloadTicket(b)}
+                        disabled={Boolean(downloadingTicket)}
+                        loading={downloadingTicket === String(b.pnr || b.bookingReference || b.id || b._id)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </Button>
+                      <Button
+                        type="button"
                         onClick={() => {
                           if (confirm(`Are you sure you want to cancel booking ${b.pnr}?`)) {
                             cancelBooking(b.pnr);
@@ -614,7 +648,7 @@ const UserDashboard = () => {
             {pastBookings.length > 0 ? (
               pastBookings.map((b) => (
                 <div
-                  key={b.pnr}
+                  key={b.pnr || b.bookingReference || b._id}
                   className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 opacity-90"
                 >
                   <div className="flex justify-between items-center mb-3">
@@ -627,10 +661,21 @@ const UserDashboard = () => {
                   <p className="text-xs text-gray-500">
                     {b.origin} ➔ {b.destination} • {b.journeyDate} • Seats: {b.seats?.join(', ')}
                   </p>
-                  <div className="mt-3 pt-3 border-t flex justify-end">
+                  <div className="mt-3 flex flex-wrap justify-end gap-3 border-t pt-3">
+                    <Button
+                      type="button"
+                      onClick={() => handleDownloadTicket(b)}
+                      disabled={Boolean(downloadingTicket)}
+                      loading={downloadingTicket === String(b.pnr || b.bookingReference || b.id || b._id)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </Button>
                     <Link
-                      to={`/booking/confirmation/${b.pnr}`}
-                      className="text-xs text-primary font-bold hover:underline"
+                      to={`/booking/confirmation/${b.pnr || b.bookingReference}`}
+                      className="text-xs font-bold text-primary hover:underline"
                     >
                       View Invoice Receipt
                     </Link>

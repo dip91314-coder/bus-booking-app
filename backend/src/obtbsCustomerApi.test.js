@@ -14,6 +14,7 @@ import {
   Booking,
   Payment,
   Ticket,
+  TripNotification,
 } from './models/index.js';
 import { generateAccessToken } from './utils/token.js';
 import { paymentGateway } from './services/paymentGateway.js';
@@ -269,6 +270,11 @@ describe('OBTBS Customer API Endpoints & PDF Generation', () => {
     expect(response.status).toBe(200);
     expect(await SeatReservation.findOne({ bookingId: booking._id })).toBeNull();
     expect((await Payment.findById(payment._id)).status).toBe('refunded');
+    expect(await TripNotification.findOne({
+      userId: customerUser._id,
+      bookingId: booking._id,
+      category: 'cancellation',
+    })).toMatchObject({ title: 'Booking cancelled' });
   });
 
   it('POST /api/bookings creates pending booking and recomputes price strictly on backend', async () => {
@@ -289,6 +295,11 @@ describe('OBTBS Customer API Endpoints & PDF Generation', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
+    expect(await TripNotification.findOne({
+      userId: customerUser._id,
+      category: 'booking',
+      title: 'Booking created',
+    })).toBeTruthy();
     expect(res.body.data.bookingStatus).toBe('pending');
     expect(res.body.data.pnr).toBeDefined();
     expect(res.body.data.totalFare).toBeGreaterThan(0);

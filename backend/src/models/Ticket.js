@@ -60,6 +60,14 @@ const TicketSchema = new mongoose.Schema(
       type: String,
       default: 'Successful',
     },
+    bookingStatus: {
+      type: String,
+      default: 'confirmed',
+    },
+    paymentMethod: {
+      type: String,
+      default: 'Online Payment',
+    },
     generatedAt: {
       type: Date,
       default: Date.now,

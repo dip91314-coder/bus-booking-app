@@ -164,7 +164,7 @@ const BusSearchForm = ({ compact = false, onSearchComplete }) => {
               tripType === 'return' ? 'text-white' : 'text-[#475569] hover:text-[#0F172A]'
             }`}
           >
-            Round Trip
+            Return Trip
           </button>
         </div>
 

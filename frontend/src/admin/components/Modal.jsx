@@ -28,13 +28,13 @@ const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = 'max-w-2
         onClick={onClose}
       />
 
-      <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+      <div className="flex min-h-full items-center justify-center p-3 text-center sm:p-4">
         <div
-          className={`relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 w-full ${maxWidth} border border-slate-100 animate__animated animate__fadeInUp animate__faster`}
+          className={`relative flex max-h-[calc(100dvh-1.5rem)] w-full ${maxWidth} transform flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white text-left shadow-2xl transition-all sm:max-h-[calc(100dvh-2rem)] sm:my-4 animate__animated animate__fadeInUp animate__faster`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
+          <div className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-6">
             <div>
               <h3 className="text-lg font-bold text-slate-900">{title}</h3>
               {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
@@ -42,6 +42,7 @@ const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = 'max-w-2
             <button
               type="button"
               onClick={onClose}
+              aria-label={`Close ${title}`}
               className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
             >
               <X className="h-5 w-5" />
@@ -49,7 +50,7 @@ const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = 'max-w-2
           </div>
 
           {/* Body */}
-          <div className="p-6 max-h-[calc(85vh-120px)] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
             {children}
           </div>
         </div>

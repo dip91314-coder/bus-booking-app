@@ -5,6 +5,7 @@ import { canUseTransactions } from './seatLockService.js';
 import { NotFoundError, ValidationError, ConflictError } from '../utils/customErrors.js';
 import { logger } from '../config/logger.js';
 import { sendBookingTicketEmail } from './emailService.js';
+import { publishUserNotification } from './notificationService.js';
 
 async function deliverTicketEmail(booking, ticket) {
   if (!booking || !ticket || ticket.emailSentAt) return Boolean(ticket?.emailSentAt);
@@ -271,6 +272,8 @@ export async function confirmPayment({
           seats: booking.seats,
           priceBreakdown: booking.priceBreakdown,
           paymentStatus: 'Successful',
+          bookingStatus: booking.bookingStatus,
+          paymentMethod: booking.paymentMethod,
         },
       },
       { upsert: true, new: true, ...opts }
@@ -281,6 +284,14 @@ export async function confirmPayment({
     }
 
     const emailSent = await deliverTicketEmail(booking, ticket);
+    await publishUserNotification({
+      userId: booking.userId,
+      tripId: booking.tripId,
+      bookingId: booking._id,
+      category: 'payment',
+      title: 'Payment received',
+      message: `Payment of Rs. ${Number(booking.totalFare).toLocaleString('en-IN')} for booking ${booking.pnr} was received successfully.`,
+    });
     logger.info({ bookingId: booking._id, pnr: booking.pnr, ticketId: ticket._id }, 'Payment confirmed & ticket issued');
 
     return {
