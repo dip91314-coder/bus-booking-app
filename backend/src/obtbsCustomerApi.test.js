@@ -210,7 +210,7 @@ describe('OBTBS Customer API Endpoints & PDF Generation', () => {
       .post('/api/bookings')
       .set('Authorization', `Bearer ${customerToken}`)
       .send(payload);
-    expect(booking.status).toBe(201);
+    expect(booking.status, JSON.stringify(booking.body)).toBe(201);
     expect(booking.body.data.operator).toBe('YatraBus');
 
     const seat = await request(app)
@@ -267,7 +267,7 @@ describe('OBTBS Customer API Endpoints & PDF Generation', () => {
       .set('Authorization', `Bearer ${customerToken}`)
       .send({ reason: 'Travel plan changed' });
 
-    expect(response.status).toBe(200);
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
     expect(await SeatReservation.findOne({ bookingId: booking._id })).toBeNull();
     expect((await Payment.findById(payment._id)).status).toBe('refunded');
     expect(await TripNotification.findOne({

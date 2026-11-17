@@ -9,6 +9,7 @@ import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError, UnauthorizedError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { sendBookingConfirmationEmail } from '../services/emailService.js';
+import { publishUserNotification } from '../services/notificationService.js';
 import { logger } from '../config/logger.js';
 
 export async function createBooking(req, res, next) {
