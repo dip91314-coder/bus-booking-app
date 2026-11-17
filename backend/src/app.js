@@ -18,6 +18,7 @@ import { pinoLogger } from './middleware/pinoLogger.js';
 import { requestId } from './middleware/requestId.js';
 import { authenticate } from './middleware/auth.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
+import { AdminNotification } from './models/AdminNotification.js';
 import { TripNotification } from './models/TripNotification.js';
 
 // Route imports
@@ -200,6 +201,21 @@ export function createApp() {
   };
   app.get('/api/settings', settingsHandler);
   app.get('/settings', settingsHandler);
+
+  const getBroadcastNotificationsHandler = async (req, res, next) => {
+    try {
+      const notifications = await AdminNotification.find().sort({ createdAt: -1 }).limit(50);
+      res.status(200).json({
+        success: true,
+        count: notifications.length,
+        data: notifications,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+  app.get('/api/notifications/broadcasts', getBroadcastNotificationsHandler);
+  app.get('/notifications/broadcasts', getBroadcastNotificationsHandler);
 
   // User notifications endpoint
   const getNotificationsHandler = async (req, res, next) => {

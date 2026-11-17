@@ -218,6 +218,10 @@ export const ticketApi = {
 };
 
 export const notificationApi = {
+  getBroadcasts: async () => {
+    const res = await apiClient.get('/notifications/broadcasts');
+    return res.data?.data || [];
+  },
   getMyNotifications: async () => {
     const res = await apiClient.get('/notifications');
     return res.data?.data || [];

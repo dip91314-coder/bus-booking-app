@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { POPULAR_ROUTES } from '../data/mockData';
+import { routeApi } from '../services/api';
 import { Search, X, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import RouteCard from '../components/bus/RouteCard';
 import Chip from '../components/common/Chip';
@@ -12,6 +13,21 @@ const RoutesPage = () => {
   const [sortBy, setSortBy] = useState('popular'); // 'popular' | 'lowest-fare' | 'duration' | 'frequency'
   const [selectedTag, setSelectedTag] = useState('All');
   const [visibleCount, setVisibleCount] = useState(12);
+  const [liveRoutes, setLiveRoutes] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    routeApi.getRoutes()
+      .then((routes) => {
+        if (active && Array.isArray(routes)) setLiveRoutes(routes);
+      })
+      .catch((error) => {
+        console.warn('Could not load active routes:', error?.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Filter tag options
   const filterTags = ['All', 'Bestseller', 'High Frequency', 'Express Highway', 'Scenic Hills', 'Overnight', 'Heritage', 'Vacation'];
@@ -25,7 +41,24 @@ const RoutesPage = () => {
 
   // Filtered & Sorted routes
   const processedRoutes = useMemo(() => {
-    let result = [...POPULAR_ROUTES];
+    const apiFormatted = liveRoutes.map((route) => ({
+      ...route,
+      origin: route.origin || route.source,
+      distance: route.distance || `${route.distanceKm} km`,
+      duration: route.duration || route.estimatedDuration,
+      fare: route.fare || `₹${route.baseFare || 0} onwards`,
+      busesCount: route.busesCount ?? route.activeBusesCount ?? 0,
+      tag: route.tag || route.highway || 'Express',
+    }));
+    const liveRouteKeys = new Set(
+      apiFormatted.map((route) => `${route.origin.toLowerCase()}|${route.destination.toLowerCase()}`)
+    );
+    let result = [
+      ...apiFormatted,
+      ...POPULAR_ROUTES.filter((route) =>
+        !liveRouteKeys.has(`${route.origin.toLowerCase()}|${route.destination.toLowerCase()}`)
+      ),
+    ];
 
     // Search filter
     if (searchQuery.trim()) {
@@ -61,7 +94,7 @@ const RoutesPage = () => {
     }
 
     return result;
-  }, [searchQuery, selectedTag, sortBy]);
+  }, [liveRoutes, searchQuery, selectedTag, sortBy]);
 
   const handleRouteClick = (origin, destination) => {
     navigate(
@@ -196,7 +229,7 @@ const RoutesPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {processedRoutes.slice(0, visibleCount).map((r, idx) => (
               <RouteCard
-                key={idx}
+                key={`${r.origin}-${r.destination}-${idx}`}
                 route={r}
                 onBook={() => handleRouteClick(r.origin, r.destination)}
               />

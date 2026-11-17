@@ -710,6 +710,18 @@ const PopularTrips = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
+              ...liveRoutes.map((route) => ({
+                origin: route.origin || route.source,
+                destination: route.destination,
+                distanceKm: route.distanceKm || Number.parseFloat(route.distance) || 0,
+                duration: route.estimatedDuration || route.duration || '8h 00m',
+                fare: route.baseFare || Number.parseInt(String(route.fare || '').replace(/\D/g, ''), 10) || 500,
+                type: 'YatraBus Coach Service',
+                operator: 'YatraBus',
+                services: `${route.activeBusesCount || 0} scheduled departures`,
+                img: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=600&q=80',
+              })),
+              ...[
               {
                 origin: 'Kolkata',
                 destination: 'Siliguri',
@@ -776,9 +788,13 @@ const PopularTrips = () => {
                 services: '16 daily departures',
                 img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80'
               }
-            ].map((route, i) => (
+              ].filter((popularRoute) => !liveRoutes.some((route) =>
+                (route.origin || route.source).toLowerCase() === popularRoute.origin.toLowerCase() &&
+                route.destination.toLowerCase() === popularRoute.destination.toLowerCase()
+              ))
+            ].map((route) => (
               <div
-                key={i}
+                key={`${route.origin}-${route.destination}`}
                 className="bg-slate-50 dark:bg-[#111622] rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
               >
                 <div>
