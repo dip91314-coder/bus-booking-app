@@ -4,7 +4,6 @@ import { notificationApi } from '../services/api';
 import { useAuth } from './AuthContext';
 
 const STORAGE_KEY = 'yatrabus_notifications_v1';
-const READ_SET_KEY = 'yatrabus_read_notifications_v1';
 const NotificationContext = createContext(null);
 
 const getLocalStorage = () => {
