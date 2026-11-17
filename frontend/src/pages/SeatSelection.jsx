@@ -16,7 +16,8 @@ import {
   Calendar,
   Printer,
   Loader2,
-  LocateFixed
+  LocateFixed,
+  ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -428,6 +429,34 @@ const SeatSelection = () => {
           </div>
         </div>
       </div>
+
+      {/* Sticky Mobile Bottom Bar for Immediate Action */}
+      {selectedSeats.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#111622]/95 backdrop-blur-md border-t border-purple-100 dark:border-slate-800 p-4 shadow-2xl flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-[#5B21B6] dark:text-purple-300">
+                {selectedSeats.length} {selectedSeats.length === 1 ? 'Seat' : 'Seats'}
+              </span>
+              <span className="text-[10px] text-slate-400">
+                ({selectedSeats.map((s) => s.number).join(', ')})
+              </span>
+            </div>
+            <p className="text-base font-black text-slate-900 dark:text-white">
+              ₹{selectedSeats.reduce((acc, curr) => acc + (curr.price || bus?.fare || 0), 0) + Math.round(selectedSeats.reduce((acc, curr) => acc + (curr.price || bus?.fare || 0), 0) * 0.05)}
+              <span className="text-[10px] font-normal text-slate-400 ml-1">incl. tax</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleContinue}
+            className="bg-[#5B21B6] hover:bg-[#4C1D95] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer"
+          >
+            <span>Proceed to Book</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,11 @@
 import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logoPath = path.resolve(__dirname, '../assets/logo.png');
 
 const PAGE_MARGIN = 40;
 const CONTENT_WIDTH = 515;

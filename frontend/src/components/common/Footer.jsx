@@ -1,27 +1,61 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Linkedin, MapPin, Phone, Mail, Twitter } from 'lucide-react';
+import {
+  Facebook,
+  Linkedin,
+  MapPin,
+  Phone,
+  Mail,
+  Twitter,
+  Instagram,
+  ShieldCheck,
+  Clock,
+  ChevronRight,
+  Headphones
+} from 'lucide-react';
 import { CONTACT_CONFIG } from '../../config/contactConfig';
 import ApiHealthBadge from './ApiHealthBadge';
 
 const Footer = () => {
   const shareUrl = typeof window === 'undefined' ? '' : encodeURIComponent(window.location.origin);
+
   const socialLinks = [
     {
-      label: 'Share YatraBus on Facebook',
+      label: 'Follow YATRA BUS on Facebook',
       href: `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`,
       icon: Facebook
     },
     {
-      label: 'Share YatraBus on X',
-      href: `https://twitter.com/intent/tweet?url=${shareUrl}&text=Plan%20your%20next%20bus%20journey%20with%20YatraBus`,
+      label: 'Follow YATRA BUS on X',
+      href: `https://twitter.com/intent/tweet?url=${shareUrl}&text=Book%20verified%20intercity%20bus%20tickets%20with%20YATRA%20BUS`,
       icon: Twitter
     },
     {
-      label: 'Share YatraBus on LinkedIn',
+      label: 'Connect with YATRA BUS on LinkedIn',
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`,
       icon: Linkedin
+    },
+    {
+      label: 'Follow YATRA BUS on Instagram',
+      href: 'https://instagram.com',
+      icon: Instagram
     }
+  ];
+
+  const quickLinks = [
+    { label: 'Search Bus Tickets', path: '/buses' },
+    { label: 'Popular Trips & Circuits', path: '/popular-trips' },
+    { label: 'Short Weekend Getaways', path: '/short-trips' },
+    { label: 'Explore Destinations', path: '/destinations' },
+    { label: 'Customer Dashboard & E-Tickets', path: '/dashboard' }
+  ];
+
+  const popularRoutes = [
+    { label: 'Kolkata ➔ Siliguri (Volvo 9600)', path: '/buses?origin=Kolkata&destination=Siliguri' },
+    { label: 'Delhi ➔ Jaipur (AC Sleeper)', path: '/buses?origin=Delhi&destination=Jaipur' },
+    { label: 'Mumbai ➔ Pune (Electric EV)', path: '/buses?origin=Mumbai&destination=Pune' },
+    { label: 'Bengaluru ➔ Chennai (Multi-Axle)', path: '/buses?origin=Bengaluru&destination=Chennai' },
+    { label: 'Hyderabad ➔ Vijayawada', path: '/buses?origin=Hyderabad&destination=Vijayawada' }
   ];
 
   return (
@@ -44,11 +78,20 @@ const Footer = () => {
                 aria-label={label}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-blue-950/50 dark:hover:text-blue-300"
               >
-                <Icon className="h-4 w-4" aria-hidden="true" />
+                <Phone className="w-3.5 h-3.5 text-purple-400" />
+                <span>{CONTACT_CONFIG.phone.display}</span>
               </a>
-            ))}
+              <a
+                href={`mailto:${CONTACT_CONFIG.supportEmail}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-950/50 hover:bg-purple-900/60 text-purple-200 font-semibold transition border border-purple-800/50 text-xs"
+              >
+                <Mail className="w-3.5 h-3.5 text-purple-300" />
+                <span>{CONTACT_CONFIG.supportEmail}</span>
+              </a>
+            </div>
           </div>
         </div>
+      </div>
 
         <nav aria-label="Quick links">
           <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Quick Links</h2>

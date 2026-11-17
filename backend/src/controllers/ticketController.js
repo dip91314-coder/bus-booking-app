@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Ticket, Booking } from '../models/index.js';
 import { generateTicketPdf } from '../services/pdfTicketService.js';
-import { NotFoundError } from '../utils/customErrors.js';
+import { NotFoundError, UnauthorizedError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { publishUserNotification } from '../services/notificationService.js';
 
@@ -11,7 +11,7 @@ function normalizeTicket(ticket) {
     ...value,
     journeySnapshot: {
       ...value.journeySnapshot,
-      busName: normalizeYatraBus(value.journeySnapshot).busName,
+      busName: normalizeYatraBus(value.journeySnapshot || {}).busName,
     },
   };
 }

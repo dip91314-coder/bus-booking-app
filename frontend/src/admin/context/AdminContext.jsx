@@ -642,7 +642,14 @@ export const AdminProvider = ({ children }) => {
   const addNotification = (notif) => {
     return runAdminRequest(
       () => adminApi.createResource('notifications', notif),
-      (notification) => setNotifications((prev) => [notification, ...prev]),
+      (notification) => {
+        setNotifications((prev) => [notification, ...prev]);
+        addAppNotification({
+          title: notification.title || notif.title,
+          message: notification.message || notif.message,
+          type: notification.category || notif.category || 'info'
+        });
+      },
       () => {
         const newNotif = {
           id: `NOTIF-${Date.now()}`,
@@ -651,6 +658,11 @@ export const AdminProvider = ({ children }) => {
           ...notif
         };
         setNotifications((prev) => [newNotif, ...prev]);
+        addAppNotification({
+          title: notif.title,
+          message: notif.message,
+          type: notif.category || 'info'
+        });
         return newNotif;
       }
     );

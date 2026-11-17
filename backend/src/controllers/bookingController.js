@@ -8,7 +8,8 @@ import { SeatReservation } from '../models/SeatReservation.js';
 import { createPendingBooking } from '../services/bookingService.js';
 import { NotFoundError, ConflictError, ValidationError, UnauthorizedError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
-import { publishUserNotification } from '../services/notificationService.js';
+import { sendBookingConfirmationEmail } from '../services/emailService.js';
+import { logger } from '../config/logger.js';
 
 export async function createBooking(req, res, next) {
   try {
@@ -194,10 +195,20 @@ export async function createBooking(req, res, next) {
       message: `Your booking ${newBooking.bookingReference} from ${newBooking.origin} to ${newBooking.destination} is confirmed.`,
     });
 
+    // Asynchronously dispatch confirmation email
+    sendBookingConfirmationEmail({ booking: newBooking }).catch((emailErr) => {
+      logger.warn({ error: emailErr.message, pnr: newBooking.bookingReference }, 'Async confirmation email dispatch note');
+    });
+
     res.status(201).json({
       success: true,
       message: 'Booking confirmed successfully!',
-      data: normalizeYatraBus(newBooking),
+      data: {
+        ...normalizeYatraBus(newBooking),
+        pnr: newBooking.bookingReference,
+        bookingReference: newBooking.bookingReference,
+        id: newBooking._id.toString(),
+      },
     });
   } catch (error) {
     next(error);
@@ -207,13 +218,28 @@ export async function createBooking(req, res, next) {
 export async function getMyBookings(req, res, next) {
   try {
     const userId = req.user?.userId;
+    const userEmail = req.user?.email;
 
-    const bookings = await Booking.find({ userId }).sort({ createdAt: -1 });
+    const query = userId && userEmail
+      ? { $or: [{ userId }, { contactEmail: userEmail }] }
+      : userId
+      ? { userId }
+      : userEmail
+      ? { contactEmail: userEmail }
+      : { userId: null };
+
+    const bookings = await Booking.find(query).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       count: bookings.length,
-      data: bookings.map(normalizeYatraBus),
+      data: bookings.map((b) => ({
+        ...normalizeYatraBus(b),
+        id: b._id.toString(),
+        pnr: b.bookingReference,
+        bookingReference: b.bookingReference,
+        bookingId: b._id.toString(),
+      })),
     });
   } catch (error) {
     next(error);

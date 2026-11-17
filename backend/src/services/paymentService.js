@@ -294,6 +294,11 @@ export async function confirmPayment({
     });
     logger.info({ bookingId: booking._id, pnr: booking.pnr, ticketId: ticket._id }, 'Payment confirmed & ticket issued');
 
+    // Asynchronously dispatch booking confirmation email without blocking checkout
+    sendBookingConfirmationEmail({ booking, ticket }).catch((emailErr) => {
+      logger.warn({ error: emailErr.message, bookingId: booking._id }, 'Async email dispatch note');
+    });
+
     return {
       success: true,
       booking,

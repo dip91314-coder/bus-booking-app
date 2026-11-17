@@ -19,6 +19,9 @@ import { requestId } from './middleware/requestId.js';
 import { authenticate } from './middleware/auth.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
 import { TripNotification } from './models/TripNotification.js';
+import { AdminNotification } from './models/AdminNotification.js';
+import { testSmtpConnection } from './services/emailService.js';
+import jwt from 'jsonwebtoken';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -201,10 +204,29 @@ export function createApp() {
   app.get('/api/settings', settingsHandler);
   app.get('/settings', settingsHandler);
 
-  // User notifications endpoint
+  // Optional JWT Authentication for notifications so both guests & members get announcements
+  const optionalAuthenticate = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET);
+      req.user = decoded;
+    } catch {
+      // Continue unauthenticated if token invalid or expired
+    }
+    next();
+  };
+
+  // User & Platform notifications endpoint
   const getNotificationsHandler = async (req, res, next) => {
     try {
-      const notifs = await TripNotification.find({ userId: req.user.userId })
+      const userId = req.user?.userId;
+
+      // 1. Fetch system announcements & operational broadcasts from Admin
+      const adminNotifs = await AdminNotification.find()
         .sort({ createdAt: -1 })
         .limit(50);
       res.status(200).json({
@@ -217,8 +239,8 @@ export function createApp() {
       next(err);
     }
   };
-  app.get('/api/notifications', authenticate, getNotificationsHandler);
-  app.get('/notifications', authenticate, getNotificationsHandler);
+  app.get('/api/notifications', optionalAuthenticate, getNotificationsHandler);
+  app.get('/notifications', optionalAuthenticate, getNotificationsHandler);
 
   const readNotificationHandler = async (req, res, next) => {
     try {
@@ -235,8 +257,8 @@ export function createApp() {
       next(err);
     }
   };
-  app.patch('/api/notifications/:id/read', authenticate, readNotificationHandler);
-  app.patch('/notifications/:id/read', authenticate, readNotificationHandler);
+  app.post('/api/notifications/test-email', optionalAuthenticate, testEmailHandler);
+  app.post('/notifications/test-email', optionalAuthenticate, testEmailHandler);
 
   const markAllNotificationsReadHandler = async (req, res, next) => {
     try {

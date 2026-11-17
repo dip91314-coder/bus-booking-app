@@ -24,13 +24,15 @@ const PassengerDetails = () => {
     selectedSeats,
     passengers,
     setPassengers,
+    contactDetails,
+    setContactDetails,
     savedTravellers,
     addSavedTraveller
   } = useBooking();
 
   // Contact details
-  const [contactEmail, setContactEmail] = useState(user?.email || '');
-  const [contactPhone, setContactPhone] = useState(user?.phone || '');
+  const [contactEmail, setContactEmail] = useState(contactDetails?.email || user?.email || '');
+  const [contactPhone, setContactPhone] = useState(contactDetails?.phone || user?.phone || '');
 
   // Passenger state per seat
   const [passengerList, setPassengerList] = useState(() => {
@@ -151,6 +153,10 @@ const PassengerDetails = () => {
     }
 
     setPassengers(passengerList);
+    setContactDetails({
+      email: contactEmail.trim(),
+      phone: contactPhone.trim()
+    });
     navigate('/booking/payment');
   };
 

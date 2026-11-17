@@ -8,6 +8,29 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: '#5B21B6', // Deep Purple
+          dark: '#4C1D95',
+          navy: '#071A4D',
+          light: '#EDE9FE',
+          50: '#F5F3FF',
+          100: '#EDE9FE',
+          200: '#DDD6FE',
+          300: '#C4B5FD',
+          400: '#A78BFA',
+          500: '#8B5CF6',
+          600: '#7C3AED',
+          700: '#6D28D9',
+          800: '#5B21B6',
+          900: '#4C1D95',
+          950: '#2E1065',
+        },
+        accent: {
+          DEFAULT: '#E11D48',
+          hover: '#BE123C',
+          dark: '#9F1239',
+          light: '#FFE4E6',
+        },
         brand: {
           50: '#F5F3FF',
           100: '#EDE9FE',
@@ -30,12 +53,22 @@ export default {
           white: '#FFFFFF',
           alt: '#F8F7FC',
           border: '#E5E7EB',
+        },
+        seat: {
+          available: '#FFFFFF',
+          selected: '#10B981',
+          booked: '#94A3B8',
+          ladies: '#EC4899',
+          driver: '#475569',
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
+        card: '0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04)',
+        hover: '0 12px 30px -4px rgba(15, 23, 42, 0.14)',
+        elevated: '0 20px 40px -8px rgba(15, 23, 42, 0.2)',
         soft: '0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04)',
         'soft-hover': '0 16px 36px -4px rgba(15, 23, 42, 0.12), 0 6px 14px -2px rgba(15, 23, 42, 0.06)',
         'floating-search': '0 12px 40px rgba(91, 33, 182, 0.15)',

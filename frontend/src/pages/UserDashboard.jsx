@@ -43,9 +43,15 @@ const UserDashboard = () => {
     cancelBooking,
     savedTravellers,
     addSavedTraveller,
-    deleteSavedTraveller
+    deleteSavedTraveller,
+    refreshUserBookings
   } = useBooking();
   const [downloadingTicket, setDownloadingTicket] = useState('');
+
+  // Load fresh bookings from backend on dashboard mount
+  useEffect(() => {
+    refreshUserBookings?.();
+  }, [refreshUserBookings]);
 
   // Redirect admin users to /admin
   if (user?.role === 'admin') {
@@ -68,6 +74,23 @@ const UserDashboard = () => {
   // Travel Journal state: empty by default for any real new user
   const [spreads, setSpreads] = useState(() => (isDemo ? travelSpreadsData : []));
   const [newMemoryOpen, setNewMemoryOpen] = useState(false);
+  const [downloadingPnr, setDownloadingPnr] = useState(null);
+
+  const handleDownloadTicket = async (pnr) => {
+    if (!pnr) return;
+    setDownloadingPnr(pnr);
+    try {
+      toast.loading(`Preparing official PDF ticket for ${pnr}...`, { id: `dl-${pnr}` });
+      await ticketApi.downloadPdf(pnr);
+      toast.success(`Ticket ${pnr} downloaded successfully!`, { id: `dl-${pnr}` });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not download PDF ticket. You can still print or view it.', {
+        id: `dl-${pnr}`,
+      });
+    } finally {
+      setDownloadingPnr(null);
+    }
+  };
   const [newMemoryTitle, setNewMemoryTitle] = useState('');
   const [newMemoryLocation, setNewMemoryLocation] = useState('');
   const [newMemoryStory, setNewMemoryStory] = useState('');
@@ -534,54 +557,49 @@ const UserDashboard = () => {
                           Confirmed 🟢
                         </span>
                       </div>
-                      <h3 className="text-base font-black text-gray-900 mt-2">{b.operator}</h3>
-                      <p className="text-xs text-gray-500 font-medium">
-                        {b.busName} • {b.busType}
-                      </p>
+
+                      <div className="text-left sm:text-right">
+                        <span className="text-xs text-gray-400 block">Total Fare Paid</span>
+                        <span className="text-xl font-black text-primary font-sans">₹{b.totalFare}</span>
+                        <span className="text-[10px] text-gray-400 block">
+                          via {b.paymentMethod || 'Simulated Payment'}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="text-left sm:text-right">
-                      <span className="text-xs text-gray-400 block">Total Fare Paid</span>
-                      <span className="text-xl font-black text-primary font-sans">₹{b.totalFare}</span>
-                      <span className="text-[10px] text-gray-400 block">
-                        via {b.paymentMethod || 'Simulated Payment'}
-                      </span>
-                    </div>
-                  </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
+                      <div>
+                        <span className="text-gray-400 block font-medium">Route & Schedule</span>
+                        <p className="font-extrabold text-gray-900 mt-0.5">
+                          {b.from_location || b.origin} ➔ {b.to_location || b.destination}
+                        </p>
+                        <p className="text-gray-500 mt-0.5">
+                          Departure: <strong>{b.departureTime}</strong> ({b.journeyDate})
+                        </p>
+                      </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
-                    <div>
-                      <span className="text-gray-400 block font-medium">Route & Schedule</span>
-                      <p className="font-extrabold text-gray-900 mt-0.5">
-                        {b.from_location || b.origin} ➔ {b.to_location || b.destination}
-                      </p>
-                      <p className="text-gray-500 mt-0.5">
-                        Departure: <strong>{b.departureTime}</strong> ({b.journeyDate})
-                      </p>
+                      <div>
+                        <span className="text-gray-400 block font-medium">Pickup Point</span>
+                        <p className="font-bold text-gray-900 mt-0.5">{b.pickup_point || b.boardingPoint}</p>
+                      </div>
+
+                      <div>
+                        <span className="text-gray-400 block font-medium">Drop Point</span>
+                        <p className="font-bold text-gray-900 mt-0.5">{b.drop_point || b.droppingPoint}</p>
+                      </div>
+
+                      <div>
+                        <span className="text-gray-400 block font-medium">Seats & Passengers</span>
+                        <p className="font-extrabold text-emerald-700 mt-0.5">
+                          Seats: {b.seats?.join(', ')} ({b.passengers?.length || b.seats?.length} Passengers)
+                        </p>
+                      </div>
                     </div>
 
-                    <div>
-                      <span className="text-gray-400 block font-medium">Pickup Point</span>
-                      <p className="font-bold text-gray-900 mt-0.5">{b.pickup_point || b.boardingPoint}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-400 block font-medium">Drop Point</span>
-                      <p className="font-bold text-gray-900 mt-0.5">{b.drop_point || b.droppingPoint}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-gray-400 block font-medium">Seats & Passengers</span>
-                      <p className="font-extrabold text-emerald-700 mt-0.5">
-                        Seats: {b.seats?.join(', ')} ({b.passengers?.length || b.seats?.length} Passengers)
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-gray-400 font-medium">
-                      Booked on: {new Date(b.bookedAt || Date.now()).toLocaleDateString()}
-                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      <div className="text-xs text-gray-400 font-medium">
+                        Booked on: {new Date(b.bookedAt || Date.now()).toLocaleDateString()}
+                      </div>
 
                     <div className="flex items-center gap-3">
                       <Button
@@ -617,8 +635,8 @@ const UserDashboard = () => {
                       </Link>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-purple-100/80 dark:border-slate-800 space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 mx-auto flex items-center justify-center p-3 border border-purple-100 dark:border-slate-800">
@@ -680,8 +698,8 @@ const UserDashboard = () => {
                       View Invoice Receipt
                     </Link>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
                 <p className="text-xs text-gray-500">No completed journeys recorded yet.</p>
@@ -694,26 +712,50 @@ const UserDashboard = () => {
         {activeTab === 'cancelled' && (
           <div className="space-y-4">
             {cancelledBookings.length > 0 ? (
-              cancelledBookings.map((b) => (
-                <div
-                  key={b.pnr}
-                  className="bg-white rounded-2xl p-5 shadow-card border border-red-100"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-mono font-bold text-gray-500">PNR: {b.pnr}</span>
-                    <span className="text-[10px] font-bold bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full border border-red-200">
-                      Cancelled & Refunded
-                    </span>
+              cancelledBookings.map((b) => {
+                const pnrVal = b.pnr || b.bookingReference || b.id;
+                return (
+                  <div
+                    key={pnrVal}
+                    className="bg-white rounded-2xl p-5 shadow-card border border-red-100"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-mono font-bold text-gray-500">PNR: {pnrVal}</span>
+                      <span className="text-[10px] font-bold bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full border border-red-200">
+                        Cancelled & Refunded
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
+                    <p className="text-xs text-gray-500">
+                      {b.origin} ➔ {b.destination} • Journey Date: {b.journeyDate}
+                    </p>
+                    <p className="text-[11px] text-emerald-600 font-semibold mt-2">
+                      Simulated Refund of ₹{b.totalFare} credited to original payment source.
+                    </p>
+                    <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTicket(pnrVal)}
+                        disabled={downloadingPnr === pnrVal}
+                        className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                      >
+                        {downloadingPnr === pnrVal ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>Download Cancellation Receipt</span>
+                      </button>
+                    <Link
+                      to={`/booking/confirmation/${pnrVal}`}
+                      className="text-xs text-slate-500 hover:text-slate-700 font-bold hover:underline"
+                    >
+                      View Record
+                    </Link>
                   </div>
-                  <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
-                  <p className="text-xs text-gray-500">
-                    {b.origin} ➔ {b.destination} • Journey Date: {b.journeyDate}
-                  </p>
-                  <p className="text-[11px] text-emerald-600 font-semibold mt-2">
-                    Simulated Refund of ₹{b.totalFare} credited to original payment source.
-                  </p>
                 </div>
-              ))
+              );
+            })
             ) : (
               <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
                 <p className="text-xs text-gray-500">No cancelled bookings.</p>
