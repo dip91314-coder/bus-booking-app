@@ -27,6 +27,7 @@ import {
   ChevronRight,
   RefreshCw,
   Download,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import JournalSpreadCarousel from '../components/ui/journal-spread-carousel';
@@ -75,22 +76,6 @@ const UserDashboard = () => {
   const [spreads, setSpreads] = useState(() => (isDemo ? travelSpreadsData : []));
   const [newMemoryOpen, setNewMemoryOpen] = useState(false);
   const [downloadingPnr, setDownloadingPnr] = useState(null);
-
-  const handleDownloadTicket = async (pnr) => {
-    if (!pnr) return;
-    setDownloadingPnr(pnr);
-    try {
-      toast.loading(`Preparing official PDF ticket for ${pnr}...`, { id: `dl-${pnr}` });
-      await ticketApi.downloadPdf(pnr);
-      toast.success(`Ticket ${pnr} downloaded successfully!`, { id: `dl-${pnr}` });
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Could not download PDF ticket. You can still print or view it.', {
-        id: `dl-${pnr}`,
-      });
-    } finally {
-      setDownloadingPnr(null);
-    }
-  };
   const [newMemoryTitle, setNewMemoryTitle] = useState('');
   const [newMemoryLocation, setNewMemoryLocation] = useState('');
   const [newMemoryStory, setNewMemoryStory] = useState('');
@@ -160,6 +145,20 @@ const UserDashboard = () => {
       (booking.bookingStatus === 'confirmed' && booking.journeyDate < today)
   );
   const cancelledBookings = bookings.filter((b) => b.bookingStatus === 'cancelled');
+
+  const handleDownloadCancellationReceipt = async (pnr) => {
+    if (!pnr) return;
+    setDownloadingPnr(pnr);
+    try {
+      toast.loading(`Preparing cancellation receipt for ${pnr}...`, { id: `dl-${pnr}` });
+      await ticketApi.downloadPdf(pnr);
+      toast.success(`Receipt ${pnr} downloaded!`, { id: `dl-${pnr}` });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not download receipt.', { id: `dl-${pnr}` });
+    } finally {
+      setDownloadingPnr(null);
+    }
+  };
 
   const handleDownloadTicket = async (booking) => {
     const identifier = booking.pnr || booking.bookingReference || booking.id || booking._id;
@@ -566,6 +565,7 @@ const UserDashboard = () => {
                         </span>
                       </div>
                     </div>
+                  </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-gray-700 bg-gray-50/60 p-4 rounded-xl border border-gray-100 mb-4">
                       <div>
@@ -635,8 +635,8 @@ const UserDashboard = () => {
                       </Link>
                     </div>
                   </div>
-                );
-              })
+                </div>
+              ))
             ) : (
               <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-purple-100/80 dark:border-slate-800 space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/50 mx-auto flex items-center justify-center p-3 border border-purple-100 dark:border-slate-800">
@@ -698,8 +698,8 @@ const UserDashboard = () => {
                       View Invoice Receipt
                     </Link>
                   </div>
-                );
-              })
+                </div>
+              ))
             ) : (
               <div className="bg-white rounded-3xl p-12 text-center shadow-card border border-gray-100">
                 <p className="text-xs text-gray-500">No completed journeys recorded yet.</p>
@@ -735,7 +735,7 @@ const UserDashboard = () => {
                     <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
                       <button
                         type="button"
-                        onClick={() => handleDownloadTicket(pnrVal)}
+                        onClick={() => handleDownloadCancellationReceipt(pnrVal)}
                         disabled={downloadingPnr === pnrVal}
                         className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
                       >

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "build": "tsc -b && vite build",
+    "prebuild": "eslint src --ext .js,.jsx --rule '{\"no-redeclare\": \"error\", \"no-dupe-keys\": \"error\"}' --quiet",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"
@@ -45,6 +46,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
@@ -58,6 +60,10 @@
     "@types/topojson-specification": "^1.0.5",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.6.2",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.8",
+    "globals": "^17.14.0",
     "jsdom": "^26.0.0",
     "playwright": "^1.65.0",
     "postcss": "^8.5.32",
