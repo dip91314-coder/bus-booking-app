@@ -23,6 +23,7 @@ import { NotFoundError, ValidationError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { invalidate } from '../config/redis.js';
 import { publishUserNotification } from '../services/notificationService.js';
+import { sendBookingConfirmationEmail } from '../services/emailService.js';
 
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
@@ -1676,6 +1677,43 @@ export async function getAdminAuditLogs(req, res, next) {
       page: Number(page),
       count: logs.length,
       data: logs,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resendAdminBookingConfirmation(req, res, next) {
+  try {
+    const { id } = req.params;
+    const query = validId(id)
+      ? { $or: [{ _id: id }, { pnr: id.toUpperCase() }, { bookingReference: id.toUpperCase() }] }
+      : { $or: [{ pnr: id.toUpperCase() }, { bookingReference: id.toUpperCase() }] };
+
+    const booking = await Booking.findOne(query);
+    if (!booking) throw new NotFoundError('Booking record not found.');
+
+    const ticket = await Ticket.findOne({ bookingId: booking._id });
+    const targetEmail = req.body?.email || booking.contactEmail || booking.passengers?.[0]?.email;
+
+    const emailResult = await sendBookingConfirmationEmail({
+      booking,
+      ticket,
+      toEmail: targetEmail,
+    });
+
+    await recordAuditLog({
+      req,
+      action: 'RESEND_BOOKING_CONFIRMATION',
+      targetEntity: 'Booking',
+      targetId: booking._id.toString(),
+      summary: `Resent confirmation email for booking ${booking.pnr} to ${targetEmail}`,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Ticket confirmation email sent to ${targetEmail || 'passenger'}.`,
+      emailResult,
     });
   } catch (error) {
     next(error);

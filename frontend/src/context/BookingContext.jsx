@@ -40,6 +40,7 @@ export const BookingProvider = ({ children }) => {
   const [selectedBoardingPoint, setSelectedBoardingPoint] = useState(null);
   const [selectedDroppingPoint, setSelectedDroppingPoint] = useState(null);
   const [passengers, setPassengers] = useState([]);
+  const [contactDetails, setContactDetails] = useState({ email: '', phone: '' });
   const [bookingId, setBookingId] = useState(null); // set after createBooking
   const [pnr, setPnr] = useState(null); // set after createBooking
 
@@ -232,6 +233,7 @@ export const BookingProvider = ({ children }) => {
     const newBooking = {
       id: pnr,
       pnr,
+      bookingReference: pnr,
       busId: selectedBus.id,
       busName: selectedBus.busName,
       operator: selectedBus.operator,
@@ -261,8 +263,8 @@ export const BookingProvider = ({ children }) => {
       bookingStatus: 'confirmed',
       paymentStatus: 'paid',
       paymentMethod: paymentMethod || 'UPI Simulated',
-      contactEmail,
-      contactPhone,
+      contactEmail: contactEmail || contactDetails.email || user?.email || '',
+      contactPhone: contactPhone || contactDetails.phone || user?.phone || '',
       bookedAt: new Date().toISOString()
     };
 
@@ -294,8 +296,23 @@ export const BookingProvider = ({ children }) => {
       })
     );
 
-    // Save to user bookings
-    setBookings((prev) => [newBooking, ...prev]);
+    // Save to user bookings state and immediately persist
+    setBookings((prev) => {
+      const filtered = prev.filter((item) => (item.pnr || item.bookingReference || item.id) !== pnr);
+      const updated = [newBooking, ...filtered];
+      try {
+        if (typeof window !== 'undefined' && window.localStorage && user) {
+          const isDemo = user.email?.toLowerCase() === 'rahul@yatra.com';
+          const uid = user.id || user._id || user.email;
+          const bKey = isDemo ? 'yatra_bookings_demo' : `yatra_bookings_${uid}`;
+          localStorage.setItem(bKey, JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+      }
+      return updated;
+    });
+
     addNotification({
       title: 'New booking created',
       message: `Booking ${pnr} for ${newBooking.from_location} to ${newBooking.to_location} is confirmed.`,
@@ -419,6 +436,9 @@ export const BookingProvider = ({ children }) => {
         setSelectedDroppingPoint,
         passengers,
         setPassengers,
+        contactDetails,
+        setContactDetails,
+        refreshUserBookings,
         bookingId,
         setBookingId,
         pnr,

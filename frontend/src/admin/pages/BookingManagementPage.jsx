@@ -20,10 +20,12 @@ import {
   CreditCard,
   DollarSign,
   Send,
-  Armchair
+  Armchair,
+  Download,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { adminApi } from '../../services/api';
+import { adminApi, ticketApi } from '../../services/api';
 
 const BookingManagementPage = () => {
   const { bookings, cancelBooking, isLoading, error, refetch } = useAdmin();
@@ -43,6 +45,8 @@ const BookingManagementPage = () => {
   const [oldSeatNum, setOldSeatNum] = useState('');
   const [newSeatNum, setNewSeatNum] = useState('');
   const [seatLoading, setSeatLoading] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
+  const [downloadingPnr, setDownloadingPnr] = useState(null);
 
   const handleOpenChangeSeat = (booking) => {
     setSeatTargetBooking(booking);
@@ -67,8 +71,31 @@ const BookingManagementPage = () => {
     }
   };
 
-  const handleResendConfirmation = (booking) => {
-    toast.success(`Booking confirmation notification resent to ${booking.passengerEmail || booking.passengerPhone || 'passenger'}!`);
+  const handleResendConfirmation = async (booking) => {
+    const bookingId = booking.id || booking._id || booking.pnr;
+    setResendingId(bookingId);
+    try {
+      await adminApi.resendBookingConfirmation(bookingId);
+      toast.success(`Booking confirmation notification & email sent to ${booking.passengerEmail || booking.passengerPhone || 'passenger'}!`);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not resend email. Notification dispatched.');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (pnr) => {
+    if (!pnr) return;
+    setDownloadingPnr(pnr);
+    try {
+      toast.loading(`Generating official YATRA BUS ticket for ${pnr}...`, { id: `admin-pdf-${pnr}` });
+      await ticketApi.downloadPdf(pnr);
+      toast.success(`Ticket ${pnr} downloaded!`, { id: `admin-pdf-${pnr}` });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to download PDF ticket', { id: `admin-pdf-${pnr}` });
+    } finally {
+      setDownloadingPnr(null);
+    }
   };
 
   // Filtered Bookings
@@ -238,10 +265,15 @@ const BookingManagementPage = () => {
               <button
                 type="button"
                 onClick={() => handleResendConfirmation(row)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 transition"
-                title="Resend Ticket Confirmation"
+                disabled={resendingId === (row.id || row._id || row.pnr)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 transition disabled:opacity-50"
+                title="Resend Ticket Confirmation Email"
               >
-                <Send className="w-4 h-4" />
+                {resendingId === (row.id || row._id || row.pnr) ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </>
           )}
@@ -355,9 +387,12 @@ const BookingManagementPage = () => {
             {/* Top Pass Header */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-[#071330] to-[#123E9B] text-white flex items-center justify-between shadow-md">
               <div>
-                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-wider block">
-                  Electronic Bus Ticket (e-Ticket)
-                </span>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-black text-amber-400 tracking-wider text-xs">YATRA BUS</span>
+                  <span className="text-[10px] text-blue-300 font-bold uppercase tracking-wider">
+                    • Official e-Ticket Pass
+                  </span>
+                </div>
                 <h3 className="text-xl font-black font-mono tracking-wider">
                   {selectedBooking.pnr}
                 </h3>
@@ -482,14 +517,29 @@ const BookingManagementPage = () => {
 
             {/* Action Bar in Modal */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
-              >
-                <Printer className="w-4 h-4 text-slate-500" />
-                <span>Print e-Ticket</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                >
+                  <Printer className="w-4 h-4 text-slate-500" />
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPdf(selectedBooking.pnr)}
+                  disabled={downloadingPnr === selectedBooking.pnr}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition disabled:opacity-60 cursor-pointer"
+                >
+                  {downloadingPnr === selectedBooking.pnr ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>Download PDF</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
                 {selectedBooking.bookingStatus !== 'Cancelled' && (

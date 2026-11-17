@@ -486,16 +486,6 @@ const Home = () => {
       img: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80'
     },
     {
-      origin: 'Delhi',
-      destination: 'Manali',
-      duration: '14h 00m',
-      distance: '535 km',
-      fare: '1,350',
-      type: 'Volvo 9600 Multi-Axle',
-      services: '8 daily departures',
-      img: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=600&q=80'
-    },
-    {
       origin: 'Kolkata',
       destination: 'Digha',
       duration: '4h 15m',

@@ -4,6 +4,7 @@ import { notificationApi } from '../services/api';
 import { useAuth } from './AuthContext';
 
 const STORAGE_KEY = 'yatrabus_notifications_v1';
+const READ_SET_KEY = 'yatrabus_read_notifications_v1';
 const NotificationContext = createContext(null);
 
 const getLocalStorage = () => {
@@ -41,7 +42,7 @@ const loadNotifications = (key) => {
       parsed.filter((notification) => notification?.id && notification?.title && notification.source !== 'server')
     );
   } catch (error) {
-    console.warn('Could not load notifications from local storage:', error?.message);
+    console.warn('Could not load notifications from storage:', error?.message);
     return [];
   }
 };
@@ -94,6 +95,7 @@ export const NotificationProvider = ({ children }) => {
     setNotificationState({ key: storageKey, items: loadNotifications(storageKey) });
   }, [storageKey]);
 
+  // Sync state to localStorage
   useEffect(() => {
     const storage = getLocalStorage();
     if (notificationState.key !== storageKey || !storage) return;
@@ -180,14 +182,38 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [refreshNotifications]);
 
+  // Initial fetch and interval poll (every 25 seconds)
+  useEffect(() => {
+    fetchBackendNotifications();
+
+    const interval = setInterval(() => {
+      fetchBackendNotifications();
+    }, 25000);
+
+    const handleFocus = () => {
+      fetchBackendNotifications();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchBackendNotifications]);
+
   const addNotification = useCallback((notification) => {
+    const title = (notification.title || '').trim();
+    const message = (notification.message || '').trim();
+
     const created = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      title: notification.title,
-      message: notification.message,
-      type: notification.type || 'info',
+      title,
+      message,
+      type: notification.type || notification.category || 'info',
+      category: notification.category || 'alert',
       is_read: false,
       created_at: new Date().toISOString(),
+      source: 'client',
     };
     setNotificationState((current) => {
       const currentItems = current.key === storageKey ? current.items : loadNotifications(storageKey);
@@ -232,8 +258,22 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [notifications, refreshNotifications, storageKey]);
 
+  const markAllAsRead = useCallback(async () => {
+    setNotifications((current) => current.map((n) => ({ ...n, is_read: true })));
+
+    const readIds = getLocalReadIds();
+    notifications.forEach((n) => readIds.add(n.id));
+    saveLocalReadIds(readIds);
+
+    try {
+      await notificationApi.markAllAsRead();
+    } catch (err) {
+      console.warn('Could not sync markAllAsRead to backend:', err?.message);
+    }
+  }, [notifications]);
+
   const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.is_read).length,
+    () => notifications.filter((n) => !n.is_read).length,
     [notifications]
   );
 

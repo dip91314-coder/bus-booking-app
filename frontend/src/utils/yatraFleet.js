@@ -14,8 +14,15 @@ export const normalizeYatraFleetItem = (item) => {
         ? item.busName
         : (item.busName || getFleetLabel(item.busType)));
 
+  const pnr = item.pnr || item.bookingReference || item.id || item._id || '';
+  const bookingReference = item.bookingReference || item.pnr || pnr;
+  const id = item.id || item._id || pnr;
+
   return {
     ...item,
+    id,
+    pnr,
+    bookingReference,
     operator,
     ...(busName ? { busName } : {})
   };

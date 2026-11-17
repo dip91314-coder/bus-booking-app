@@ -16,7 +16,7 @@ import { getRedisStatus } from './config/redis.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { pinoLogger } from './middleware/pinoLogger.js';
 import { requestId } from './middleware/requestId.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, optionalAuthenticate } from './middleware/auth.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
 import { AdminNotification } from './models/AdminNotification.js';
 import { TripNotification } from './models/TripNotification.js';
@@ -217,24 +217,45 @@ export function createApp() {
   app.get('/api/notifications/broadcasts', getBroadcastNotificationsHandler);
   app.get('/notifications/broadcasts', getBroadcastNotificationsHandler);
 
-  // User notifications endpoint
   const getNotificationsHandler = async (req, res, next) => {
     try {
-      const notifs = await TripNotification.find({ userId: req.user.userId })
-        .sort({ createdAt: -1 })
-        .limit(50);
+      const userId = req.user?.userId;
+      const [adminNotifications, customerNotifications] = await Promise.all([
+        AdminNotification.find()
+          .sort({ createdAt: -1 })
+          .limit(50),
+        userId
+          ? TripNotification.find({ userId }).sort({ createdAt: -1 }).limit(50)
+          : Promise.resolve([]),
+      ]);
+      const notifications = [
+        ...customerNotifications.map((notification) => ({
+          ...notification.toObject(),
+          source: 'customer',
+        })),
+        ...adminNotifications.map((notification) => ({
+          ...notification.toObject(),
+          isRead: false,
+          source: 'broadcast',
+        })),
+      ].sort((left, right) => {
+        const timeDifference = new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+        if (timeDifference !== 0) return timeDifference;
+        return left.source === 'customer' ? -1 : 1;
+      }).slice(0, 50);
+
       res.status(200).json({
         success: true,
-        count: notifs.length,
-        unreadCount: notifs.filter((notification) => !notification.isRead).length,
-        data: notifs,
+        count: notifications.length,
+        unreadCount: notifications.filter((notification) => !notification.isRead).length,
+        data: notifications,
       });
     } catch (err) {
       next(err);
     }
   };
-  app.get('/api/notifications', authenticate, getNotificationsHandler);
-  app.get('/notifications', authenticate, getNotificationsHandler);
+  app.get('/api/notifications', optionalAuthenticate, getNotificationsHandler);
+  app.get('/notifications', optionalAuthenticate, getNotificationsHandler);
 
   const readNotificationHandler = async (req, res, next) => {
     try {

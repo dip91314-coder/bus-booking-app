@@ -767,17 +767,6 @@ const PopularTrips = () => {
                 img: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=600&q=80'
               },
               {
-                origin: 'Delhi',
-                destination: 'Manali',
-                distanceKm: 535,
-                duration: '14h 00m',
-                fare: 1350,
-                type: 'Volvo 9600 Multi-Axle',
-                operator: 'YatraBus Mountain Fleet',
-                services: '8 daily departures',
-                img: 'https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?auto=format&fit=crop&w=600&q=80'
-              },
-              {
                 origin: 'Kolkata',
                 destination: 'Digha',
                 distanceKm: 185,

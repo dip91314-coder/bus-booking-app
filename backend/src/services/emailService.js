@@ -92,7 +92,33 @@ export function createEmailService({
     });
   };
 
-  return { sendWelcomeEmail, sendBookingTicketEmail };
+  const sendBookingConfirmationEmail = async ({ booking, ticket, toEmail }) => {
+    if (ticket) {
+      const bookingData = typeof booking.toObject === 'function' ? booking.toObject() : booking;
+      return sendBookingTicketEmail({
+        booking: { ...bookingData, contactEmail: toEmail || bookingData.contactEmail },
+        ticket,
+      });
+    }
+
+    const recipient = toEmail || booking.contactEmail || booking.passengers?.find((passenger) => passenger.email)?.email;
+    if (!recipient) return { sent: false, reason: 'recipient_missing' };
+
+    const reference = booking.pnr || booking.bookingReference;
+    const from = booking.origin || booking.from_location || 'N/A';
+    const to = booking.destination || booking.to_location || 'N/A';
+    const safeReference = escapeHtml(reference || 'N/A');
+    const safeFrom = escapeHtml(from);
+    const safeTo = escapeHtml(to);
+    return send({
+      to: recipient,
+      subject: `Your YatraBus booking is confirmed${reference ? ` – ${reference}` : ''}`,
+      text: `Your YatraBus booking${reference ? ` ${reference}` : ''} is confirmed for travel from ${from} to ${to}.`,
+      html: `<p>Your YatraBus booking <strong>${safeReference}</strong> is confirmed.</p><p>Route: ${safeFrom} to ${safeTo}</p>`,
+    });
+  };
+
+  return { sendWelcomeEmail, sendBookingTicketEmail, sendBookingConfirmationEmail };
 }
 
 const runtimeConfig = env.NODE_ENV === 'test'
@@ -102,3 +128,4 @@ const emailService = createEmailService({ config: runtimeConfig });
 
 export const sendWelcomeEmail = emailService.sendWelcomeEmail;
 export const sendBookingTicketEmail = emailService.sendBookingTicketEmail;
+export const sendBookingConfirmationEmail = emailService.sendBookingConfirmationEmail;

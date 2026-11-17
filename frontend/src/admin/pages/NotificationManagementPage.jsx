@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAdmin } from '../context/AdminContext';
 import Modal from '../components/Modal';
+import StatCard from '../components/StatCard';
 import {
   Bell,
   Ticket,
@@ -12,7 +13,10 @@ import {
   Plus,
   CheckCheck,
   Clock,
-  Filter
+  Filter,
+  Loader2,
+  Radio,
+  Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -31,6 +35,7 @@ const NotificationManagementPage = () => {
 
   // Broadcast Modal State
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastForm, setBroadcastForm] = useState({
     title: '',
     message: '',
@@ -43,22 +48,29 @@ const NotificationManagementPage = () => {
     return notifications.filter((n) => n.category === activeTab);
   }, [notifications, activeTab]);
 
-  const handleBroadcastSubmit = (e) => {
+  const handleBroadcastSubmit = async (e) => {
     e.preventDefault();
     if (!broadcastForm.title.trim() || !broadcastForm.message.trim()) {
-      toast.error('Title and message are required.');
+      toast.error('Headline and detailed message are required.');
       return;
     }
 
-    addNotification({
-      title: broadcastForm.title,
-      message: broadcastForm.message,
-      category: broadcastForm.category
-    });
+    setIsBroadcasting(true);
+    try {
+      await addNotification({
+        title: broadcastForm.title.trim(),
+        message: broadcastForm.message.trim(),
+        category: broadcastForm.category
+      });
 
-    setBroadcastModalOpen(false);
-    setBroadcastForm({ title: '', message: '', category: 'alert' });
-    toast.success('System announcement broadcasted successfully!');
+      setBroadcastModalOpen(false);
+      setBroadcastForm({ title: '', message: '', category: 'alert' });
+      toast.success('System announcement broadcasted to web portal and operations feed!');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to broadcast notification.');
+    } finally {
+      setIsBroadcasting(false);
+    }
   };
 
   const getCategoryIcon = (cat) => {
@@ -112,7 +124,7 @@ const NotificationManagementPage = () => {
             <button
               type="button"
               onClick={markAllAsRead}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition cursor-pointer"
             >
               <CheckCheck className="w-4 h-4 text-emerald-600" />
               <span>Mark All as Read</span>
@@ -122,12 +134,45 @@ const NotificationManagementPage = () => {
           <button
             type="button"
             onClick={() => setBroadcastModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm transition"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Broadcast Alert</span>
           </button>
         </div>
+      </div>
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Notifications"
+          value={notifications.length}
+          subtitle="lifetime operational events"
+          icon={Bell}
+          iconBg="bg-blue-50 text-blue-600"
+        />
+        <StatCard
+          title="Unread Alerts"
+          value={unreadNotificationsCount}
+          subtitle="pending dispatcher review"
+          icon={AlertTriangle}
+          iconBg="bg-rose-50 text-rose-600"
+          badge={unreadNotificationsCount > 0 ? "Action Needed" : "Clear"}
+        />
+        <StatCard
+          title="Booking Events"
+          value={notifications.filter((n) => n.category === 'booking').length}
+          subtitle="reservations & ticketing"
+          icon={Ticket}
+          iconBg="bg-indigo-50 text-indigo-600"
+        />
+        <StatCard
+          title="Payment & System"
+          value={notifications.filter((n) => n.category === 'payment' || n.category === 'alert').length}
+          subtitle="gateway & infrastructure"
+          icon={CreditCard}
+          iconBg="bg-emerald-50 text-emerald-600"
+        />
       </div>
 
       {/* Category Tabs */}
@@ -254,9 +299,9 @@ const NotificationManagementPage = () => {
       {/* BROADCAST ALERT MODAL */}
       <Modal
         isOpen={broadcastModalOpen}
-        onClose={() => setBroadcastModalOpen(false)}
-        title="Broadcast Administrative Alert"
-        subtitle="Publish a system-wide banner notification to the operations console."
+        onClose={() => !isBroadcasting && setBroadcastModalOpen(false)}
+        title="Broadcast System Announcement"
+        subtitle="Publish a live announcement to the customer web portal and operations control center."
         maxWidth="max-w-md"
       >
         <form onSubmit={handleBroadcastSubmit} className="space-y-4 text-xs">
@@ -268,8 +313,9 @@ const NotificationManagementPage = () => {
               type="text"
               placeholder="e.g. Fog Warning on NH-48 Jaipur Route"
               value={broadcastForm.title}
+              disabled={isBroadcasting}
               onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
@@ -279,13 +325,14 @@ const NotificationManagementPage = () => {
             </label>
             <select
               value={broadcastForm.category}
+              disabled={isBroadcasting}
               onChange={(e) => setBroadcastForm({ ...broadcastForm, category: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
-              <option value="alert">System Alert</option>
-              <option value="booking">Booking Operation</option>
-              <option value="payment">Financial Gateway</option>
-              <option value="cancellation">Cancellation & Delay</option>
+              <option value="alert">System Alert (Announcements & Weather)</option>
+              <option value="booking">Booking Operation (Ticketing updates)</option>
+              <option value="payment">Financial Gateway (Payment alerts)</option>
+              <option value="cancellation">Cancellation & Delay Notices</option>
             </select>
           </div>
 
@@ -295,26 +342,36 @@ const NotificationManagementPage = () => {
             </label>
             <textarea
               rows="3"
-              placeholder="Enter message details for dispatchers and fleet managers..."
+              placeholder="Enter message details for customers and dispatchers..."
               value={broadcastForm.message}
+              disabled={isBroadcasting}
               onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <button
               type="button"
+              disabled={isBroadcasting}
               onClick={() => setBroadcastModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm"
+              disabled={isBroadcasting}
+              className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-dark rounded-xl shadow-sm transition disabled:opacity-60 cursor-pointer"
             >
-              Send Broadcast
+              {isBroadcasting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Publishing...</span>
+                </>
+              ) : (
+                <span>Publish Broadcast</span>
+              )}
             </button>
           </div>
         </form>

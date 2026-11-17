@@ -236,6 +236,22 @@ export const notificationApi = {
   },
 };
 
+// Notification Endpoints
+export const notificationApi = {
+  getNotifications: async () => {
+    const res = await apiClient.get('/notifications');
+    return res.data?.data || [];
+  },
+  markAsRead: async (id) => {
+    const res = await apiClient.patch(`/notifications/${id}/read`);
+    return res.data?.data;
+  },
+  markAllAsRead: async () => {
+    const res = await apiClient.patch('/notifications/read-all');
+    return res.data;
+  },
+};
+
 const adminResourcePath = (resource) => `/admin/${resource}`;
 
 const adminRequestData = async (request) => {
@@ -331,6 +347,10 @@ export const adminApi = {
   },
   changeBookingSeat: async (id, oldSeatNumber, newSeatNumber) => {
     const res = await apiClient.post(`/admin/bookings/${id}/change-seat`, { oldSeatNumber, newSeatNumber });
+    return res.data;
+  },
+  resendBookingConfirmation: async (id) => {
+    const res = await apiClient.post(`/admin/bookings/${id}/resend-confirmation`);
     return res.data;
   },
   getAuditLogs: async (params) => {
