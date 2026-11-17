@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 export const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
-  email: z.string().email('Please enter a valid email address'),
+  email: z.string()
+    .trim()
+    .email('Please enter a valid email address')
+    .refine(
+      (email) => email.toLowerCase().endsWith('@gmail.com'),
+      'Only @gmail.com addresses can register.'
+    ),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().regex(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
   role: z.literal('user').optional(),

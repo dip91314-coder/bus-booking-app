@@ -25,10 +25,10 @@ const openAddBusForm = () => {
     </MemoryRouter>
   );
   fireEvent.click(screen.getByRole('button', { name: 'Add New Bus' }));
-  fireEvent.change(screen.getByPlaceholderText('e.g. DL-01-TC-9988'), {
+  fireEvent.change(screen.getByPlaceholderText('e.g. WB-02-TC-9988'), {
     target: { value: 'WB-04-E-9988' },
   });
-  fireEvent.change(screen.getByPlaceholderText('e.g. YatraBus Premium Sleeper'), {
+  fireEvent.change(screen.getByPlaceholderText('e.g. YatraBus Royal Star Sleeper'), {
     target: { value: 'YatraBus Test Sleeper' },
   });
 };
