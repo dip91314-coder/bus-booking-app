@@ -8,10 +8,6 @@ import {
   Mail,
   Twitter,
   Instagram,
-  ShieldCheck,
-  Clock,
-  ChevronRight,
-  Headphones
 } from 'lucide-react';
 import { CONTACT_CONFIG } from '../../config/contactConfig';
 import ApiHealthBadge from './ApiHealthBadge';
@@ -78,38 +74,35 @@ const Footer = () => {
                 aria-label={label}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-blue-950/50 dark:hover:text-blue-300"
               >
-                <Phone className="w-3.5 h-3.5 text-purple-400" />
-                <span>{CONTACT_CONFIG.phone.display}</span>
+                <Icon className="h-4 w-4" aria-hidden="true" />
               </a>
-              <a
-                href={`mailto:${CONTACT_CONFIG.supportEmail}`}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-950/50 hover:bg-purple-900/60 text-purple-200 font-semibold transition border border-purple-800/50 text-xs"
-              >
-                <Mail className="w-3.5 h-3.5 text-purple-300" />
-                <span>{CONTACT_CONFIG.supportEmail}</span>
-              </a>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
 
         <nav aria-label="Quick links">
           <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Quick Links</h2>
           <ul className="space-y-2.5">
-            <li><Link to="/" className="transition hover:text-blue-700 focus-visible:text-blue-700">Home</Link></li>
-            <li><Link to="/buses" className="transition hover:text-blue-700 focus-visible:text-blue-700">Booking</Link></li>
-            <li><Link to="/routes" className="transition hover:text-blue-700 focus-visible:text-blue-700">Routes</Link></li>
-            <li><Link to="/contact" className="transition hover:text-blue-700 focus-visible:text-blue-700">Contact</Link></li>
+            {quickLinks.map(({ label, path }) => (
+              <li key={path}>
+                <Link to={path} className="transition hover:text-blue-700 focus-visible:text-blue-700">
+                  {label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
         <div>
           <h2 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Popular Routes</h2>
           <ul className="space-y-2.5">
-            <li><Link to="/buses?origin=Kolkata&destination=Siliguri" className="transition hover:text-blue-700">Kolkata to Siliguri</Link></li>
-            <li><Link to="/buses?origin=Delhi&destination=Jaipur" className="transition hover:text-blue-700">Delhi to Jaipur</Link></li>
-            <li><Link to="/buses?origin=Mumbai&destination=Pune" className="transition hover:text-blue-700">Mumbai to Pune</Link></li>
-            <li><Link to="/buses?origin=Bengaluru&destination=Chennai" className="transition hover:text-blue-700">Bengaluru to Chennai</Link></li>
+            {popularRoutes.map(({ label, path }) => (
+              <li key={path}>
+                <Link to={path} className="transition hover:text-blue-700">
+                  {label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 

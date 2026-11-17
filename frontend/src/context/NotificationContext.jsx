@@ -182,25 +182,6 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [refreshNotifications]);
 
-  // Initial fetch and interval poll (every 25 seconds)
-  useEffect(() => {
-    fetchBackendNotifications();
-
-    const interval = setInterval(() => {
-      fetchBackendNotifications();
-    }, 25000);
-
-    const handleFocus = () => {
-      fetchBackendNotifications();
-    };
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [fetchBackendNotifications]);
-
   const addNotification = useCallback((notification) => {
     const title = (notification.title || '').trim();
     const message = (notification.message || '').trim();
@@ -257,20 +238,6 @@ export const NotificationProvider = ({ children }) => {
       await refreshNotifications();
     }
   }, [notifications, refreshNotifications, storageKey]);
-
-  const markAllAsRead = useCallback(async () => {
-    setNotifications((current) => current.map((n) => ({ ...n, is_read: true })));
-
-    const readIds = getLocalReadIds();
-    notifications.forEach((n) => readIds.add(n.id));
-    saveLocalReadIds(readIds);
-
-    try {
-      await notificationApi.markAllAsRead();
-    } catch (err) {
-      console.warn('Could not sync markAllAsRead to backend:', err?.message);
-    }
-  }, [notifications]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.is_read).length,

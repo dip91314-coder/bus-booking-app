@@ -222,23 +222,11 @@ export const notificationApi = {
     const res = await apiClient.get('/notifications/broadcasts');
     return res.data?.data || [];
   },
-  getMyNotifications: async () => {
+  getNotifications: async () => {
     const res = await apiClient.get('/notifications');
     return res.data?.data || [];
   },
-  markAsRead: async (id) => {
-    const res = await apiClient.patch(`/notifications/${id}/read`);
-    return res.data?.data;
-  },
-  markAllAsRead: async () => {
-    const res = await apiClient.patch('/notifications/read-all');
-    return res.data;
-  },
-};
-
-// Notification Endpoints
-export const notificationApi = {
-  getNotifications: async () => {
+  getMyNotifications: async () => {
     const res = await apiClient.get('/notifications');
     return res.data?.data || [];
   },
