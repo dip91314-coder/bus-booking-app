@@ -32,8 +32,11 @@ const Register = () => {
     if (!formData.name || formData.name.trim().length < 2) {
       newErrors.name = 'Please enter your full name.';
     }
-    if (!formData.email || !formData.email.includes('@')) {
+    const email = formData.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = 'Please provide a valid email address.';
+    } else if (!email.toLowerCase().endsWith('@gmail.com')) {
+      newErrors.email = 'Only @gmail.com addresses can register.';
     }
     if (!formData.phone || !/^[0-9]{10}$/.test(formData.phone.trim())) {
       newErrors.phone = 'Mobile number must be a valid 10-digit Indian number.';
@@ -54,7 +57,7 @@ const Register = () => {
     try {
       const registration = await register({
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        email,
         phone: formData.phone.trim(),
         password: formData.password,
       });
@@ -139,7 +142,7 @@ const Register = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="name@example.com"
+                placeholder="name@gmail.com"
                 className="w-full pl-10 pr-4 py-2 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7E22CE] focus:bg-white transition"
               />
             </div>

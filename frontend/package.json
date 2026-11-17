@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "build": "tsc -b && vite build",
-    "prebuild": "eslint src --ext .js,.jsx --rule '{\"no-redeclare\": \"error\", \"no-dupe-keys\": \"error\"}' --quiet",
+    "prebuild": "eslint src --ext .js,.jsx --quiet",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"

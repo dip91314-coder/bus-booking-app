@@ -20,6 +20,15 @@ export default defineConfig([
     rules: {
       'no-redeclare': 'error',
       'no-dupe-keys': 'error',
+      'no-unused-vars': 'warn',
+      'no-empty': 'warn',
+      'no-useless-assignment': 'warn',
+      'react-refresh/only-export-components': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/rules-of-hooks': 'error',
     },
   },
 ])

@@ -49,18 +49,6 @@ const UserDashboard = () => {
   } = useBooking();
   const [downloadingTicket, setDownloadingTicket] = useState('');
 
-  // Load fresh bookings from backend on dashboard mount
-  useEffect(() => {
-    refreshUserBookings?.();
-  }, [refreshUserBookings]);
-
-  // Redirect admin users to /admin
-  if (user?.role === 'admin') {
-    return <Navigate to="/admin" replace />;
-  }
-
-  const activeTab = searchParams.get('tab') || 'bookings';
-
   // Profile Edit modal state
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [profileName, setProfileName] = useState(user?.name || '');
@@ -79,6 +67,11 @@ const UserDashboard = () => {
   const [newMemoryTitle, setNewMemoryTitle] = useState('');
   const [newMemoryLocation, setNewMemoryLocation] = useState('');
   const [newMemoryStory, setNewMemoryStory] = useState('');
+
+  // Load fresh bookings from backend on dashboard mount
+  useEffect(() => {
+    refreshUserBookings?.();
+  }, [refreshUserBookings]);
 
   // Sync journal entries from API
   useEffect(() => {
@@ -134,6 +127,13 @@ const UserDashboard = () => {
       active = false;
     };
   }, [user, isDemo]);
+
+  // Redirect admin users to /admin — after all hooks so Rules of Hooks is satisfied
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  const activeTab = searchParams.get('tab') || 'bookings';
 
   // Filter user bookings
   const today = new Date().toISOString().slice(0, 10);

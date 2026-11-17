@@ -314,7 +314,7 @@ describe('Admin management API', () => {
       .post('/api/auth/register')
       .send({
         name: 'New User',
-        email: 'new-user@example.com',
+        email: 'new-user@gmail.com',
         password: 'password123',
         phone: '9876543211',
         role: 'admin',
@@ -325,12 +325,24 @@ describe('Admin management API', () => {
       .post('/api/auth/register')
       .send({
         name: 'New User',
-        email: 'new-user@example.com',
+        email: 'new-user@GMAIL.COM',
         password: 'password123',
         phone: '9876543211',
       });
     expect(registered.status).toBe(201);
     expect(registered.body.data.user.role).toBe('user');
+    expect(registered.body.data.user.email).toBe('new-user@gmail.com');
+
+    const nonGmail = await request(app)
+      .post('/api/auth/register')
+      .send({
+        name: 'Other User',
+        email: 'other-user@example.com',
+        password: 'password123',
+        phone: '9876543212',
+      });
+    expect(nonGmail.status).toBe(400);
+    expect(await User.findOne({ email: 'other-user@example.com' })).toBeNull();
   });
 
   it('prevents suspended passengers from continuing to use authenticated endpoints', async () => {
