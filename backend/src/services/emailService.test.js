@@ -66,6 +66,28 @@ describe('emailService', () => {
     }));
   });
 
+  it('sends a booking confirmation without a ticket and honors the recipient override', async () => {
+    const sendMail = vi.fn().mockResolvedValue({ messageId: 'message-3' });
+    const createTransport = vi.fn(() => ({ sendMail }));
+    const emailService = createEmailService({ config: smtpConfig, createTransport });
+
+    await expect(emailService.sendBookingConfirmationEmail({
+      booking: {
+        bookingReference: 'OBT-1234',
+        contactEmail: 'saved@example.com',
+        origin: 'Kolkata',
+        destination: 'Manali',
+      },
+      toEmail: 'override@example.com',
+    })).resolves.toEqual({ sent: true });
+
+    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'override@example.com',
+      subject: expect.stringContaining('OBT-1234'),
+      text: expect.stringContaining('Kolkata to Manali'),
+    }));
+  });
+
   it('reports missing SMTP configuration without attempting delivery', async () => {
     const createTransport = vi.fn();
     const emailService = createEmailService({

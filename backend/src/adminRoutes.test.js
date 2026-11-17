@@ -8,6 +8,7 @@ import { Bus } from './models/Bus.js';
 import { Offer } from './models/Offer.js';
 import { Route } from './models/Route.js';
 import { BusSchedule } from './models/BusSchedule.js';
+import { Trip } from './models/Trip.js';
 import { AdminNotification } from './models/AdminNotification.js';
 import { TripNotification } from './models/TripNotification.js';
 import { AuditLog } from './models/AuditLog.js';
@@ -49,6 +50,7 @@ describe('Admin management API', () => {
       Bus.deleteMany({}),
       Route.deleteMany({}),
       BusSchedule.deleteMany({}),
+      Trip.deleteMany({}),
       Offer.deleteMany({}),
       AdminNotification.deleteMany({}),
       TripNotification.deleteMany({}),
@@ -193,12 +195,69 @@ describe('Admin management API', () => {
     });
   });
 
+  it('publishes a newly created admin schedule through public trip search', async () => {
+    const bus = await Bus.create({
+      busNumber: 'WB-04-E-9999',
+      busName: 'YatraBus Mountain Express',
+      operator: 'YatraBus',
+      busType: 'AC Sleeper (2+1)',
+      origin: 'Kolkata',
+      destination: 'Manali',
+      departureTime: '18:00',
+      arrivalTime: '12:00',
+      fare: 1800,
+      totalSeats: 36,
+    });
+    const route = await Route.create({
+      origin: 'Kolkata',
+      destination: 'Manali',
+      distanceKm: 1900,
+      estimatedDuration: '42h 00m',
+    });
+
+    const createdSchedule = await request(app)
+      .post('/api/admin/schedules')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        busId: bus._id.toString(),
+        routeId: route._id.toString(),
+        journeyDate: '2027-01-21',
+        departureTime: '18:00',
+        arrivalTime: '12:00',
+        fare: 1800,
+        availableSeats: 36,
+        totalSeats: 36,
+        status: 'Scheduled',
+      });
+
+    expect(createdSchedule.status).toBe(201);
+    expect(await Trip.countDocuments({ routeId: route._id })).toBe(1);
+
+    const publicResults = await request(app)
+      .get('/api/trips')
+      .query({ from: 'Kolkata', to: 'Manali', date: '2027-01-21' });
+    expect(publicResults.status).toBe(200);
+    expect(publicResults.body.data).toHaveLength(1);
+    expect(publicResults.body.data[0]).toMatchObject({
+      origin: 'Kolkata',
+      destination: 'Manali',
+      travelDate: '2027-01-21',
+    });
+  });
+
   it('persists admin notifications and merges settings updates', async () => {
     const notification = await request(app)
       .post('/api/admin/notifications')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ title: 'Schedule update', message: 'A new schedule was published.', category: 'alert' });
     expect(notification.status).toBe(201);
+
+    const guestBroadcasts = await request(app).get('/api/notifications/broadcasts');
+    expect(guestBroadcasts.status).toBe(200);
+    expect(guestBroadcasts.body.data[0]).toMatchObject({
+      title: 'Schedule update',
+      message: 'A new schedule was published.',
+    });
 
     const customerNotifications = await request(app)
       .get('/api/notifications')

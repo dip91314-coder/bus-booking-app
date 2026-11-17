@@ -14,6 +14,7 @@ vi.mock('./AuthContext', () => ({
 }));
 vi.mock('../services/api', () => ({
   notificationApi: {
+    getBroadcasts: vi.fn().mockResolvedValue([]),
     getMyNotifications: vi.fn(),
     markAsRead: vi.fn(),
     markAllAsRead: vi.fn(),
@@ -93,7 +94,7 @@ describe('NotificationContext', () => {
     expect(screen.getByTestId('unread-count').textContent).toBe('0');
   });
 
-  it('shows the empty state and allows marking all notifications read', () => {
+  it('shows the empty state and allows marking all notifications read', async () => {
     render(
       <MemoryRouter>
         <NotificationProvider>
@@ -104,7 +105,7 @@ describe('NotificationContext', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
-    expect(screen.getByText('No notifications')).toBeTruthy();
+    expect(await screen.findByText('No notifications')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add notification' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark all as read' }));
@@ -133,7 +134,21 @@ describe('NotificationContext', () => {
   it('loads customer notifications from the API and persists read state on the server', async () => {
     authState.user = { id: 'customer-1', email: 'customer@example.com', role: 'user' };
     window.localStorage.setItem('yatrabus_token', 'customer-token');
+    notificationApi.getBroadcasts.mockResolvedValue([{
+      _id: 'broadcast-1',
+      title: 'New route added',
+      message: 'Kolkata to Manali is now available.',
+      category: 'alert',
+      createdAt: '2026-11-15T10:00:00.000Z',
+    }]);
     notificationApi.getMyNotifications.mockResolvedValue([{
+      _id: 'broadcast-copy',
+      title: 'New route added',
+      message: 'Kolkata to Manali is now available.',
+      category: 'alert',
+      isRead: false,
+      createdAt: '2026-11-15T10:00:01.000Z',
+    }, {
       _id: 'notice-1',
       title: 'Schedule update',
       message: 'Your bus departure is now 8:30 PM.',
@@ -153,8 +168,31 @@ describe('NotificationContext', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
     expect(await screen.findByText('Your bus departure is now 8:30 PM.')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Mark as read' }));
+    expect(screen.getAllByText('Kolkata to Manali is now available.')).toHaveLength(1);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Mark as read' })[0]);
     await waitFor(() => expect(notificationApi.markAsRead).toHaveBeenCalledWith('notice-1'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: /Notifications/ })).toBeTruthy());
+  });
+
+  it('loads admin announcements for guests without requiring a customer login', async () => {
+    notificationApi.getBroadcasts.mockResolvedValue([{
+      _id: 'broadcast-1',
+      title: 'New route added',
+      message: 'Kolkata to Manali is now available.',
+      category: 'alert',
+      createdAt: '2026-11-17T05:00:00.000Z',
+    }]);
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <NotificationBell />
+        </NotificationProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+    expect(await screen.findByText('Kolkata to Manali is now available.')).toBeTruthy();
+    expect(notificationApi.getMyNotifications).not.toHaveBeenCalled();
   });
 });

@@ -23,6 +23,7 @@ import { NotFoundError, ValidationError } from '../utils/customErrors.js';
 import { normalizeYatraBus } from '../utils/yatraFleet.js';
 import { invalidate } from '../config/redis.js';
 import { publishUserNotification } from '../services/notificationService.js';
+import { sendBookingConfirmationEmail } from '../services/emailService.js';
 
 const idOf = (document) => document._id.toString();
 const validId = (id) => mongoose.isValidObjectId(id);
@@ -570,6 +571,18 @@ export async function deleteAdminRoute(req, res, next) {
   }
 }
 
+function scheduleToTripInput(schedule) {
+  return {
+    busId: schedule.busId,
+    routeId: schedule.routeId,
+    travelDate: schedule.journeyDate,
+    departureTime: schedule.departureTime,
+    arrivalTime: schedule.arrivalTime,
+    baseFare: schedule.fare,
+    status: schedule.status === 'departed' ? 'active' : schedule.status,
+  };
+}
+
 function parseScheduleInput(input) {
   const { status, ...fields } = input;
   return { ...fields, status: status ? scheduleStatusToDatabase(status) : undefined };
@@ -586,6 +599,7 @@ function formatSchedule(schedule) {
     busNumber: bus?.busNumber || '',
     busName: bus ? normalizeYatraBus(bus).busName : '',
     routeId: route ? idOf(route) : String(schedule.routeId || ''),
+    tripId: schedule.tripId ? String(schedule.tripId) : null,
     source: route?.origin || '',
     destination: route?.destination || '',
     status: scheduleStatusToAdmin(schedule.status),
@@ -616,11 +630,19 @@ async function validateScheduleReferences(busId, routeId) {
 export async function createAdminSchedule(req, res, next) {
   try {
     await validateScheduleReferences(req.body.busId, req.body.routeId);
-    const schedule = await BusSchedule.create(parseScheduleInput(req.body));
-    await schedule.populate([
-      { path: 'busId', select: 'busNumber busName' },
-      { path: 'routeId', select: 'origin destination' },
-    ]);
+    const scheduleInput = parseScheduleInput(req.body);
+    const trip = await Trip.create(scheduleToTripInput(scheduleInput));
+    let schedule;
+    try {
+      schedule = await BusSchedule.create({ ...scheduleInput, tripId: trip._id });
+      await schedule.populate([
+        { path: 'busId', select: 'busNumber busName' },
+        { path: 'routeId', select: 'origin destination' },
+      ]);
+    } catch (error) {
+      await Trip.deleteOne({ _id: trip._id });
+      throw error;
+    }
     await invalidate('trips:');
     res.status(201).json({ success: true, data: formatSchedule(schedule) });
   } catch (error) {

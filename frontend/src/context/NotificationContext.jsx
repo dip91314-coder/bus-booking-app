@@ -67,10 +67,21 @@ const normalizeServerNotification = (notification) => {
   };
 };
 
+const normalizeBroadcastNotification = (notification) => ({
+  id: `broadcast-${notification._id}`,
+  source: 'broadcast',
+  title: notification.title,
+  message: notification.message,
+  type: notification.category === 'alert' ? 'info' : notification.category,
+  is_read: false,
+  created_at: notification.createdAt || notification.updatedAt,
+});
+
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
   const userKey = user?.id || user?._id || user?.email || 'guest';
-  const isCustomer = Boolean(user && user.role !== 'admin');
+  const isAdmin = user?.role === 'admin';
+  const isCustomer = Boolean(user && !isAdmin);
   const storageKey = `${STORAGE_KEY}:${userKey}`;
   const token = getAccessToken();
   const currentStorageKey = useRef(storageKey);
@@ -97,7 +108,7 @@ export const NotificationProvider = ({ children }) => {
   }, [notificationState, storageKey]);
 
   const refreshNotifications = useCallback(async () => {
-    if (!token || !isCustomer) {
+    if (isAdmin) {
       setIsLoading(false);
       setError('');
       return;
@@ -106,17 +117,43 @@ export const NotificationProvider = ({ children }) => {
     setIsLoading(true);
     setError('');
     try {
-      const records = await notificationApi.getMyNotifications();
+      const [broadcastRecords, customerRecords] = await Promise.all([
+        notificationApi.getBroadcasts(),
+        token && isCustomer ? notificationApi.getMyNotifications() : Promise.resolve([]),
+      ]);
       if (currentStorageKey.current !== storageKey) return;
-      const serverNotifications = records.map(normalizeServerNotification);
+      const broadcasts = broadcastRecords.map(normalizeBroadcastNotification);
+      const broadcastContent = new Set(broadcasts.map(
+        (notification) => `${notification.title}\u0000${notification.message}`
+      ));
+      const customerNotifications = customerRecords
+        .map(normalizeServerNotification)
+        .filter((notification) =>
+          !broadcastContent.has(`${notification.title}\u0000${notification.message}`)
+        );
       setNotificationState((current) => {
-        const localNotifications = (current.key === storageKey
+        const currentItems = current.key === storageKey
           ? current.items
-          : loadNotifications(storageKey)
-        ).filter((notification) => notification.source !== 'server');
+          : loadNotifications(storageKey);
+        const previousBroadcasts = new Map(
+          currentItems
+            .filter((notification) => notification.source === 'broadcast')
+            .map((notification) => [notification.id, notification])
+        );
+        const refreshedBroadcasts = broadcasts.map((broadcast) => ({
+          ...broadcast,
+          is_read: Boolean(previousBroadcasts.get(broadcast.id)?.is_read),
+        }));
+        const localNotifications = currentItems.filter((notification) =>
+          notification.source !== 'server' && notification.source !== 'broadcast'
+        );
         return {
           key: storageKey,
-          items: sortNewestFirst([...localNotifications, ...serverNotifications]).slice(0, 100),
+          items: sortNewestFirst([
+            ...localNotifications,
+            ...refreshedBroadcasts,
+            ...customerNotifications,
+          ]).slice(0, 100),
         };
       });
     } catch (requestError) {
@@ -126,7 +163,7 @@ export const NotificationProvider = ({ children }) => {
     } finally {
       if (currentStorageKey.current === storageKey) setIsLoading(false);
     }
-  }, [storageKey, token, isCustomer]);
+  }, [storageKey, token, isCustomer, isAdmin]);
 
   useEffect(() => {
     let active = true;

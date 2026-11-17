@@ -12,6 +12,12 @@ const BusScheduleSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Route',
     },
+    tripId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Trip',
+      default: null,
+      index: true,
+    },
     journeyDate: {
       type: String,
       required: true,

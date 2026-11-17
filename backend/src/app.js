@@ -16,12 +16,10 @@ import { getRedisStatus } from './config/redis.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { pinoLogger } from './middleware/pinoLogger.js';
 import { requestId } from './middleware/requestId.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, optionalAuthenticate } from './middleware/auth.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
-import { TripNotification } from './models/TripNotification.js';
 import { AdminNotification } from './models/AdminNotification.js';
-import { testSmtpConnection } from './services/emailService.js';
-import jwt from 'jsonwebtoken';
+import { TripNotification } from './models/TripNotification.js';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -204,36 +202,53 @@ export function createApp() {
   app.get('/api/settings', settingsHandler);
   app.get('/settings', settingsHandler);
 
-  // Optional JWT Authentication for notifications so both guests & members get announcements
-  const optionalAuthenticate = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next();
-    }
-    const token = authHeader.split(' ')[1];
+  const getBroadcastNotificationsHandler = async (req, res, next) => {
     try {
-      const decoded = jwt.verify(token, env.JWT_SECRET);
-      req.user = decoded;
-    } catch {
-      // Continue unauthenticated if token invalid or expired
+      const notifications = await AdminNotification.find().sort({ createdAt: -1 }).limit(50);
+      res.status(200).json({
+        success: true,
+        count: notifications.length,
+        data: notifications,
+      });
+    } catch (err) {
+      next(err);
     }
-    next();
   };
+  app.get('/api/notifications/broadcasts', getBroadcastNotificationsHandler);
+  app.get('/notifications/broadcasts', getBroadcastNotificationsHandler);
 
-  // User & Platform notifications endpoint
   const getNotificationsHandler = async (req, res, next) => {
     try {
       const userId = req.user?.userId;
+      const [adminNotifications, customerNotifications] = await Promise.all([
+        AdminNotification.find()
+          .sort({ createdAt: -1 })
+          .limit(50),
+        userId
+          ? TripNotification.find({ userId }).sort({ createdAt: -1 }).limit(50)
+          : Promise.resolve([]),
+      ]);
+      const notifications = [
+        ...customerNotifications.map((notification) => ({
+          ...notification.toObject(),
+          source: 'customer',
+        })),
+        ...adminNotifications.map((notification) => ({
+          ...notification.toObject(),
+          isRead: false,
+          source: 'broadcast',
+        })),
+      ].sort((left, right) => {
+        const timeDifference = new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+        if (timeDifference !== 0) return timeDifference;
+        return left.source === 'customer' ? -1 : 1;
+      }).slice(0, 50);
 
-      // 1. Fetch system announcements & operational broadcasts from Admin
-      const adminNotifs = await AdminNotification.find()
-        .sort({ createdAt: -1 })
-        .limit(50);
       res.status(200).json({
         success: true,
-        count: notifs.length,
-        unreadCount: notifs.filter((notification) => !notification.isRead).length,
-        data: notifs,
+        count: notifications.length,
+        unreadCount: notifications.filter((notification) => !notification.isRead).length,
+        data: notifications,
       });
     } catch (err) {
       next(err);
@@ -257,8 +272,8 @@ export function createApp() {
       next(err);
     }
   };
-  app.post('/api/notifications/test-email', optionalAuthenticate, testEmailHandler);
-  app.post('/notifications/test-email', optionalAuthenticate, testEmailHandler);
+  app.patch('/api/notifications/:id/read', authenticate, readNotificationHandler);
+  app.patch('/notifications/:id/read', authenticate, readNotificationHandler);
 
   const markAllNotificationsReadHandler = async (req, res, next) => {
     try {
