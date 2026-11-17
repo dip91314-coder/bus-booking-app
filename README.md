@@ -7,8 +7,8 @@
 A responsive, data-driven bus ticket reservation and tour booking platform built using the **MERN Stack** (MongoDB, Express, React, Node.js) with Tailwind CSS, Redis caching, and ACID transaction safety.
 
 [![Status](https://img.shields.io/badge/status-active%20%26%20production%20ready-brightgreen?style=for-the-badge)](#-features)
-[![Backend Tests](https://img.shields.io/badge/backend%20tests-64%20passing-success?style=for-the-badge)](#-running-test-suites)
-[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-23%20passing-success?style=for-the-badge)](#-running-test-suites)
+[![Backend Tests](https://img.shields.io/badge/backend%20tests-72%20passing-success?style=for-the-badge)](#-running-test-suites)
+[![Frontend Tests](https://img.shields.io/badge/frontend%20tests-35%20passing-success?style=for-the-badge)](#-running-test-suites)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 
 **Search trips · Choose seats · Book tickets · Short-trip circuits · Full admin fleet control**
@@ -77,6 +77,9 @@ After seeding the database, log in with the pre-configured credentials:
 - 🏷️ **Dynamic Coupons & Discounts**: Real-time server validation of promotional codes (e.g., `YATRAFIRST`, `FESTIVE50`) with instant savings deduction.
 - 💳 **Online Payment Gateway**: Integrated simulated / Razorpay checkout with idempotent signature verification.
 - 📄 **Official PDF Ticket Generation**: Instant browser download of server-generated digital tickets using PDFKit.
+- 📧 **Email Notifications**: Welcome email after account registration and a PDF ticket attachment after successful payment.
+- 🔔 **Customer Notifications**: Account-scoped notifications cover booking, payment, cancellation, ticket, and schedule events; they load from the backend, persist across sessions, and support read/unread actions.
+- 🎟️ **Booking History Downloads**: Confirmed and completed tickets can be regenerated from owned booking records when a saved ticket snapshot is unavailable.
 - 🗺️ **Short Trips & Weekend Circuits**: Browse authentic curated travel packages (`/short-trips`) with day-by-day itineraries and inclusions.
 - 🧭 **Curated Destination Guides**: Interactive showcase of top Indian destinations with highlights and regional pickup points.
 - 📔 **Personal Travel Dashboard**: Booking history, saved passenger roster management, and travel memory journal entries.
@@ -104,7 +107,7 @@ After seeding the database, log in with the pre-configured credentials:
 | **Concurrency Engine** | MongoDB Sessions + Unique Indexes | Guarantees zero duplicate seat locks under parallel load |
 | **Document Generation**| PDFKit | Server-side official PDF ticket rendering |
 | **Validation** | Zod | Strict request payload schema validation |
-| **Testing** | Node Test Runner / Supertest / Vitest | 64 backend tests & 23 frontend component tests |
+| **Testing** | Node Test Runner / Supertest / Vitest | 72 backend tests & 35 frontend component tests |
 
 ## 📁 Project Structure
 
@@ -208,10 +211,10 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 Run the complete backend and frontend test suites and verify production builds:
 
 ```bash
-# 1. Run all 64 backend tests (covering models, atomic locking, Redis fallback, recurrence, pricing preview, and safety locks)
+# 1. Run all backend tests
 npm test --prefix backend
 
-# 2. Run all 23 frontend unit/component tests
+# 2. Run all frontend unit/component tests
 npm test --prefix frontend
 
 # 3. Verify clean production Vite bundle compilation
@@ -230,7 +233,17 @@ CLIENT_URL=http://localhost:5173
 
 # Optional: configure only when Redis is enabled
 REDIS_URL=
+
+# Optional SMTP delivery (Gmail users should create an App Password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=
 ```
+
+Configure these SMTP values in the backend environment (never in `frontend/.env`) to enable welcome emails and ticket delivery. If SMTP is missing or unavailable, account registration and confirmed bookings still succeed; the registration response indicates whether its email was sent, and delivery failures are logged.
 
 If the frontend needs a separate API base URL, create `frontend/.env`:
 
@@ -329,6 +342,12 @@ You can deploy the stack across managed cloud services with zero server maintena
 | `CLIENT_URL` | Hosted frontend origin URL | `https://yatrabus.vercel.app` |
 | `CORS_ORIGIN` | Allowed CORS origin | `https://yatrabus.vercel.app` |
 | `LOCK_MINUTES` | Hold expiration time in minutes | `8` |
+| `SMTP_HOST` | SMTP server hostname | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `SMTP_SECURE` | Use implicit TLS (typically true for port 465) | `false` |
+| `SMTP_USER` | SMTP account username | Your mail account |
+| `SMTP_PASS` | SMTP password or provider app password | Secret environment value |
+| `EMAIL_FROM` | Optional verified sender address | `YatraBus <you@example.com>` |
 | `ADMIN_SEED_PASSWORD` | Strong password for admin in production | `CustomStrongPassword#2026` |
 
 #### 4. Frontend Web App: Vercel or Netlify

@@ -228,52 +228,12 @@ export function createApp() {
       // 1. Fetch system announcements & operational broadcasts from Admin
       const adminNotifs = await AdminNotification.find()
         .sort({ createdAt: -1 })
-        .limit(40);
-
-      const formattedAdmin = adminNotifs.map((n) => ({
-        id: n._id.toString(),
-        title: n.title,
-        message: n.message,
-        type: n.category || 'alert',
-        category: n.category || 'alert',
-        is_read: Boolean(n.read),
-        created_at: n.createdAt ? n.createdAt.toISOString() : new Date().toISOString(),
-        source: 'admin',
-      }));
-
-      // 2. If authenticated, fetch customer-specific trip notifications
-      let userTripNotifs = [];
-      if (userId) {
-        const tripNotifs = await TripNotification.find({ userId })
-          .sort({ createdAt: -1 })
-          .limit(40);
-
-        userTripNotifs = tripNotifs.map((n) => ({
-          id: n._id.toString(),
-          title: n.title,
-          message: n.message,
-          type: n.type || 'GENERAL',
-          category: n.type?.toLowerCase() || 'booking',
-          is_read: Boolean(n.isRead),
-          created_at: n.createdAt ? n.createdAt.toISOString() : new Date().toISOString(),
-          source: 'trip',
-          tripId: n.tripId,
-          bookingId: n.bookingId,
-        }));
-      }
-
-      // 3. Combine and sort newest first
-      const combined = [...formattedAdmin, ...userTripNotifs].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      const unreadCount = combined.filter((n) => !n.is_read).length;
-
+        .limit(50);
       res.status(200).json({
         success: true,
-        count: combined.length,
-        unreadCount,
-        data: combined,
+        count: notifs.length,
+        unreadCount: notifs.filter((notification) => !notification.isRead).length,
+        data: notifs,
       });
     } catch (err) {
       next(err);
@@ -284,61 +244,35 @@ export function createApp() {
 
   const readNotificationHandler = async (req, res, next) => {
     try {
-      const { id } = req.params;
-      if (!mongoose.isValidObjectId(id)) {
-        return res.status(200).json({ success: true, message: 'Notification marked as read.' });
+      const notif = await TripNotification.findOneAndUpdate(
+        { _id: req.params.id, userId: req.user.userId },
+        { isRead: true },
+        { new: true }
+      );
+      if (!notif) {
+        return res.status(404).json({ success: false, message: 'Notification not found.' });
       }
-
-      let updated = null;
-      if (req.user?.userId) {
-        updated = await TripNotification.findOneAndUpdate(
-          { _id: id, userId: req.user.userId },
-          { isRead: true },
-          { new: true }
-        );
-      }
-
-      if (!updated) {
-        updated = await AdminNotification.findByIdAndUpdate(
-          id,
-          { read: true },
-          { new: true }
-        );
-      }
-
-      res.status(200).json({ success: true, data: updated });
-    } catch (err) {
-      next(err);
-    }
-  };
-  app.patch('/api/notifications/:id/read', optionalAuthenticate, readNotificationHandler);
-  app.patch('/notifications/:id/read', optionalAuthenticate, readNotificationHandler);
-
-  const readAllNotificationsHandler = async (req, res, next) => {
-    try {
-      if (req.user?.userId) {
-        await TripNotification.updateMany({ userId: req.user.userId, isRead: false }, { isRead: true });
-      }
-      await AdminNotification.updateMany({ read: false }, { read: true });
-      res.status(200).json({ success: true, message: 'All notifications marked as read.' });
-    } catch (err) {
-      next(err);
-    }
-  };
-  app.patch('/api/notifications/read-all', optionalAuthenticate, readAllNotificationsHandler);
-  app.patch('/notifications/read-all', optionalAuthenticate, readAllNotificationsHandler);
-
-  const testEmailHandler = async (req, res, next) => {
-    try {
-      const { toEmail } = req.body || {};
-      const result = await testSmtpConnection(toEmail || req.user?.email);
-      res.status(200).json({ success: Boolean(result.success), data: result });
+      res.status(200).json({ success: true, data: notif });
     } catch (err) {
       next(err);
     }
   };
   app.post('/api/notifications/test-email', optionalAuthenticate, testEmailHandler);
   app.post('/notifications/test-email', optionalAuthenticate, testEmailHandler);
+
+  const markAllNotificationsReadHandler = async (req, res, next) => {
+    try {
+      const result = await TripNotification.updateMany(
+        { userId: req.user.userId, isRead: false },
+        { $set: { isRead: true } }
+      );
+      res.status(200).json({ success: true, updatedCount: result.modifiedCount });
+    } catch (error) {
+      next(error);
+    }
+  };
+  app.patch('/api/notifications/read-all', authenticate, markAllNotificationsReadHandler);
+  app.patch('/notifications/read-all', authenticate, markAllNotificationsReadHandler);
 
   // API Route mounting: mount under both /api/<path> and /<path>
   // This guarantees requests reach endpoints whether VITE_API_URL includes /api or not

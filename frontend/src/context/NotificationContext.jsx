@@ -1,49 +1,45 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { notificationApi } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const STORAGE_KEY = 'yatrabus_notifications_v1';
 const READ_SET_KEY = 'yatrabus_read_notifications_v1';
 const NotificationContext = createContext(null);
 
-const sortNewestFirst = (items) =>
-  [...items].sort(
-    (left, right) => new Date(right.created_at || right.createdAt).getTime() - new Date(left.created_at || left.createdAt).getTime()
+const getLocalStorage = () => {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage || null : null;
+  } catch (error) {
+    console.warn('Could not access local storage for notifications:', error?.message);
+    return null;
+  }
+};
+
+const getAccessToken = () => {
+  try {
+    return getLocalStorage()?.getItem('yatrabus_token') || null;
+  } catch (error) {
+    console.warn('Could not read the authentication token for notifications:', error?.message);
+    return null;
+  }
+};
+
+const sortNewestFirst = (notifications) =>
+  [...notifications].sort(
+    (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
   );
 
-const getLocalReadIds = () => {
-  if (typeof window === 'undefined' || !window.localStorage) return new Set();
+const loadNotifications = (key) => {
+  const storage = getLocalStorage();
+  if (!storage) return [];
   try {
-    const raw = window.localStorage.getItem(READ_SET_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-};
-
-const saveLocalReadIds = (readSet) => {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  try {
-    window.localStorage.setItem(READ_SET_KEY, JSON.stringify([...readSet]));
-  } catch {
-    // ignore
-  }
-};
-
-const loadSavedNotifications = () => {
-  if (typeof window === 'undefined' || !window.localStorage) return [];
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const saved = storage.getItem(key);
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
-    const readIds = getLocalReadIds();
     return sortNewestFirst(
-      parsed
-        .filter((n) => n?.id && n?.title)
-        .map((n) => ({
-          ...n,
-          is_read: n.is_read || readIds.has(n.id),
-        }))
+      parsed.filter((notification) => notification?.id && notification?.title && notification.source !== 'server')
     );
   } catch (error) {
     console.warn('Could not load notifications from storage:', error?.message);
@@ -51,66 +47,103 @@ const loadSavedNotifications = () => {
   }
 };
 
+const normalizeServerNotification = (notification) => {
+  const type = notification.category && notification.category !== 'alert'
+    ? notification.category
+    : notification.type === 'CANCELLATION'
+      ? 'cancellation'
+      : ['DELAY', 'SCHEDULE_CHANGE'].includes(notification.type)
+        ? 'schedule'
+        : 'info';
+  return {
+    id: `server-${notification._id}`,
+    serverId: notification._id,
+    source: 'server',
+    title: notification.title,
+    message: notification.message,
+    type,
+    is_read: Boolean(notification.isRead),
+    created_at: notification.createdAt || notification.updatedAt,
+  };
+};
+
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(loadSavedNotifications);
+  const { user } = useAuth();
+  const userKey = user?.id || user?._id || user?.email || 'guest';
+  const isCustomer = Boolean(user && user.role !== 'admin');
+  const storageKey = `${STORAGE_KEY}:${userKey}`;
+  const token = getAccessToken();
+  const currentStorageKey = useRef(storageKey);
+  currentStorageKey.current = storageKey;
+  const [notificationState, setNotificationState] = useState({ key: '', items: [] });
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const notifications = notificationState.key === storageKey ? notificationState.items : [];
+
+  useEffect(() => {
+    setNotificationState({ key: storageKey, items: loadNotifications(storageKey) });
+  }, [storageKey]);
 
   // Sync state to localStorage
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.localStorage) return;
+    const storage = getLocalStorage();
+    if (notificationState.key !== storageKey || !storage) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-    } catch {
-      // ignore
+      const localNotifications = notificationState.items.filter((notification) => notification.source !== 'server');
+      storage.setItem(storageKey, JSON.stringify(localNotifications));
+    } catch (storageError) {
+      console.warn('Could not save notifications to local storage:', storageError?.message);
     }
-  }, [notifications]);
+  }, [notificationState, storageKey]);
 
-  // Fetch real notifications from backend API
-  const fetchBackendNotifications = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const serverNotifs = await notificationApi.getNotifications();
-      if (Array.isArray(serverNotifs)) {
-        const readIds = getLocalReadIds();
-        const normalized = serverNotifs.map((n) => ({
-          id: String(n.id || n._id),
-          title: n.title,
-          message: n.message,
-          type: n.type || n.category || 'info',
-          category: n.category || 'alert',
-          is_read: Boolean(n.is_read || n.isRead || n.read || readIds.has(String(n.id || n._id))),
-          created_at: n.created_at || n.createdAt || new Date().toISOString(),
-          source: n.source || 'backend',
-        }));
-
-        setNotifications((current) => {
-          // Merge local client notifications with server notifications
-          const serverMap = new Map(normalized.map((item) => [item.id, item]));
-          const localOnly = current.filter((c) => c.source === 'client' && !serverMap.has(c.id));
-          const allMerged = sortNewestFirst([...serverMap.values(), ...localOnly]);
-
-          // Prevent duplicate notifications with identical title & message
-          const seenFingerprints = new Set();
-          const uniqueList = [];
-          for (const item of allMerged) {
-            const fingerprint = `${(item.title || '').trim().toLowerCase()}::${(item.message || '').trim().toLowerCase()}`;
-            if (!seenFingerprints.has(fingerprint)) {
-              seenFingerprints.add(fingerprint);
-              uniqueList.push(item);
-            }
-          }
-          return uniqueList.slice(0, 100);
-        });
-      }
-      setError(null);
-    } catch (err) {
-      console.warn('Could not fetch notifications from backend API:', err?.message);
-      setError(err?.message || 'Failed to sync notifications');
-    } finally {
+  const refreshNotifications = useCallback(async () => {
+    if (!token || !isCustomer) {
       setIsLoading(false);
+      setError('');
+      return;
     }
-  }, []);
+
+    setIsLoading(true);
+    setError('');
+    try {
+      const records = await notificationApi.getMyNotifications();
+      if (currentStorageKey.current !== storageKey) return;
+      const serverNotifications = records.map(normalizeServerNotification);
+      setNotificationState((current) => {
+        const localNotifications = (current.key === storageKey
+          ? current.items
+          : loadNotifications(storageKey)
+        ).filter((notification) => notification.source !== 'server');
+        return {
+          key: storageKey,
+          items: sortNewestFirst([...localNotifications, ...serverNotifications]).slice(0, 100),
+        };
+      });
+    } catch (requestError) {
+      if (currentStorageKey.current === storageKey) {
+        setError(requestError?.response?.data?.message || requestError?.message || 'Could not load notifications.');
+      }
+    } finally {
+      if (currentStorageKey.current === storageKey) setIsLoading(false);
+    }
+  }, [storageKey, token, isCustomer]);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      if (!active) return;
+      await refreshNotifications();
+    };
+
+    refresh();
+    const intervalId = window.setInterval(refresh, 60000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [refreshNotifications]);
 
   // Initial fetch and interval poll (every 25 seconds)
   useEffect(() => {
@@ -145,38 +178,48 @@ export const NotificationProvider = ({ children }) => {
       created_at: new Date().toISOString(),
       source: 'client',
     };
-
-    setNotifications((current) => {
-      // Prevent immediate duplicate if exact same notification exists in top items
-      const isDuplicate = current.slice(0, 5).some(
-        (n) => (n.title || '').trim().toLowerCase() === title.toLowerCase() &&
-               (n.message || '').trim().toLowerCase() === message.toLowerCase()
-      );
-      if (isDuplicate) return current;
-      return sortNewestFirst([created, ...current]).slice(0, 100);
+    setNotificationState((current) => {
+      const currentItems = current.key === storageKey ? current.items : loadNotifications(storageKey);
+      return {
+        key: storageKey,
+        items: sortNewestFirst([created, ...currentItems]).slice(0, 100),
+      };
     });
-
     return created;
-  }, []);
+  }, [storageKey]);
 
   const markAsRead = useCallback(async (id) => {
-    const strId = String(id);
-    // Optimistically mark as read in local state
-    setNotifications((current) =>
-      current.map((n) => (n.id === strId ? { ...n, is_read: true } : n))
-    );
+    const notification = notifications.find((item) => item.id === id);
+    if (!notification || notification.is_read) return;
 
-    const readIds = getLocalReadIds();
-    readIds.add(strId);
-    saveLocalReadIds(readIds);
-
-    // Call backend API
     try {
-      await notificationApi.markAsRead(strId);
-    } catch (err) {
-      console.warn('Could not sync markAsRead to backend:', err?.message);
+      if (notification.source === 'server') {
+        await notificationApi.markAsRead(notification.serverId);
+      }
+      setNotificationState((current) => ({
+        key: storageKey,
+        items: (current.key === storageKey ? current.items : []).map((item) =>
+          item.id === id ? { ...item, is_read: true } : item
+        ),
+      }));
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Could not mark notification as read.');
     }
-  }, []);
+  }, [notifications, storageKey]);
+
+  const markAllAsRead = useCallback(async () => {
+    const hasServerUnread = notifications.some((item) => item.source === 'server' && !item.is_read);
+    try {
+      if (hasServerUnread) await notificationApi.markAllAsRead();
+      setNotificationState((current) => ({
+        key: storageKey,
+        items: (current.key === storageKey ? current.items : []).map((item) => ({ ...item, is_read: true })),
+      }));
+    } catch (requestError) {
+      toast.error(requestError?.response?.data?.message || 'Could not mark notifications as read.');
+      await refreshNotifications();
+    }
+  }, [notifications, refreshNotifications, storageKey]);
 
   const markAllAsRead = useCallback(async () => {
     setNotifications((current) => current.map((n) => ({ ...n, is_read: true })));
@@ -203,12 +246,12 @@ export const NotificationProvider = ({ children }) => {
       unreadCount,
       isLoading,
       error,
-      refetch: fetchBackendNotifications,
       addNotification,
       markAsRead,
       markAllAsRead,
+      refreshNotifications,
     }),
-    [notifications, unreadCount, isLoading, error, fetchBackendNotifications, addNotification, markAsRead, markAllAsRead]
+    [notifications, unreadCount, isLoading, error, addNotification, markAsRead, markAllAsRead, refreshNotifications]
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

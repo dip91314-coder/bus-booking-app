@@ -1,12 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck, Ticket, CreditCard, AlertTriangle, Bus, Info } from 'lucide-react';
+import { Bell, CheckCheck, Ticket, CreditCard, AlertTriangle, Bus, Info, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 
 const NotificationBell = () => {
   const { isAdmin } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    markAsRead,
+    markAllAsRead,
+    refreshNotifications,
+  } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -61,10 +69,22 @@ const NotificationBell = () => {
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">Notifications</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {unreadCount} unread
+                {isLoading ? 'Updating...' : `${unreadCount} unread`}
               </p>
             </div>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-1">
+              {!isAdmin && (
+                <button
+                  type="button"
+                  onClick={refreshNotifications}
+                  disabled={isLoading}
+                  aria-label="Refresh notifications"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 dark:hover:bg-slate-800"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+                </button>
+              )}
+              {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={markAllAsRead}
@@ -73,11 +93,30 @@ const NotificationBell = () => {
                 <CheckCheck className="h-4 w-4" aria-hidden="true" />
                 Mark all as read
               </button>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
-            {notifications.length > 0 ? (
+            {error ? (
+              <div className="px-4 py-8 text-center" role="alert">
+                <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">
+                  Notifications could not be loaded.
+                </p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{error}</p>
+                <button
+                  type="button"
+                  onClick={refreshNotifications}
+                  className="mt-3 rounded-lg px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 dark:hover:bg-blue-950/40"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : isLoading && notifications.length === 0 ? (
+              <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400" role="status">
+                Loading notifications...
+              </p>
+            ) : notifications.length > 0 ? (
               notifications.slice(0, 20).map((notification) => {
                 const TypeIcon = iconForType(notification.type);
                 return (

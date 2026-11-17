@@ -4,7 +4,28 @@ import { paymentGateway } from './paymentGateway.js';
 import { canUseTransactions } from './seatLockService.js';
 import { NotFoundError, ValidationError, ConflictError } from '../utils/customErrors.js';
 import { logger } from '../config/logger.js';
-import { sendBookingConfirmationEmail } from './emailService.js';
+import { sendBookingTicketEmail } from './emailService.js';
+import { publishUserNotification } from './notificationService.js';
+
+async function deliverTicketEmail(booking, ticket) {
+  if (!booking || !ticket || ticket.emailSentAt) return Boolean(ticket?.emailSentAt);
+
+  try {
+    const result = await sendBookingTicketEmail({ booking, ticket });
+    if (!result.sent) {
+      logger.warn({ pnr: booking.pnr, reason: result.reason }, 'Booking ticket email was not sent');
+      return false;
+    }
+
+    const emailSentAt = new Date();
+    await Ticket.updateOne({ _id: ticket._id }, { $set: { emailSentAt } });
+    ticket.emailSentAt = emailSentAt;
+    return true;
+  } catch (error) {
+    logger.error({ err: error, pnr: booking.pnr }, 'Booking ticket email delivery failed');
+    return false;
+  }
+}
 
 export async function initiatePayment({ bookingId, userId }) {
   const booking = await Booking.findById(bookingId);
@@ -78,11 +99,13 @@ export async function confirmPayment({
       const existingTicket = await Ticket.findOne({ bookingId: existingPayment.bookingId });
       const existingBooking = await Booking.findById(existingPayment.bookingId);
       logger.info({ gatewayPaymentId }, 'Duplicate payment detected. Returning existing ticket idempotently.');
+      const emailSent = await deliverTicketEmail(existingBooking, existingTicket);
       return {
         success: true,
         isDuplicate: true,
         booking: existingBooking,
         ticket: existingTicket,
+        emailSent,
       };
     }
   }
@@ -249,6 +272,8 @@ export async function confirmPayment({
           seats: booking.seats,
           priceBreakdown: booking.priceBreakdown,
           paymentStatus: 'Successful',
+          bookingStatus: booking.bookingStatus,
+          paymentMethod: booking.paymentMethod,
         },
       },
       { upsert: true, new: true, ...opts }
@@ -258,6 +283,15 @@ export async function confirmPayment({
       await session.commitTransaction();
     }
 
+    const emailSent = await deliverTicketEmail(booking, ticket);
+    await publishUserNotification({
+      userId: booking.userId,
+      tripId: booking.tripId,
+      bookingId: booking._id,
+      category: 'payment',
+      title: 'Payment received',
+      message: `Payment of Rs. ${Number(booking.totalFare).toLocaleString('en-IN')} for booking ${booking.pnr} was received successfully.`,
+    });
     logger.info({ bookingId: booking._id, pnr: booking.pnr, ticketId: ticket._id }, 'Payment confirmed & ticket issued');
 
     // Asynchronously dispatch booking confirmation email without blocking checkout
@@ -269,6 +303,7 @@ export async function confirmPayment({
       success: true,
       booking,
       ticket,
+      emailSent,
     };
   } catch (error) {
     if (useTransaction) {

@@ -162,6 +162,7 @@ const Payment = () => {
         : undefined;
 
       let serverBooking = null;
+      let ticketEmailSent = null;
 
       if (tripId) {
         setProcessingStep('Reserving atomic seat locks on bus trip...');
@@ -208,6 +209,7 @@ const Payment = () => {
               signature: 'mock_signature',
               paymentMethod: resolvedMethod
             });
+            ticketEmailSent = verifyRes?.emailSent;
             if (verifyRes?.ticket?.pnr) {
               serverBooking.pnr = verifyRes.ticket.pnr;
             } else if (serverBooking.pnr || serverBooking.bookingReference) {
@@ -241,6 +243,9 @@ const Payment = () => {
         message: `Payment of ₹${totalAmount} for booking ${finalPnr} was received.`,
         type: 'payment'
       });
+      if (ticketEmailSent === false) {
+        toast.error('Booking confirmed, but the ticket email was not delivered. Check SMTP settings and the booking email address.');
+      }
 
       setTimeout(() => {
         setIsProcessing(false);

@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }) => {
         setUser(newUser);
         localStorage.setItem('yatra_user', JSON.stringify(newUser));
         toast.success('Account created successfully! Welcome to YatraBus.');
-        return newUser;
+        return { emailSent: res.data.emailSent };
       }
       throw new Error(res.message || 'Registration failed');
     } catch (err) {
@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('yatra_user', JSON.stringify(demoNewUser));
         setUser(demoNewUser);
         toast.success('Account created successfully! (Demonstration Mode)');
-        return demoNewUser;
+        return { emailSent: false, demonstrationMode: true };
       }
       throw err;
     }

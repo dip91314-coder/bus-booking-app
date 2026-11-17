@@ -9,6 +9,7 @@ import { Offer } from './models/Offer.js';
 import { Route } from './models/Route.js';
 import { BusSchedule } from './models/BusSchedule.js';
 import { AdminNotification } from './models/AdminNotification.js';
+import { TripNotification } from './models/TripNotification.js';
 import { AuditLog } from './models/AuditLog.js';
 import { PlatformSettings } from './models/PlatformSettings.js';
 import { generateAccessToken } from './utils/token.js';
@@ -17,6 +18,7 @@ describe('Admin management API', () => {
   let mongo;
   let app;
   let adminToken;
+  let customerToken;
 
   beforeAll(async () => {
     mongo = await MongoMemoryServer.create();
@@ -31,6 +33,15 @@ describe('Admin management API', () => {
       role: 'admin',
     });
     adminToken = generateAccessToken({ userId: admin._id.toString(), role: admin.role });
+
+    const customer = await User.create({
+      name: 'Test Customer',
+      email: 'customer@example.com',
+      password: 'password123',
+      phone: '9876543211',
+      role: 'user',
+    });
+    customerToken = generateAccessToken({ userId: customer._id.toString(), role: customer.role });
   });
 
   beforeEach(async () => {
@@ -40,6 +51,7 @@ describe('Admin management API', () => {
       BusSchedule.deleteMany({}),
       Offer.deleteMany({}),
       AdminNotification.deleteMany({}),
+      TripNotification.deleteMany({}),
       PlatformSettings.deleteMany({}),
     ]);
   });
@@ -187,6 +199,22 @@ describe('Admin management API', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ title: 'Schedule update', message: 'A new schedule was published.', category: 'alert' });
     expect(notification.status).toBe(201);
+
+    const customerNotifications = await request(app)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${customerToken}`);
+    expect(customerNotifications.status).toBe(200);
+    expect(customerNotifications.body.data[0]).toMatchObject({
+      title: 'Schedule update',
+      message: 'A new schedule was published.',
+      category: 'alert',
+      isRead: false,
+    });
+
+    const markedCustomerRead = await request(app)
+      .patch(`/api/notifications/${customerNotifications.body.data[0]._id}/read`)
+      .set('Authorization', `Bearer ${customerToken}`);
+    expect(markedCustomerRead.body.data.isRead).toBe(true);
 
     const markedRead = await request(app)
       .patch(`/api/admin/notifications/${notification.body.data.id}/read`)

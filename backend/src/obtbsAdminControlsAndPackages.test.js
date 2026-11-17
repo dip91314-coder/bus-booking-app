@@ -329,5 +329,6 @@ describe('OBTBS Admin Advanced Controls, Packages, and Safety Hardening', () => 
     const cancellationNotif = notifRes.body.data.find((n) => n.type === 'CANCELLATION');
     expect(cancellationNotif).toBeDefined();
     expect(cancellationNotif.title).toContain('Trip Cancelled');
+    expect(cancellationNotif.category).toBe('cancellation');
   });
 });

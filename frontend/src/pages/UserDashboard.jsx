@@ -27,7 +27,6 @@ import {
   ChevronRight,
   RefreshCw,
   Download,
-  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import JournalSpreadCarousel from '../components/ui/journal-spread-carousel';
@@ -47,6 +46,7 @@ const UserDashboard = () => {
     deleteSavedTraveller,
     refreshUserBookings
   } = useBooking();
+  const [downloadingTicket, setDownloadingTicket] = useState('');
 
   // Load fresh bookings from backend on dashboard mount
   useEffect(() => {
@@ -150,17 +150,31 @@ const UserDashboard = () => {
     };
   }, [user, isDemo]);
 
-  // Filter user bookings with case-insensitivity
-  const isConfirmed = (b) => {
-    const s = String(b.bookingStatus || '').toLowerCase();
-    return s === 'confirmed' || s === 'active' || s === 'paid' || s === 'pending';
-  };
-  const isCompleted = (b) => String(b.bookingStatus || '').toLowerCase() === 'completed';
-  const isCancelled = (b) => String(b.bookingStatus || '').toLowerCase() === 'cancelled';
+  // Filter user bookings
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingBookings = bookings.filter(
+    (booking) => booking.bookingStatus === 'confirmed' && booking.journeyDate >= today
+  );
+  const pastBookings = bookings.filter(
+    (booking) => booking.bookingStatus === 'completed' ||
+      (booking.bookingStatus === 'confirmed' && booking.journeyDate < today)
+  );
+  const cancelledBookings = bookings.filter((b) => b.bookingStatus === 'cancelled');
 
-  const upcomingBookings = bookings.filter(isConfirmed);
-  const pastBookings = bookings.filter(isCompleted);
-  const cancelledBookings = bookings.filter(isCancelled);
+  const handleDownloadTicket = async (booking) => {
+    const identifier = booking.pnr || booking.bookingReference || booking.id || booking._id;
+    if (!identifier || downloadingTicket) return;
+
+    setDownloadingTicket(String(identifier));
+    try {
+      await ticketApi.downloadPdf(identifier);
+      toast.success('Ticket PDF downloaded.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not download this ticket.');
+    } finally {
+      setDownloadingTicket('');
+    }
+  };
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
@@ -528,27 +542,20 @@ const UserDashboard = () => {
         {activeTab === 'bookings' && (
           <div className="space-y-4">
             {upcomingBookings.length > 0 ? (
-              upcomingBookings.map((b) => {
-                const pnrVal = b.pnr || b.bookingReference || b.id;
-                return (
-                  <div
-                    key={pnrVal}
-                    className="bg-white rounded-2xl p-6 shadow-card hover:shadow-hover border border-gray-100 transition duration-300"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-black text-primary bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
-                            PNR: {pnrVal}
-                          </span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            Confirmed 🟢
-                          </span>
-                        </div>
-                        <h3 className="text-base font-black text-gray-900 mt-2">{b.operator}</h3>
-                        <p className="text-xs text-gray-500 font-medium">
-                          {b.busName} • {b.busType}
-                        </p>
+              upcomingBookings.map((b) => (
+                <div
+                  key={b.pnr || b.bookingReference || b._id}
+                  className="bg-white rounded-2xl p-6 shadow-card hover:shadow-hover border border-gray-100 transition duration-300"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-black text-primary bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                          PNR: {b.pnr}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          Confirmed 🟢
+                        </span>
                       </div>
 
                       <div className="text-left sm:text-right">
@@ -594,42 +601,38 @@ const UserDashboard = () => {
                         Booked on: {new Date(b.bookedAt || Date.now()).toLocaleDateString()}
                       </div>
 
-                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to cancel booking ${pnrVal}?`)) {
-                              cancelBooking(pnrVal);
-                            }
-                          }}
-                          aria-label={`Cancel booking ${pnrVal}`}
-                          variant="danger"
-                          size="sm"
-                        >
-                          Cancel Booking
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadTicket(pnrVal)}
-                          disabled={downloadingPnr === pnrVal}
-                          className="text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/60 px-3.5 py-2 rounded-xl transition inline-flex items-center gap-1.5 disabled:opacity-60 shadow-xs cursor-pointer"
-                          title="Download official YATRA BUS PDF ticket"
-                        >
-                          {downloadingPnr === pnrVal ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Download className="w-3.5 h-3.5" />
-                          )}
-                          <span>Download Ticket</span>
-                        </button>
-                        <Link
-                          to={`/booking/confirmation/${pnrVal}`}
-                          className="text-xs font-bold text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
-                        >
-                          <span>View Details</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        onClick={() => handleDownloadTicket(b)}
+                        disabled={Boolean(downloadingTicket)}
+                        loading={downloadingTicket === String(b.pnr || b.bookingReference || b.id || b._id)}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to cancel booking ${b.pnr}?`)) {
+                            cancelBooking(b.pnr);
+                          }
+                        }}
+                        aria-label={`Cancel booking ${b.pnr}`}
+                        variant="danger"
+                        size="sm"
+                      >
+                        Cancel Booking
+                      </Button>
+                      <Link
+                        to={`/booking/confirmation/${b.pnr}`}
+                        className="text-xs font-bold text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
+                      >
+                        <span>Print Ticket</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                   </div>
                 );
@@ -661,44 +664,39 @@ const UserDashboard = () => {
         {activeTab === 'completed' && (
           <div className="space-y-4">
             {pastBookings.length > 0 ? (
-              pastBookings.map((b) => {
-                const pnrVal = b.pnr || b.bookingReference || b.id;
-                return (
-                  <div
-                    key={pnrVal}
-                    className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 opacity-90"
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs font-mono font-bold text-gray-500">PNR: {pnrVal}</span>
-                      <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                        Journey Completed
-                      </span>
-                    </div>
-                    <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
-                    <p className="text-xs text-gray-500">
-                      {b.origin} ➔ {b.destination} • {b.journeyDate} • Seats: {b.seats?.join(', ')}
-                    </p>
-                    <div className="mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadTicket(pnrVal)}
-                        disabled={downloadingPnr === pnrVal}
-                        className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-purple-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
-                      >
-                        {downloadingPnr === pnrVal ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}
-                        <span>Download E-Ticket</span>
-                      </button>
-                      <Link
-                        to={`/booking/confirmation/${pnrVal}`}
-                        className="text-xs text-primary font-bold hover:underline"
-                      >
-                        View Invoice Receipt
-                      </Link>
-                    </div>
+              pastBookings.map((b) => (
+                <div
+                  key={b.pnr || b.bookingReference || b._id}
+                  className="bg-white rounded-2xl p-5 shadow-card border border-gray-100 opacity-90"
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-mono font-bold text-gray-500">PNR: {b.pnr}</span>
+                    <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                      Journey Completed
+                    </span>
+                  </div>
+                  <h4 className="font-extrabold text-sm text-gray-900">{b.operator}</h4>
+                  <p className="text-xs text-gray-500">
+                    {b.origin} ➔ {b.destination} • {b.journeyDate} • Seats: {b.seats?.join(', ')}
+                  </p>
+                  <div className="mt-3 flex flex-wrap justify-end gap-3 border-t pt-3">
+                    <Button
+                      type="button"
+                      onClick={() => handleDownloadTicket(b)}
+                      disabled={Boolean(downloadingTicket)}
+                      loading={downloadingTicket === String(b.pnr || b.bookingReference || b.id || b._id)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </Button>
+                    <Link
+                      to={`/booking/confirmation/${b.pnr || b.bookingReference}`}
+                      className="text-xs font-bold text-primary hover:underline"
+                    >
+                      View Invoice Receipt
+                    </Link>
                   </div>
                 );
               })

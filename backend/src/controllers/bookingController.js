@@ -187,6 +187,13 @@ export async function createBooking(req, res, next) {
     await Bus.findByIdAndUpdate(busId, {
       $inc: { availableSeatsCount: -seats.length },
     });
+    await publishUserNotification({
+      userId,
+      bookingId: newBooking._id,
+      category: 'booking',
+      title: 'Booking confirmed',
+      message: `Your booking ${newBooking.bookingReference} from ${newBooking.origin} to ${newBooking.destination} is confirmed.`,
+    });
 
     // Asynchronously dispatch confirmation email
     sendBookingConfirmationEmail({ booking: newBooking }).catch((emailErr) => {
@@ -327,6 +334,16 @@ export async function cancelBooking(req, res, next) {
         $inc: { availableSeatsCount: booking.seats.length },
       });
     }
+
+    await publishUserNotification({
+      userId: booking.userId,
+      tripId: booking.tripId,
+      bookingId: booking._id,
+      type: 'CANCELLATION',
+      category: 'cancellation',
+      title: 'Booking cancelled',
+      message: `Your booking ${booking.bookingReference} has been cancelled. A refund of Rs. ${booking.totalFare} has been initiated.`,
+    });
 
     res.status(200).json({
       success: true,

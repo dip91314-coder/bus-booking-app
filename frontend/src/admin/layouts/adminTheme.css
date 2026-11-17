@@ -1,0 +1,70 @@
+.admin-console {
+  --admin-accent: #2563eb;
+  --admin-ink: #0f172a;
+  --admin-muted: #64748b;
+  --admin-border: #e2e8f0;
+  --admin-surface: #ffffff;
+  background-image: radial-gradient(ellipse at top right, rgba(219, 234, 254, 0.38), transparent 34rem);
+}
+
+.admin-page-content h1 {
+  color: var(--admin-ink);
+  font-size: clamp(1.45rem, 2.2vw, 1.8rem);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.admin-page-content input:not([type='checkbox']):not([type='radio']),
+.admin-page-content select,
+.admin-page-content textarea {
+  min-height: 2.5rem;
+  border-radius: 0.75rem;
+  border-color: var(--admin-border);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.admin-page-content input:not([type='checkbox']):not([type='radio']):focus,
+.admin-page-content select:focus,
+.admin-page-content textarea:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.admin-page-content button {
+  transition-duration: 150ms;
+}
+
+.admin-page-content button:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+
+.admin-page-content button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.admin-page-content button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.admin-page-content [class~='rounded-2xl'][class~='bg-white'] {
+  border-color: var(--admin-border);
+  box-shadow: 0 8px 24px -20px rgba(15, 23, 42, 0.45);
+}
+
+.dark .admin-page-content h1 {
+  color: #f8fafc;
+}
+
+.dark .admin-page-content [class~='rounded-2xl'][class~='bg-white'] {
+  border-color: #1e293b;
+}
+
+@media (max-width: 640px) {
+  .admin-page-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

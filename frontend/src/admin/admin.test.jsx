@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
@@ -31,6 +31,10 @@ import ReviewManagementPage from './pages/ReviewManagementPage';
 import ReportAnalyticsPage from './pages/ReportAnalyticsPage';
 import NotificationManagementPage from './pages/NotificationManagementPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
+
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: null, isAdmin: false }),
+}));
 
 describe('Admin Panel Data & Module Integrity', () => {
   it('contains comprehensive mock fleet, routes, schedules and bookings', () => {

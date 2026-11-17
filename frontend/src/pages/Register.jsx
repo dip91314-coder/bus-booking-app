@@ -52,13 +52,20 @@ const Register = () => {
 
     setLoading(true);
     try {
-      await register({
+      const registration = await register({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
       });
       toast.success('Registration successful! Welcome bonus ₹100 credited.');
+      if (registration.emailSent === false) {
+        toast.error(
+          registration.demonstrationMode
+            ? 'Welcome email was not sent in demonstration mode.'
+            : 'Account created, but the welcome email was not sent. Check backend SMTP settings.'
+        );
+      }
       navigate('/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Registration failed.';

@@ -15,7 +15,6 @@ import {
   MapPin,
   ChevronRight,
   RefreshCw,
-  AlertCircle,
   Bus,
   Loader2,
   CheckCircle2,
@@ -124,11 +123,7 @@ const SearchResults = () => {
       return matchOrigin && matchDest;
     });
 
-    // If zero match on exact query, provide all buses with a clear banner
     const isExactMatch = list.length > 0;
-    if (!isExactMatch) {
-      list = [...sourcePool]; // fallback to demonstrate UI
-    }
 
     // 2. Bus type filter
     if (filters.busTypes.length > 0) {
@@ -367,26 +362,22 @@ const SearchResults = () => {
               </p>
             </div>
 
-            {/* In case no exact route found notice */}
-            {!filteredBuses.isExactMatch && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-bold">Showing Other Active YatraBus Routes</h4>
-                  <p className="mt-0.5">
-                    No direct buses were scheduled strictly between <strong>{originQuery}</strong> and{' '}
-                    <strong>{destQuery}</strong> for this date. We've listed other active YatraBus routes below so you can explore and book.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {/* Bus Cards List */}
             {isLoadingTrips ? (
               <div className="space-y-4">
                 <TripCardSkeleton />
                 <TripCardSkeleton />
                 <TripCardSkeleton />
+              </div>
+            ) : !filteredBuses.isExactMatch ? (
+              <div className="bg-white dark:bg-[#111622] rounded-3xl p-12 text-center shadow-card border border-gray-100 dark:border-slate-800 space-y-4 transition-colors">
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-primary dark:text-purple-400 flex items-center justify-center mx-auto">
+                  <Bus className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">No Buses Are Scheduled</h3>
+                <p className="text-xs text-gray-500 dark:text-slate-400 max-w-md mx-auto">
+                  No buses are scheduled from <strong>{originQuery}</strong> to <strong>{destQuery}</strong> on {dateQuery}.
+                </p>
               </div>
             ) : filteredBuses.list.length > 0 ? (
               <div className="space-y-4">

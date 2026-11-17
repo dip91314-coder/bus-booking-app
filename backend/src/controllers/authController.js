@@ -1,6 +1,8 @@
 import { User } from '../models/User.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/token.js';
 import { ConflictError, UnauthorizedError, NotFoundError } from '../utils/customErrors.js';
+import { sendWelcomeEmail } from '../services/emailService.js';
+import { logger } from '../config/logger.js';
 
 export async function register(req, res, next) {
   try {
@@ -35,6 +37,17 @@ export async function register(req, res, next) {
       maxAge: 24 * 60 * 60 * 1000,
     });
 
+    let emailSent = false;
+    try {
+      const emailResult = await sendWelcomeEmail({ name: user.name, email: user.email });
+      emailSent = emailResult.sent;
+      if (!emailSent) {
+        logger.warn({ reason: emailResult.reason }, 'Welcome email was not sent');
+      }
+    } catch (error) {
+      logger.error({ err: error }, 'Welcome email delivery failed');
+    }
+
     res.status(201).json({
       success: true,
       message: 'Account registered successfully',
@@ -47,6 +60,7 @@ export async function register(req, res, next) {
           role: user.role,
           avatar: user.avatar,
         },
+        emailSent,
         accessToken,
         refreshToken,
       },

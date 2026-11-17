@@ -23,7 +23,9 @@ const ConfirmDialog = ({
       const result = onConfirm();
       if (result && typeof result.then === 'function') {
         setIsConfirming(true);
-        await result;
+        if (await result === false) return;
+      } else if (result === false) {
+        return;
       }
       onClose();
     } catch (error) {
