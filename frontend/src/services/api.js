@@ -240,6 +240,8 @@ export const notificationApi = {
   },
 };
 
+// Keep alias for backward compatibility
+
 const adminResourcePath = (resource) => `/admin/${resource}`;
 
 const adminRequestData = async (request) => {
